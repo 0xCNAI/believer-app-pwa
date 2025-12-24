@@ -1,7 +1,6 @@
 import { fetchUnifiedMarkets, MarketEvent } from '@/services/marketData';
 import { useBeliefStore } from '@/stores/beliefStore';
 import { useUserStore } from '@/stores/userStore';
-import Animated, { FadeIn, SlideInRight } from 'react-native-reanimated';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, StyleSheet, Dimensions } from 'react-native';
@@ -114,8 +113,7 @@ export default function MomentScreen() {
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
-                <Animated.View
-                    entering={SlideInRight}
+                <View
                     key={currentEvent.id}
                     style={styles.card}
                 >
@@ -148,7 +146,7 @@ export default function MomentScreen() {
                             <Text style={styles.statValue}>高</Text>
                         </View>
                     </View>
-                </Animated.View>
+                </View>
             </ScrollView>
 
             <View style={styles.actionContainer}>
@@ -342,6 +340,9 @@ const styles = StyleSheet.create({
     },
     trackText: {
         color: '#000',
+        fontSize: 12,
+        fontWeight: '900',
+        letterSpacing: 1,
     },
     actionText: {
         fontSize: 12,

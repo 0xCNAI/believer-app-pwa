@@ -4,11 +4,14 @@ import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { useOnboardingStore } from '@/stores/onboardingStore';
 import { useUserStore, ExperienceLevel, FocusArea, AlertStyle } from '@/stores/userStore';
+import { useBeliefStore } from '@/stores/beliefStore';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeIn, SlideInRight, SlideOutLeft, LayoutAnimation } from 'react-native-reanimated';
 import { useState } from 'react';
+import { styled } from 'nativewind';
 
-const { width } = Dimensions.get('window');
+const StyledView = styled(View);
+const StyledText = styled(Text);
+const StyledTouchableOpacity = styled(TouchableOpacity);
 
 // --- Configuration Data ---
 
@@ -32,8 +35,6 @@ const ALERT_STYLE_OPTIONS: { id: AlertStyle; label: string; desc: string }[] = [
     { id: 'late', label: '較晚提醒 (狀態較明確)', desc: '側重「狀態轉換」，提醒門檻較高' },
 ];
 
-import { useBeliefStore } from '@/stores/beliefStore';
-
 export default function OnboardingScreen() {
     const router = useRouter();
     const { completeOnboarding } = useOnboardingStore();
@@ -55,14 +56,10 @@ export default function OnboardingScreen() {
         if (currentStep < 3) {
             setCurrentStep(currentStep + 1);
         } else {
-            // Just update state. 
-            // The RootLayout (_layout.tsx) watches this state and will auto-redirect to "/"
-            // This prevents a race condition between imperative router.replace and the layout's declarative Redirect.
-
             // Seed Dashboard with initial signals based on user focus
             seedFromFocusAreas(focusAreas);
-
             completeOnboarding();
+            router.replace('/');
         }
     };
 
@@ -72,108 +69,108 @@ export default function OnboardingScreen() {
         switch (currentStep) {
             case 0: // Experience
                 return (
-                    <View style={styles.stepContainer}>
-                        <Text style={styles.questionTitle}>你對加密貨幣市場的{'\n'}交易經驗為何？</Text>
-                        <Text style={styles.questionSubtitle}>這將協助系統調整對市場結構變化的靈敏度。</Text>
-                        <View style={styles.optionsContainer}>
+                    <StyledView className="flex-1">
+                        <StyledText className="text-white text-2xl font-bold mb-2 leading-8">你對加密貨幣市場的{'\n'}交易經驗為何？</StyledText>
+                        <StyledText className="text-zinc-400 text-sm mb-8">這將協助系統調整對市場結構變化的靈敏度。</StyledText>
+                        <StyledView className="gap-3 mb-6">
                             {EXPERIENCE_OPTIONS.map((opt) => (
-                                <TouchableOpacity
+                                <StyledTouchableOpacity
                                     key={opt.id}
-                                    style={[styles.optionCard, experience === opt.id && styles.optionCardSelected]}
+                                    className={`p-5 rounded-2xl border ${experience === opt.id ? 'bg-blue-500/10 border-blue-500' : 'bg-zinc-900 border-zinc-800'}`}
                                     onPress={() => setExperience(opt.id)}
                                 >
-                                    <Text style={[styles.optionLabel, experience === opt.id && styles.textSelected]}>{opt.label}</Text>
-                                    <Text style={[styles.optionDesc, experience === opt.id && styles.textSelectedDim]}>{opt.desc}</Text>
-                                </TouchableOpacity>
+                                    <StyledText className={`text-base font-bold mb-1 ${experience === opt.id ? 'text-blue-500' : 'text-white'}`}>{opt.label}</StyledText>
+                                    <StyledText className={`text-xs ${experience === opt.id ? 'text-blue-300' : 'text-zinc-500'}`}>{opt.desc}</StyledText>
+                                </StyledTouchableOpacity>
                             ))}
-                        </View>
+                        </StyledView>
                         {experience && (
-                            <Text style={styles.feedbackText}>已根據你的交易經驗，調整反轉指數對市場結構變化的感知方式。</Text>
+                            <StyledText className="text-emerald-500 text-xs font-bold mt-2 leading-5">已根據你的交易經驗，調整反轉指數對市場結構變化的感知方式。</StyledText>
                         )}
-                    </View>
+                    </StyledView>
                 );
 
             case 1: // Focus Areas
                 return (
-                    <View style={styles.stepContainer}>
-                        <Text style={styles.questionTitle}>當市場可能出現趨勢轉變時，{'\n'}你比較關注哪一類變化？</Text>
-                        <Text style={styles.questionSubtitle}>最多選擇 3 項 (目前 {focusAreas.length}/3)</Text>
-                        <View style={styles.optionsContainer}>
+                    <StyledView className="flex-1">
+                        <StyledText className="text-white text-2xl font-bold mb-2 leading-8">當市場可能出現趨勢轉變時，{'\n'}你比較關注哪一類變化？</StyledText>
+                        <StyledText className="text-zinc-400 text-sm mb-8">最多選擇 3 項 (目前 {focusAreas.length}/3)</StyledText>
+                        <StyledView className="gap-3 mb-6">
                             {FOCUS_AREA_OPTIONS.map((opt) => {
                                 const isSelected = focusAreas.includes(opt.id);
                                 return (
-                                    <TouchableOpacity
+                                    <StyledTouchableOpacity
                                         key={opt.id}
-                                        style={[styles.optionCard, isSelected && styles.optionCardSelected]}
+                                        className={`p-5 rounded-2xl border ${isSelected ? 'bg-blue-500/10 border-blue-500' : 'bg-zinc-900 border-zinc-800'}`}
                                         onPress={() => toggleFocusArea(opt.id)}
                                     >
-                                        <View style={styles.checkboxRow}>
-                                            <View style={[styles.checkbox, isSelected && styles.checkboxSelected]} />
-                                            <Text style={[styles.optionLabel, isSelected && styles.textSelected]}>{opt.label}</Text>
-                                        </View>
-                                    </TouchableOpacity>
+                                        <StyledView className="flex-row items-center gap-4">
+                                            <StyledView className={`w-5 h-5 rounded-md border-2 ${isSelected ? 'border-blue-500 bg-blue-500' : 'border-zinc-600'}`} />
+                                            <StyledText className={`text-base font-bold ${isSelected ? 'text-blue-500' : 'text-white'}`}>{opt.label}</StyledText>
+                                        </StyledView>
+                                    </StyledTouchableOpacity>
                                 );
                             })}
-                        </View>
+                        </StyledView>
                         {focusAreas.length > 0 && (
-                            <Text style={styles.feedbackText}>反轉指數將優先反映你所關注的市場變化類型。</Text>
+                            <StyledText className="text-emerald-500 text-xs font-bold mt-2 leading-5">反轉指數將優先反映你所關注的市場變化類型。</StyledText>
                         )}
-                    </View>
+                    </StyledView>
                 );
 
             case 2: // Alert Style
                 return (
-                    <View style={styles.stepContainer}>
-                        <Text style={styles.questionTitle}>你希望在什麼階段收到提醒？</Text>
-                        <Text style={styles.questionSubtitle}>決定通知系統的觸發時機與風格。</Text>
-                        <View style={styles.optionsContainer}>
+                    <StyledView className="flex-1">
+                        <StyledText className="text-white text-2xl font-bold mb-2 leading-8">你希望在什麼階段收到提醒？</StyledText>
+                        <StyledText className="text-zinc-400 text-sm mb-8">決定通知系統的觸發時機與風格。</StyledText>
+                        <StyledView className="gap-3 mb-6">
                             {ALERT_STYLE_OPTIONS.map((opt) => (
-                                <TouchableOpacity
+                                <StyledTouchableOpacity
                                     key={opt.id}
-                                    style={[styles.optionCard, alertStyle === opt.id && styles.optionCardSelected]}
+                                    className={`p-5 rounded-2xl border ${alertStyle === opt.id ? 'bg-blue-500/10 border-blue-500' : 'bg-zinc-900 border-zinc-800'}`}
                                     onPress={() => setAlertStyle(opt.id)}
                                 >
-                                    <Text style={[styles.optionLabel, alertStyle === opt.id && styles.textSelected]}>{opt.label}</Text>
-                                    <Text style={[styles.optionDesc, alertStyle === opt.id && styles.textSelectedDim]}>{opt.desc}</Text>
-                                </TouchableOpacity>
+                                    <StyledText className={`text-base font-bold mb-1 ${alertStyle === opt.id ? 'text-blue-500' : 'text-white'}`}>{opt.label}</StyledText>
+                                    <StyledText className={`text-xs ${alertStyle === opt.id ? 'text-blue-300' : 'text-zinc-500'}`}>{opt.desc}</StyledText>
+                                </StyledTouchableOpacity>
                             ))}
-                        </View>
+                        </StyledView>
                         {alertStyle && (
-                            <Text style={styles.feedbackText}>提醒將依照你的偏好，在不同階段提示市場狀態的變化。</Text>
+                            <StyledText className="text-emerald-500 text-xs font-bold mt-2 leading-5">提醒將依照你的偏好，在不同階段提示市場狀態的變化。</StyledText>
                         )}
-                    </View>
+                    </StyledView>
                 );
 
             case 3: // Summary
                 return (
-                    <View style={styles.stepContainer}>
-                        <View style={styles.iconContainer}>
+                    <StyledView className="flex-1">
+                        <StyledView className="items-center mb-6 mt-10">
                             <Ionicons name="checkmark-circle-outline" size={80} color="#10b981" />
-                        </View>
-                        <Text style={styles.summaryTitle}>設定完成</Text>
-                        <Text style={styles.summaryText}>
+                        </StyledView>
+                        <StyledText className="text-white text-3xl font-black text-center mb-4">設定完成</StyledText>
+                        <StyledText className="text-zinc-400 text-center text-base leading-6 mb-12">
                             你的反轉指數已完成校準，{'\n'}
                             將依照你的觀察偏好，{'\n'}
                             持續追蹤市場結構與趨勢狀態的變化。
-                        </Text>
+                        </StyledText>
 
-                        <View style={styles.summaryCard}>
-                            <View style={styles.summaryRow}>
-                                <Text style={styles.summaryLabel}>靈敏度校準</Text>
-                                <Text style={styles.summaryValue}>完成</Text>
-                            </View>
-                            <View style={styles.summaryRow}>
-                                <Text style={styles.summaryLabel}>關注權重</Text>
-                                <Text style={styles.summaryValue}>已配置 {focusAreas.length} 項</Text>
-                            </View>
-                            <View style={styles.summaryRow}>
-                                <Text style={styles.summaryLabel}>提醒風格</Text>
-                                <Text style={styles.summaryValue}>
+                        <StyledView className="bg-zinc-900 rounded-3xl p-6 gap-4">
+                            <StyledView className="flex-row justify-between items-center">
+                                <StyledText className="text-zinc-500 text-xs uppercase font-bold">靈敏度校準</StyledText>
+                                <StyledText className="text-white font-bold text-sm">完成</StyledText>
+                            </StyledView>
+                            <StyledView className="flex-row justify-between items-center">
+                                <StyledText className="text-zinc-500 text-xs uppercase font-bold">關注權重</StyledText>
+                                <StyledText className="text-white font-bold text-sm">已配置 {focusAreas.length} 項</StyledText>
+                            </StyledView>
+                            <StyledView className="flex-row justify-between items-center">
+                                <StyledText className="text-zinc-500 text-xs uppercase font-bold">提醒風格</StyledText>
+                                <StyledText className="text-white font-bold text-sm">
                                     {ALERT_STYLE_OPTIONS.find(a => a.id === alertStyle)?.label.split(' ')[0]}
-                                </Text>
-                            </View>
-                        </View>
-                    </View>
+                                </StyledText>
+                            </StyledView>
+                        </StyledView>
+                    </StyledView>
                 );
 
             default:
@@ -182,43 +179,34 @@ export default function OnboardingScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#000000' }}>
             <StatusBar style="light" />
 
-            <View style={styles.header}>
+            <StyledView className="px-6 pt-4 pb-2">
                 {/* Progress Bar */}
-                <View style={styles.progressTrack}>
-                    <Animated.View
-                        style={[
-                            styles.progressBar,
-                            { width: `${((currentStep) / 3) * 100}%` }
-                        ]}
+                <StyledView className="h-1 bg-zinc-800 rounded-full mb-2">
+                    <StyledView
+                        className="h-full bg-blue-500 rounded-full"
+                        style={{ width: `${((currentStep) / 3) * 100}%` }}
                     />
-                </View>
-                <Text style={styles.stepText}>STEP  0{currentStep + 1} / 04</Text>
-            </View>
+                </StyledView>
+                <StyledText className="text-zinc-500 text-[10px] font-bold tracking-widest">STEP  0{currentStep + 1} / 04</StyledText>
+            </StyledView>
 
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-                <Animated.View
-                    key={currentStep}
-                    entering={SlideInRight}
-                    exiting={SlideOutLeft}
-                    style={{ flex: 1 }}
-                >
+            <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 32 }}>
+                <StyledView className="flex-1">
                     {renderStepContent()}
-                </Animated.View>
+                </StyledView>
             </ScrollView>
 
-            <View style={styles.footer}>
-                <TouchableOpacity
+            <StyledView className="p-6 pb-12">
+                <StyledTouchableOpacity
                     onPress={handleNext}
-                    style={[
-                        styles.nextButton,
-                        (currentStep === 0 && !experience) ||
+                    className={`h-14 rounded-full flex-row items-center justify-center gap-2 ${(currentStep === 0 && !experience) ||
                             (currentStep === 1 && focusAreas.length === 0) ||
                             (currentStep === 2 && !alertStyle)
-                            ? styles.buttonDisabled : {}
-                    ]}
+                            ? 'bg-zinc-800 opacity-50' : 'bg-white'
+                        }`}
                     disabled={
                         (currentStep === 0 && !experience) ||
                         (currentStep === 1 && focusAreas.length === 0) ||
@@ -226,180 +214,12 @@ export default function OnboardingScreen() {
                     }
                     activeOpacity={0.8}
                 >
-                    <Text style={styles.buttonText}>
+                    <StyledText className="text-black font-bold text-sm tracking-widest">
                         {currentStep === 3 ? '進入系統 (ENTER)' : '下一步 (NEXT)'}
-                    </Text>
-                    <Ionicons name="arrow-forward" size={20} color={currentStep === 3 ? '#000' : '#000'} />
-                </TouchableOpacity>
-            </View>
+                    </StyledText>
+                    <Ionicons name="arrow-forward" size={20} color="#000" />
+                </StyledTouchableOpacity>
+            </StyledView>
         </SafeAreaView>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#000000',
-    },
-    header: {
-        paddingHorizontal: 24,
-        paddingTop: 16,
-        paddingBottom: 8,
-    },
-    progressTrack: {
-        height: 4,
-        backgroundColor: '#27272a', // zinc-800
-        borderRadius: 2,
-        marginBottom: 8,
-    },
-    progressBar: {
-        height: '100%',
-        backgroundColor: '#3b82f6', // blue-500
-        borderRadius: 2,
-    },
-    stepText: {
-        color: '#71717a', // zinc-500
-        fontSize: 10,
-        fontWeight: 'bold',
-        letterSpacing: 2,
-    },
-    scrollContent: {
-        flexGrow: 1,
-        paddingHorizontal: 24,
-        paddingTop: 32,
-    },
-    stepContainer: {
-        flex: 1,
-    },
-    questionTitle: {
-        color: '#fff',
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginBottom: 8,
-        lineHeight: 32,
-    },
-    questionSubtitle: {
-        color: '#a1a1aa', // zinc-400
-        fontSize: 14,
-        marginBottom: 32,
-    },
-    optionsContainer: {
-        gap: 12,
-        marginBottom: 24,
-    },
-    optionCard: {
-        backgroundColor: '#18181b', // zinc-900
-        padding: 20,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: '#27272a', // zinc-800
-    },
-    optionCardSelected: {
-        borderColor: '#3b82f6', // blue-500
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    },
-    optionLabel: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginBottom: 4,
-    },
-    optionDesc: {
-        color: '#71717a', // zinc-500
-        fontSize: 12,
-    },
-    textSelected: {
-        color: '#3b82f6', // blue-500
-    },
-    textSelectedDim: {
-        color: '#93c5fd', // blue-300
-    },
-    checkboxRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 16,
-    },
-    checkbox: {
-        width: 20,
-        height: 20,
-        borderRadius: 6,
-        borderWidth: 2,
-        borderColor: '#52525b', // zinc-600
-    },
-    checkboxSelected: {
-        borderColor: '#3b82f6', // blue-500
-        backgroundColor: '#3b82f6',
-    },
-    feedbackText: {
-        color: '#10b981', // emerald-500
-        fontSize: 13,
-        fontWeight: 'bold',
-        marginTop: 8,
-        lineHeight: 20,
-    },
-    footer: {
-        padding: 24,
-        paddingBottom: 48,
-    },
-    nextButton: {
-        backgroundColor: '#fff',
-        height: 56,
-        borderRadius: 999,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-    },
-    buttonDisabled: {
-        backgroundColor: '#27272a', // zinc-800
-        opacity: 0.5,
-    },
-    buttonText: {
-        color: '#000',
-        fontWeight: 'bold',
-        fontSize: 14,
-        letterSpacing: 1,
-    },
-    // Summary
-    iconContainer: {
-        alignItems: 'center',
-        marginBottom: 24,
-        marginTop: 40,
-    },
-    summaryTitle: {
-        color: '#fff',
-        fontSize: 32,
-        fontWeight: '900',
-        textAlign: 'center',
-        marginBottom: 16,
-    },
-    summaryText: {
-        color: '#a1a1aa', // zinc-400
-        textAlign: 'center',
-        fontSize: 16,
-        lineHeight: 24,
-        marginBottom: 48,
-    },
-    summaryCard: {
-        backgroundColor: '#18181b', // zinc-900
-        borderRadius: 24,
-        padding: 24,
-        gap: 16,
-    },
-    summaryRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    summaryLabel: {
-        color: '#71717a', // zinc-500
-        fontSize: 12,
-        textTransform: 'uppercase',
-        fontWeight: 'bold',
-    },
-    summaryValue: {
-        color: '#fff',
-        fontWeight: 'bold',
-        fontSize: 14,
-    },
-});

@@ -1,87 +1,61 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack, Redirect, useRouter, useSegments, useRootNavigationState } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect, useState } from 'react';
-import 'react-native-reanimated';
-
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useOnboardingStore } from '@/stores/onboardingStore';
+import { View, ActivityIndicator } from 'react-native';
 import { useAuthStore } from '@/stores/authStore';
-import { View } from 'react-native';
-
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
+import { useOnboardingStore } from '@/stores/onboardingStore';
+import '../global.css';
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [isReady, setIsReady] = useState(false);
+    const [isReady, setIsReady] = useState(false);
+    const { isAuthenticated } = useAuthStore();
+    const { hasFinishedOnboarding } = useOnboardingStore();
+    const segments = useSegments();
+    const router = useRouter();
 
-  const { hasFinishedOnboarding } = useOnboardingStore();
-  const { isAuthenticated } = useAuthStore();
-  const segments = useSegments();
-  const navigationState = useRootNavigationState();
+    useEffect(() => {
+        // Wait for hydration (simple timeout or check properties)
+        // Zustand persist usually hydrates quickly, but a small delay ensures storage readiness
+        const timer = setTimeout(() => setIsReady(true), 100);
+        return () => clearTimeout(timer);
+    }, []);
 
-  useEffect(() => {
-    // Simulate loading or just hide splash screen
-    const prepare = async () => {
-      try {
-        // Pre-load logic if any
-      } catch (e) {
-        console.warn(e);
-      } finally {
-        setIsReady(true);
-        SplashScreen.hideAsync();
-      }
-    };
-    prepare();
-  }, []);
+    useEffect(() => {
+        if (!isReady) return;
 
-  if (!isReady) {
-    return null;
-  }
+        const inAuthGroup = segments[0] === '(tabs)';
+        const inOnboarding = segments[0] === 'onboarding';
+        const inLogin = segments[0] === 'login';
 
-  // Early return if navigation state is not ready (prevents layout errors)
-  if (!navigationState?.key) return null;
+        if (!isAuthenticated) {
+            if (!inLogin) {
+                router.replace('/login');
+            }
+        } else if (isAuthenticated && !hasFinishedOnboarding) {
+            if (!inOnboarding) {
+                router.replace('/onboarding');
+            }
+        } else if (isAuthenticated && hasFinishedOnboarding) {
+            // Logged in + Onboarded
+            if (inLogin || inOnboarding) {
+                router.replace('/');
+            }
+        }
 
-  // Protection Logic
-  const inAuthGroup = segments[0] === '(tabs)';
-  const inOnboarding = segments[0] === 'onboarding';
-  const inLogin = segments[0] === 'login';
+    }, [isReady, isAuthenticated, hasFinishedOnboarding, segments]);
 
-  // 1. Not Authenticated -> Redirect to Login
-  if (!isAuthenticated && !inLogin) {
-    return <Redirect href="/login" />;
-  }
-
-  // 2. Authenticated but In Login -> Redirect to app flow
-  if (isAuthenticated && inLogin) {
-    // Check onboarding
-    if (!hasFinishedOnboarding) {
-      return <Redirect href="/onboarding" />;
-    } else {
-      return <Redirect href="/" />;
+    if (!isReady) {
+        return (
+            <View style={{ flex: 1, backgroundColor: 'black', alignItems: 'center', justifyContent: 'center' }}>
+                <ActivityIndicator color="white" />
+            </View>
+        );
     }
-  }
 
-  // 3. Authenticated check Onboarding
-  if (isAuthenticated && !hasFinishedOnboarding && !inOnboarding) {
-    return <Redirect href="/onboarding" />;
-  }
-
-  // 4. Authenticated & Onboarded -> prevent going back to Onboarding/Login manually
-  if (isAuthenticated && hasFinishedOnboarding && (inOnboarding || inLogin)) {
-    return <Redirect href="/" />;
-  }
-
-  return (
-    <ThemeProvider value={DarkTheme}>
-      <Stack>
-        <Stack.Screen name="login" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
-        <Stack.Screen name="moment" options={{ presentation: 'modal', headerShown: false }} />
-        <Stack.Screen name="tech-config" options={{ presentation: 'card', headerShown: false }} />
-      </Stack>
-    </ThemeProvider>
-  );
+    return (
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'black' } }}>
+            <Stack.Screen name="index" />
+            <Stack.Screen name="login" options={{ animation: 'fade' }} />
+            <Stack.Screen name="onboarding" options={{ animation: 'fade' }} />
+        </Stack>
+    );
 }
