@@ -64,194 +64,207 @@ export default function DashboardScreen() {
                         <Ionicons name="notifications-outline" size={20} color="white" />
                         <View style={styles.notificationBadge} />
                     </View>
+                    </View>
                 </TouchableOpacity>
+
+                <TouchableOpacity
+                    onPress={async () => {
+                        await require('@/stores/authStore').useAuthStore.getState().logout();
+                        router.replace('/login');
+                    }}
+                    style={[styles.notificationBtn, { marginLeft: 8, borderColor: '#3f3f46' }]}
+                >
+                    <Ionicons name="log-out-outline" size={18} color="#71717a" />
+                </TouchableOpacity>
+            </View >
+
+        <ScrollView
+            contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 100 }}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}
+        >
+            {/* V1 Header: BTC Anchor */}
+            <View style={styles.marketAnchor}>
+                <Text style={styles.anchorLabel}>市場錨點 (Market Anchor)</Text>
+                <Text style={styles.anchorValue}>BTC ${roundedPrice}</Text>
+                <View style={styles.anchorStats}>
+                    <Text style={styles.statText}>+2.4% (7天)</Text>
+                    <Text style={styles.statText}>成交量: 低</Text>
+                </View>
             </View>
 
-            <ScrollView
-                contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 100 }}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}
-            >
-                {/* V1 Header: BTC Anchor */}
-                <View style={styles.marketAnchor}>
-                    <Text style={styles.anchorLabel}>市場錨點 (Market Anchor)</Text>
-                    <Text style={styles.anchorValue}>BTC ${roundedPrice}</Text>
-                    <View style={styles.anchorStats}>
-                        <Text style={styles.statText}>+2.4% (7天)</Text>
-                        <Text style={styles.statText}>成交量: 低</Text>
+            {/* Core Metric: Reversal Index */}
+            <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                    <View>
+                        <Text style={styles.cardHeaderLabel}>Reversal Index</Text>
+                        <Text style={styles.cardHeaderTitle}>反轉指數</Text>
+                    </View>
+                    <View style={[styles.statusBadge, reversalIndex > 50 ? styles.statusBadgeActive : styles.statusBadgeNeutral]}>
+                        <Text style={[styles.statusText, reversalIndex > 50 ? styles.textOrange : styles.textZinc]}>
+                            {reversalIndex > 50 ? '活躍' : '中性'}
+                        </Text>
                     </View>
                 </View>
 
-                {/* Core Metric: Reversal Index */}
-                <View style={styles.card}>
-                    <View style={styles.cardHeader}>
+                <View style={styles.indexMeter}>
+                    <Text style={[styles.indexValue, reversalIndex > 60 ? styles.textOrange : styles.textZincLight]}>
+                        {reversalIndex.toFixed(0)}
+                    </Text>
+
+                    {/* Visual Attribution */}
+                    <View style={styles.barContainer}>
+                        <View style={styles.barLeft}>
+                            <View style={[styles.barFill, { width: '60%', backgroundColor: 'rgba(59, 130, 246, 0.4)' }]} />
+                        </View>
+                        <View style={styles.barRight}>
+                            <View style={[styles.barFill, { width: '40%', backgroundColor: 'rgba(249, 115, 22, 0.4)' }]} />
+                        </View>
+                    </View>
+                    <View style={styles.barLabels}>
+                        <Text style={styles.barLabelText}>60% 技術基礎</Text>
+                        <Text style={styles.barLabelText}>40% 用戶信念</Text>
+                    </View>
+
+                    {/* Liquidity Amplifier Badge */}
+                    <View style={styles.liquidityBadge}>
+                        <Ionicons name="water" size={12} color="#71717a" />
+                        <Text style={styles.liquidityText}>
+                            流動性狀態: 中性
+                        </Text>
+                    </View>
+                </View>
+
+                {/* Neutral Interpretation */}
+                <View style={styles.interpretationBox}>
+                    <Text style={styles.interpretationLabel}>趨勢感知</Text>
+                    <Text style={styles.interpretationText}>
+                        {interpretation}
+                    </Text>
+                </View>
+            </View>
+
+            {/* Categories List */}
+            <View>
+                <Text style={styles.sectionTitle}>信號分類</Text>
+
+                {/* Technical Special Category */}
+                <TouchableOpacity
+                    onPress={openTechConfig}
+                    style={styles.categoryCard}
+                >
+                    <View style={styles.categoryHeader}>
+                        <View style={styles.techIconBg}>
+                            <Ionicons name="analytics" size={14} color="#3b82f6" />
+                        </View>
                         <View>
-                            <Text style={styles.cardHeaderLabel}>Reversal Index</Text>
-                            <Text style={styles.cardHeaderTitle}>反轉指數</Text>
-                        </View>
-                        <View style={[styles.statusBadge, reversalIndex > 50 ? styles.statusBadgeActive : styles.statusBadgeNeutral]}>
-                            <Text style={[styles.statusText, reversalIndex > 50 ? styles.textOrange : styles.textZinc]}>
-                                {reversalIndex > 50 ? '活躍' : '中性'}
-                            </Text>
+                            <Text style={styles.categoryTitle}>技術趨勢</Text>
+                            <Text style={styles.categorySubtitle}>BTC 價格結構與動能監測</Text>
                         </View>
                     </View>
+                    <Ionicons name="chevron-forward" size={20} color="#52525b" />
+                </TouchableOpacity>
 
-                    <View style={styles.indexMeter}>
-                        <Text style={[styles.indexValue, reversalIndex > 60 ? styles.textOrange : styles.textZincLight]}>
-                            {reversalIndex.toFixed(0)}
-                        </Text>
+                {/* Standard Categories */}
+                {categories.map((cat) => {
+                    const catBeliefs = beliefs.filter(b => b.marketEvent.category === cat);
+                    const isExpanded = expandedCat === cat;
 
-                        {/* Visual Attribution */}
-                        <View style={styles.barContainer}>
-                            <View style={styles.barLeft}>
-                                <View style={[styles.barFill, { width: '60%', backgroundColor: 'rgba(59, 130, 246, 0.4)' }]} />
-                            </View>
-                            <View style={styles.barRight}>
-                                <View style={[styles.barFill, { width: '40%', backgroundColor: 'rgba(249, 115, 22, 0.4)' }]} />
-                            </View>
-                        </View>
-                        <View style={styles.barLabels}>
-                            <Text style={styles.barLabelText}>60% 技術基礎</Text>
-                            <Text style={styles.barLabelText}>40% 用戶信念</Text>
-                        </View>
+                    // Category Name Translation
+                    const catNameMap: Record<string, string> = {
+                        'Macro': '宏觀趨勢',
+                        'Liquidity': '流動性',
+                        'Risk': '市場風險',
+                        'Supply': '籌碼結構',
+                        'Political': '政治與監管',
+                        'Narrative': '敘事轉向'
+                    };
 
-                        {/* Liquidity Amplifier Badge */}
-                        <View style={styles.liquidityBadge}>
-                            <Ionicons name="water" size={12} color="#71717a" />
-                            <Text style={styles.liquidityText}>
-                                流動性狀態: 中性
-                            </Text>
-                        </View>
-                    </View>
+                    return (
+                        <View key={cat} style={styles.accordionContainer}>
+                            <TouchableOpacity
+                                onPress={() => toggleExpand(cat)}
+                                style={styles.accordionHeader}
+                                activeOpacity={0.7}
+                            >
+                                <View style={styles.accordionLeft}>
+                                    {/* Visual Dot */}
+                                    <View style={[styles.dot, catBeliefs.length > 0 ? styles.dotActive : styles.dotInactive]} />
+                                    <Text style={styles.accordionTitle}>{catNameMap[cat] || cat}</Text>
+                                </View>
+                                <View style={styles.accordionRight}>
+                                    <Text style={styles.accordionCount}>{catBeliefs.length} 活躍</Text>
+                                    <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={16} color="#52525b" />
+                                </View>
+                            </TouchableOpacity>
 
-                    {/* Neutral Interpretation */}
-                    <View style={styles.interpretationBox}>
-                        <Text style={styles.interpretationLabel}>趨勢感知</Text>
-                        <Text style={styles.interpretationText}>
-                            {interpretation}
-                        </Text>
-                    </View>
-                </View>
-
-                {/* Categories List */}
-                <View>
-                    <Text style={styles.sectionTitle}>信號分類</Text>
-
-                    {/* Technical Special Category */}
-                    <TouchableOpacity
-                        onPress={openTechConfig}
-                        style={styles.categoryCard}
-                    >
-                        <View style={styles.categoryHeader}>
-                            <View style={styles.techIconBg}>
-                                <Ionicons name="analytics" size={14} color="#3b82f6" />
-                            </View>
-                            <View>
-                                <Text style={styles.categoryTitle}>技術趨勢</Text>
-                                <Text style={styles.categorySubtitle}>BTC 價格結構與動能監測</Text>
-                            </View>
-                        </View>
-                        <Ionicons name="chevron-forward" size={20} color="#52525b" />
-                    </TouchableOpacity>
-
-                    {/* Standard Categories */}
-                    {categories.map((cat) => {
-                        const catBeliefs = beliefs.filter(b => b.marketEvent.category === cat);
-                        const isExpanded = expandedCat === cat;
-
-                        // Category Name Translation
-                        const catNameMap: Record<string, string> = {
-                            'Macro': '宏觀趨勢',
-                            'Liquidity': '流動性',
-                            'Risk': '市場風險',
-                            'Supply': '籌碼結構',
-                            'Political': '政治與監管',
-                            'Narrative': '敘事轉向'
-                        };
-
-                        return (
-                            <View key={cat} style={styles.accordionContainer}>
-                                <TouchableOpacity
-                                    onPress={() => toggleExpand(cat)}
-                                    style={styles.accordionHeader}
-                                    activeOpacity={0.7}
-                                >
-                                    <View style={styles.accordionLeft}>
-                                        {/* Visual Dot */}
-                                        <View style={[styles.dot, catBeliefs.length > 0 ? styles.dotActive : styles.dotInactive]} />
-                                        <Text style={styles.accordionTitle}>{catNameMap[cat] || cat}</Text>
-                                    </View>
-                                    <View style={styles.accordionRight}>
-                                        <Text style={styles.accordionCount}>{catBeliefs.length} 活躍</Text>
-                                        <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={16} color="#52525b" />
-                                    </View>
-                                </TouchableOpacity>
-
-                                {/* Expanded Content */}
-                                {isExpanded && (
-                                    <View style={styles.accordionBody}>
-                                        {/* List of Active Beliefs in Cat */}
-                                        {catBeliefs.map(b => (
-                                            <View key={b.id} style={styles.beliefItem}>
-                                                <Text style={styles.beliefTitle}>{b.marketEvent.title}</Text>
-                                                <View style={styles.probabilityTrack}>
-                                                    <View style={[styles.probabilityFill, { width: `${b.currentProbability}%` }]} />
-                                                </View>
+                            {/* Expanded Content */}
+                            {isExpanded && (
+                                <View style={styles.accordionBody}>
+                                    {/* List of Active Beliefs in Cat */}
+                                    {catBeliefs.map(b => (
+                                        <View key={b.id} style={styles.beliefItem}>
+                                            <Text style={styles.beliefTitle}>{b.marketEvent.title}</Text>
+                                            <View style={styles.probabilityTrack}>
+                                                <View style={[styles.probabilityFill, { width: `${b.currentProbability}%` }]} />
                                             </View>
-                                        ))}
+                                        </View>
+                                    ))}
 
-                                        {/* Add Button */}
-                                        <TouchableOpacity
-                                            onPress={() => openMoment(cat)}
-                                            style={styles.addSignalBtn}
-                                        >
-                                            <Ionicons name="add" size={16} color="#a1a1aa" />
-                                            <Text style={styles.addSignalText}>新增 {catNameMap[cat] || cat} 信號</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                )}
-                            </View>
-                        );
-                    })}
-                </View>
-
-                <Text style={styles.footerVersion}>
-                    Believer System V1.5 · Perception Only
-                </Text>
-
-            </ScrollView>
-
-            {/* Notification Panel Overlay */}
-            {showNotifications && (
-                <View style={styles.notificationOverlay}>
-                    {/* Backdrop */}
-                    <TouchableOpacity
-                        style={styles.backdrop}
-                        activeOpacity={1}
-                        onPress={() => setShowNotifications(false)}
-                    />
-                    {/* Panel */}
-                    <View style={styles.drawerPanel}>
-                        <Text style={styles.drawerTitle}>通知中心</Text>
-                        <View style={styles.notificationItem}>
-                            <View style={styles.notifHeader}>
-                                <View style={[styles.dotSmall, { backgroundColor: '#3b82f6' }]} />
-                                <Text style={styles.notifType}>SYSTEM</Text>
-                            </View>
-                            <Text style={styles.notifContent}>歡迎使用 Believer 1.4。Liquidity 模組已上線。</Text>
-                            <Text style={styles.notifTime}>15 mins ago</Text>
+                                    {/* Add Button */}
+                                    <TouchableOpacity
+                                        onPress={() => openMoment(cat)}
+                                        style={styles.addSignalBtn}
+                                    >
+                                        <Ionicons name="add" size={16} color="#a1a1aa" />
+                                        <Text style={styles.addSignalText}>新增 {catNameMap[cat] || cat} 信號</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
                         </View>
-                        <View style={styles.notificationItem}>
-                            <View style={styles.notifHeader}>
-                                <View style={[styles.dotSmall, { backgroundColor: '#f97316' }]} />
-                                <Text style={styles.notifType}>ALERT</Text>
-                            </View>
-                            <Text style={styles.notifContent}>反轉指數接近臨界值 (60)，請留意宏觀信號變化。</Text>
-                            <Text style={styles.notifTime}>2 hours ago</Text>
+                    );
+                })}
+            </View>
+
+            <Text style={styles.footerVersion}>
+                Believer System V1.5 · Perception Only
+            </Text>
+
+        </ScrollView>
+
+    {/* Notification Panel Overlay */ }
+    {
+        showNotifications && (
+            <View style={styles.notificationOverlay}>
+                {/* Backdrop */}
+                <TouchableOpacity
+                    style={styles.backdrop}
+                    activeOpacity={1}
+                    onPress={() => setShowNotifications(false)}
+                />
+                {/* Panel */}
+                <View style={styles.drawerPanel}>
+                    <Text style={styles.drawerTitle}>通知中心</Text>
+                    <View style={styles.notificationItem}>
+                        <View style={styles.notifHeader}>
+                            <View style={[styles.dotSmall, { backgroundColor: '#3b82f6' }]} />
+                            <Text style={styles.notifType}>SYSTEM</Text>
                         </View>
+                        <Text style={styles.notifContent}>歡迎使用 Believer 1.4。Liquidity 模組已上線。</Text>
+                        <Text style={styles.notifTime}>15 mins ago</Text>
+                    </View>
+                    <View style={styles.notificationItem}>
+                        <View style={styles.notifHeader}>
+                            <View style={[styles.dotSmall, { backgroundColor: '#f97316' }]} />
+                            <Text style={styles.notifType}>ALERT</Text>
+                        </View>
+                        <Text style={styles.notifContent}>反轉指數接近臨界值 (60)，請留意宏觀信號變化。</Text>
+                        <Text style={styles.notifTime}>2 hours ago</Text>
                     </View>
                 </View>
-            )}
-        </SafeAreaView>
+            </View>
+        )
+    }
+        </SafeAreaView >
     );
 }
 

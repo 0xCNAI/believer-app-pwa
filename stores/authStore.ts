@@ -77,7 +77,7 @@ export const useAuthStore = create<AuthState>()(
         {
             name: 'auth-storage',
             storage: createJSONStorage(() => require('@/utils/storage').safeStorage),
-            partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }), // Persist user info
+            partialize: (state) => ({}), // Don't persist auth state, rely on Firebase SDK
         }
     )
 );
