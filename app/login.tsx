@@ -33,7 +33,7 @@ export default function LoginScreen() {
                 onPress={handleLogin}
                 className="w-full bg-white h-14 rounded-full items-center justify-center flex-row gap-2 active:opacity-90"
             >
-                <StyledText className="text-black font-bold text-sm tracking-widest">Connect Wallet</StyledText>
+                <StyledText className="text-black font-bold text-sm tracking-widest">Google Login</StyledText>
                 <Ionicons name="arrow-forward" size={20} color="black" />
             </StyledTouchableOpacity>
 

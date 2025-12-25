@@ -1,5 +1,4 @@
 import { BELIEVER_SIGNALS, MarketEvent } from '@/services/marketData';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
@@ -270,7 +269,7 @@ export const useBeliefStore = create<BeliefState>()(
         }),
         {
             name: 'belief-storage',
-            storage: createJSONStorage(() => AsyncStorage),
+            storage: createJSONStorage(() => require('@/utils/storage').safeStorage),
         }
     )
 );

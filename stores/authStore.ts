@@ -1,5 +1,4 @@
 import { auth } from '@/services/firebase';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
@@ -77,7 +76,7 @@ export const useAuthStore = create<AuthState>()(
         },
         {
             name: 'auth-storage',
-            storage: createJSONStorage(() => AsyncStorage),
+            storage: createJSONStorage(() => require('@/utils/storage').safeStorage),
             partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }), // Persist user info
         }
     )
