@@ -120,9 +120,16 @@ export const useBeliefStore = create<BeliefState>()(
                 if (user?.id) {
                     import('@/services/firebase').then(({ db }) => {
                         import('firebase/firestore').then(({ doc, setDoc }) => {
-                            setDoc(doc(db, `users/${user.id}/reversal_index`, event.id), newBelief);
+                            setDoc(doc(db, `users/${user.id}/reversal_index`, event.id), newBelief)
+                                .then(() => console.log("Write success"))
+                                .catch((err) => {
+                                    console.error("Firestore Write Error:", err);
+                                    alert(`Save Failed: ${err.message}`);
+                                });
                         });
                     });
+                } else {
+                    alert("User ID missing. ignoring save.");
                 }
             },
 
