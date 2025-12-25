@@ -1,8 +1,8 @@
-import { View, Text, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/authStore';
-import { styled } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { styled } from 'nativewind';
+import { Text, TouchableOpacity, View } from 'react-native';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -12,9 +12,13 @@ export default function LoginScreen() {
     const router = useRouter();
     const { login } = useAuthStore();
 
-    const handleLogin = () => {
-        login();
-        router.replace('/');
+    const handleLogin = async () => {
+        try {
+            await login();
+            router.replace('/');
+        } catch (e) {
+            console.error(e);
+        }
     };
 
     return (

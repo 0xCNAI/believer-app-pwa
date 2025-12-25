@@ -1,52 +1,84 @@
+import { auth } from '@/services/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-export type UserRole = 'admin' | 'user';
+type UserRole = 'admin' | 'user';
 
-export interface User {
+interface User {
     id: string;
     name: string;
+    email?: string;
     role: UserRole;
 }
 
 interface AuthState {
     isAuthenticated: boolean;
     user: User | null;
-    login: (role?: UserRole) => void;
-    logout: () => void;
+    isLoading: boolean;
+    login: () => Promise<void>;
+    logout: () => Promise<void>;
     hasRole: (role: UserRole) => boolean;
 }
 
 export const useAuthStore = create<AuthState>()(
     persist(
-        (set, get) => ({
-            isAuthenticated: false,
-            user: null,
+        (set, get) => {
+            // Initialize Auth Listener
+            onAuthStateChanged(auth, (firebaseUser) => {
+                if (firebaseUser) {
+                    set({
+                        isAuthenticated: true,
+                        user: {
+                            id: firebaseUser.uid,
+                            name: firebaseUser.displayName || 'User',
+                            email: firebaseUser.email || undefined,
+                            role: 'user' // Default to user, admin logic can be added later
+                        },
+                        isLoading: false
+                    });
+                } else {
+                    set({ isAuthenticated: false, user: null, isLoading: false });
+                }
+            });
 
-            login: (role: UserRole = 'user') => set({
-                isAuthenticated: true,
-                user: { id: 'u1', name: 'Believer Agent', role }
-            }),
-
-            logout: () => set({
+            return {
                 isAuthenticated: false,
-                user: null
-            }),
-
-            hasRole: (requiredRole: UserRole) => {
-                const { user } = get();
-                if (!user) return false;
-                // Admin has access to everything
-                if (user.role === 'admin') return true;
-                // Users only have access to user role
-                return user.role === requiredRole;
-            }
-        }),
-
+                user: null,
+                isLoading: true,
+                login: async () => {
+                    try {
+                        set({ isLoading: true });
+                        const provider = new GoogleAuthProvider();
+                        await signInWithPopup(auth, provider);
+                        // State update handled by onAuthStateChanged
+                    } catch (error) {
+                        console.error("Login Failed:", error);
+                        set({ isLoading: false });
+                        throw error;
+                    }
+                },
+                logout: async () => {
+                    try {
+                        await signOut(auth);
+                        set({ isAuthenticated: false, user: null });
+                    } catch (error) {
+                        console.error("Logout Failed:", error);
+                    }
+                },
+                hasRole: (requiredRole) => {
+                    const { user } = get();
+                    if (!user) return false;
+                    if (user.role === 'admin') return true; // Admin has all permissions
+                    return user.role === requiredRole;
+                }
+            };
+        },
         {
             name: 'auth-storage',
             storage: createJSONStorage(() => AsyncStorage),
+            partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }), // Persist user info
         }
     )
 );

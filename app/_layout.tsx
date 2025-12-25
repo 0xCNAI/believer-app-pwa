@@ -1,14 +1,16 @@
+import { useAuthStore } from '@/stores/authStore';
+import { useBeliefStore } from '@/stores/beliefStore';
+import { useOnboardingStore } from '@/stores/onboardingStore';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { View, ActivityIndicator } from 'react-native';
-import { useAuthStore } from '@/stores/authStore';
-import { useOnboardingStore } from '@/stores/onboardingStore';
+import { ActivityIndicator, View } from 'react-native';
 import '../global.css';
 
 export default function RootLayout() {
     const [isReady, setIsReady] = useState(false);
-    const { isAuthenticated } = useAuthStore();
+    const { isAuthenticated, user } = useAuthStore();
     const { hasFinishedOnboarding } = useOnboardingStore();
+    const { syncBeliefs } = useBeliefStore();
     const segments = useSegments();
     const router = useRouter();
 
@@ -18,6 +20,14 @@ export default function RootLayout() {
         const timer = setTimeout(() => setIsReady(true), 100);
         return () => clearTimeout(timer);
     }, []);
+
+    // Sync Beliefs when User ID changes
+    useEffect(() => {
+        if (user?.id) {
+            const unsubscribe = syncBeliefs(user.id);
+            return () => unsubscribe();
+        }
+    }, [user?.id]);
 
     useEffect(() => {
         if (!isReady) return;

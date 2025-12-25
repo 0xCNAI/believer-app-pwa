@@ -1,7 +1,7 @@
+import { BELIEVER_SIGNALS, MarketEvent } from '@/services/marketData';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { MarketEvent, BELIEVER_SIGNALS } from '@/services/marketData';
 
 export interface Belief {
     id: string;
@@ -25,6 +25,7 @@ interface BeliefState {
     updateBeliefs: (freshEvents: MarketEvent[]) => void;
     setBtcPrice: (price: number) => void;
     seedFromFocusAreas: (focusAreas: string[]) => void;
+    syncBeliefs: (userId: string) => () => void; // Returns unsubscribe function
 
     // Getters
     hasInteracted: (id: string) => boolean;
@@ -103,19 +104,27 @@ export const useBeliefStore = create<BeliefState>()(
                 if (!market) return;
 
                 const initialProb = parsePrice(market.outcomePrices);
+                const newBelief = {
+                    id: event.id,
+                    marketEvent: event,
+                    initialProbability: initialProb,
+                    currentProbability: initialProb,
+                    addedAt: Date.now(),
+                };
 
                 set((state) => ({
-                    beliefs: [
-                        ...state.beliefs,
-                        {
-                            id: event.id,
-                            marketEvent: event,
-                            initialProbability: initialProb,
-                            currentProbability: initialProb,
-                            addedAt: Date.now(),
-                        },
-                    ],
+                    beliefs: [...state.beliefs, newBelief],
                 }));
+
+                // Firestore Sync
+                const { user } = require('./authStore').useAuthStore.getState();
+                if (user?.id) {
+                    import('@/services/firebase').then(({ db }) => {
+                        import('firebase/firestore').then(({ doc, setDoc }) => {
+                            setDoc(doc(db, `users/${user.id}/reversal_index`, event.id), newBelief);
+                        });
+                    });
+                }
             },
 
             discardEvent: (id) => {
@@ -128,6 +137,15 @@ export const useBeliefStore = create<BeliefState>()(
                 set((state) => ({
                     beliefs: state.beliefs.filter((b) => b.id !== id),
                 }));
+                // Firestore Sync
+                const { user } = require('./authStore').useAuthStore.getState();
+                if (user?.id) {
+                    import('@/services/firebase').then(({ db }) => {
+                        import('firebase/firestore').then(({ doc, deleteDoc }) => {
+                            deleteDoc(doc(db, `users/${user.id}/reversal_index`, id));
+                        });
+                    });
+                }
             },
 
             updateBeliefs: (freshEvents) => {
@@ -136,12 +154,42 @@ export const useBeliefStore = create<BeliefState>()(
                         const freshEvent = freshEvents.find(e => e.id === belief.id);
                         if (freshEvent && freshEvent.markets?.[0]) {
                             const newProb = parsePrice(freshEvent.markets[0].outcomePrices);
-                            return { ...belief, currentProbability: newProb, marketEvent: freshEvent };
+                            const updated = { ...belief, currentProbability: newProb, marketEvent: freshEvent };
+
+                            // Passive Sync (Optional: Update DB if price changed)
+                            const { user } = require('./authStore').useAuthStore.getState();
+                            if (user?.id) {
+                                import('@/services/firebase').then(({ db }) => {
+                                    import('firebase/firestore').then(({ doc, setDoc }) => {
+                                        setDoc(doc(db, `users/${user.id}/reversal_index`, belief.id), updated, { merge: true });
+                                    });
+                                });
+                            }
+                            return updated;
                         }
                         return belief;
                     });
                     return { beliefs: updatedBeliefs };
                 });
+            },
+
+            syncBeliefs: (userId: string) => {
+                // Return existing or new subscriber
+                const { db } = require('@/services/firebase');
+                const { collection, onSnapshot, query } = require('firebase/firestore');
+
+                const q = query(collection(db, `users/${userId}/reversal_index`));
+                const unsubscribe = onSnapshot(q, (querySnapshot: any) => {
+                    const remoteBeliefs: Belief[] = [];
+                    querySnapshot.forEach((doc: any) => {
+                        remoteBeliefs.push(doc.data() as Belief);
+                    });
+
+                    // Merge remote with local? Or just replace?
+                    // For simplicity, Firestore is source of truth if we are syncing.
+                    set({ beliefs: remoteBeliefs });
+                });
+                return unsubscribe;
             },
 
             hasInteracted: (id) => {
