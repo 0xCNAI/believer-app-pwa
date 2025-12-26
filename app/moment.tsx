@@ -25,20 +25,30 @@ export default function MomentScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
     const categoryFilter = params.category as string | undefined;
+    const signalId = params.signalId as string | undefined; // NEW: Support single signal mode
 
     // Get User Preferences
     const { experience, focusAreas } = useUserStore();
 
     const [currentEvent, setCurrentEvent] = useState<MarketEvent | null>(null);
     const [loading, setLoading] = useState(true);
+    const [singleMode, setSingleMode] = useState(false); // Track if in single signal mode
     const { addBelief, discardEvent, hasInteracted } = useBeliefStore();
 
     const loadNextEvent = async () => {
         setLoading(true);
-        // Pass preferences to fetcher
         const data = await fetchUnifiedMarkets(experience, focusAreas);
 
-        // Filter by category if present
+        // Single signal mode: load specific signal by ID
+        if (signalId) {
+            const signal = data.find(e => e.id === signalId);
+            setSingleMode(true);
+            setCurrentEvent(signal || null);
+            setLoading(false);
+            return;
+        }
+
+        // Category filter mode: iterate through uninteracted signals
         let filteredData = data;
         if (categoryFilter) {
             filteredData = data.filter(e => e.category === categoryFilter);
@@ -55,12 +65,17 @@ export default function MomentScreen() {
 
     useEffect(() => {
         loadNextEvent();
-    }, [categoryFilter]);
+    }, [categoryFilter, signalId]);
 
     const handleSwipeLeft = () => {
         if (!currentEvent) return;
         discardEvent(currentEvent.id);
-        loadNextEvent();
+        // In single mode, go back; in category mode, load next
+        if (singleMode) {
+            router.back();
+        } else {
+            loadNextEvent();
+        }
     };
 
     const handleSwipeRight = () => {

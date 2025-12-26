@@ -30,9 +30,8 @@ export default function DashboardScreen() {
         setTimeout(() => setRefreshing(false), 1500);
     };
 
-    const openMoment = (category?: string) => {
-        // In real implementation we'd pass category param
-        router.push({ pathname: "/moment", params: { category } });
+    const openSignals = (category: string) => {
+        router.push({ pathname: "/signals", params: { category } });
     };
 
     const openTechConfig = () => {
@@ -211,7 +210,7 @@ export default function DashboardScreen() {
 
                                         {/* Add Button */}
                                         <TouchableOpacity
-                                            onPress={() => openMoment(cat)}
+                                            onPress={() => openSignals(cat)}
                                             style={styles.addSignalBtn}
                                         >
                                             <Ionicons name="add" size={16} color="#a1a1aa" />
