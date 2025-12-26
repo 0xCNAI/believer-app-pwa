@@ -13,9 +13,10 @@ interface HelpModalProps {
     title: string;
     nameCN: string;
     explanation: string;
+    isPhaseExplain?: boolean;
 }
 
-function HelpModal({ visible, onClose, title, nameCN, explanation }: HelpModalProps) {
+function HelpModal({ visible, onClose, title, nameCN, explanation, isPhaseExplain }: HelpModalProps) {
     return (
         <Modal
             animationType="fade"
@@ -26,10 +27,38 @@ function HelpModal({ visible, onClose, title, nameCN, explanation }: HelpModalPr
             <Pressable style={styles.modalOverlay} onPress={onClose}>
                 <View style={styles.modalContent}>
                     <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>{nameCN}</Text>
-                        <Text style={styles.modalSubtitle}>{title}</Text>
+                        <Text style={styles.modalTitle}>{isPhaseExplain ? '階段說明' : nameCN}</Text>
+                        {!isPhaseExplain && <Text style={styles.modalSubtitle}>{title}</Text>}
                     </View>
-                    <Text style={styles.modalText}>{explanation}</Text>
+
+                    {isPhaseExplain ? (
+                        <View style={styles.phaseExplainContent}>
+                            {/* 蓄積期 */}
+                            <View style={styles.phaseExplainBlock}>
+                                <Text style={styles.phaseExplainTitle}>蓄積期（Accumulation）</Text>
+                                <Text style={styles.phaseExplainDesc}>技術結構仍為下行或未修復</Text>
+                                <Text style={styles.phaseExplainDesc}>市場尚未取得反轉資格</Text>
+                                <Text style={styles.phaseExplainDesc}>本階段目的：排除假反轉</Text>
+                            </View>
+                            {/* 過渡期 */}
+                            <View style={styles.phaseExplainBlock}>
+                                <Text style={styles.phaseExplainTitle}>過渡期（Transition）</Text>
+                                <Text style={styles.phaseExplainDesc}>部分關鍵結構條件成立</Text>
+                                <Text style={styles.phaseExplainDesc}>技術面不再否定反轉</Text>
+                                <Text style={styles.phaseExplainDesc}>本階段目的：避免誤判</Text>
+                            </View>
+                            {/* 展開期 */}
+                            <View style={styles.phaseExplainBlock}>
+                                <Text style={styles.phaseExplainTitle}>展開期（Expansion）</Text>
+                                <Text style={styles.phaseExplainDesc}>多數結構條件成立</Text>
+                                <Text style={styles.phaseExplainDesc}>技術結構已轉向</Text>
+                                <Text style={styles.phaseExplainDesc}>本階段目的：確認反轉</Text>
+                            </View>
+                        </View>
+                    ) : (
+                        <Text style={styles.modalText}>{explanation}</Text>
+                    )}
+
                     <TouchableOpacity style={styles.modalCloseBtn} onPress={onClose}>
                         <Text style={styles.modalCloseBtnText}>了解</Text>
                     </TouchableOpacity>
@@ -181,6 +210,7 @@ export default function TechConfigScreen() {
                 title={selectedCondition.name}
                 nameCN={selectedCondition.nameCN}
                 explanation={selectedCondition.explanation}
+                isPhaseExplain={helpModal.id === 'phase_explain'}
             />
 
             {/* Header */}
@@ -1174,5 +1204,23 @@ const styles = StyleSheet.create({
         color: '#22c55e',
         fontStyle: 'italic',
         textAlign: 'center',
+    },
+    phaseExplainContent: {
+        marginBottom: 16,
+    },
+    phaseExplainBlock: {
+        marginBottom: 16,
+    },
+    phaseExplainTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#22c55e',
+        marginBottom: 8,
+    },
+    phaseExplainDesc: {
+        fontSize: 14,
+        color: '#a1a1aa',
+        marginBottom: 4,
+        lineHeight: 22,
     },
 });
