@@ -90,54 +90,68 @@ export default function DashboardScreen() {
                     </View>
                 </View>
 
-                {/* Core Metric: Reversal Index */}
+                {/* Core Metric: Reversal Index (V2 Simplified) */}
                 <View style={styles.card}>
                     <View style={styles.cardHeader}>
                         <View>
                             <Text style={styles.cardHeaderLabel}>Reversal Index</Text>
                             <Text style={styles.cardHeaderTitle}>反轉指數</Text>
                         </View>
-                        <View style={[styles.statusBadge, reversalIndex > 50 ? styles.statusBadgeActive : styles.statusBadgeNeutral]}>
-                            <Text style={[styles.statusText, reversalIndex > 50 ? styles.textOrange : styles.textZinc]}>
-                                {reversalIndex > 50 ? '活躍' : '中性'}
-                            </Text>
-                        </View>
                     </View>
 
+                    {/* V2: Just the number, no weights */}
                     <View style={styles.indexMeter}>
-                        <Text style={[styles.indexValue, reversalIndex > 60 ? styles.textOrange : styles.textZincLight]}>
+                        <Text style={styles.indexValue}>
                             {reversalIndex.toFixed(0)}
                         </Text>
+                    </View>
 
-                        {/* Visual Attribution */}
-                        <View style={styles.barContainer}>
-                            <View style={styles.barLeft}>
-                                <View style={[styles.barFill, { width: '60%', backgroundColor: 'rgba(59, 130, 246, 0.4)' }]} />
-                            </View>
-                            <View style={styles.barRight}>
-                                <View style={[styles.barFill, { width: '40%', backgroundColor: 'rgba(249, 115, 22, 0.4)' }]} />
-                            </View>
+                    {/* V2: Reversal Progress Bar (X/8 Conditions) */}
+                    <View style={styles.progressSection}>
+                        <Text style={styles.progressLabel}>反轉進程（Reversal Progress）</Text>
+                        <View style={styles.progressBar}>
+                            {[...Array(8)].map((_, i) => (
+                                <View
+                                    key={i}
+                                    style={[
+                                        styles.progressBlock,
+                                        i < 3 && styles.progressBlockFilled
+                                    ]}
+                                />
+                            ))}
                         </View>
-                        <View style={styles.barLabels}>
-                            <Text style={styles.barLabelText}>60% 技術基礎</Text>
-                            <Text style={styles.barLabelText}>40% 用戶信念</Text>
-                        </View>
+                        <Text style={styles.progressStatus}>3 / 8 關鍵條件完成</Text>
 
-                        {/* Liquidity Amplifier Badge */}
-                        <View style={styles.liquidityBadge}>
-                            <Ionicons name="water" size={12} color="#71717a" />
-                            <Text style={styles.liquidityText}>
-                                流動性狀態: 中性
-                            </Text>
+                        {/* Expandable Context */}
+                        <View style={styles.progressContext}>
+                            <Text style={styles.contextTitle}>目前尚未進入反轉階段：</Text>
+                            <Text style={styles.contextItem}>• 趨勢結構仍為下降</Text>
+                            <Text style={styles.contextItem}>• 波動率尚未充分壓縮</Text>
+                            <Text style={styles.contextItem}>• 流動性尚未轉為改善</Text>
                         </View>
                     </View>
 
-                    {/* Neutral Interpretation */}
-                    <View style={styles.interpretationBox}>
-                        <Text style={styles.interpretationLabel}>趨勢感知</Text>
-                        <Text style={styles.interpretationText}>
-                            {interpretation}
-                        </Text>
+                    {/* V2: Market Dynamics (replaces 趨勢感知) */}
+                    <View style={styles.dynamicsBox}>
+                        <Text style={styles.dynamicsLabel}>市場動態（Market Dynamics）</Text>
+
+                        <View style={styles.dynamicItem}>
+                            <Text style={styles.dynamicChange}>• Open Interest 上升、價格下跌</Text>
+                            <Text style={styles.dynamicInterpret}>→ 槓桿部位增加，市場仍在承壓</Text>
+                            <Text style={styles.dynamicImpact}>→ 反轉可信度下降</Text>
+                        </View>
+
+                        <View style={styles.dynamicItem}>
+                            <Text style={styles.dynamicChange}>• Funding Rate 回落至中性</Text>
+                            <Text style={styles.dynamicInterpret}>→ 去槓桿進行中</Text>
+                            <Text style={styles.dynamicImpact}>→ 有利於反轉準備階段</Text>
+                        </View>
+
+                        <View style={styles.dynamicItem}>
+                            <Text style={styles.dynamicChange}>• 穩定幣供給近 30 日持平</Text>
+                            <Text style={styles.dynamicInterpret}>→ 資金尚未進場</Text>
+                            <Text style={styles.dynamicImpact}>→ 流動性不支持反轉加速</Text>
+                        </View>
                     </View>
                 </View>
 
@@ -681,5 +695,99 @@ const styles = StyleSheet.create({
         color: '#52525B', // zinc-600
         fontSize: 10,
         marginTop: 8,
+    },
+
+    // V2: Progress Section Styles
+    progressSection: {
+        marginTop: 24,
+        borderTopWidth: 1,
+        borderTopColor: '#27272A',
+        paddingTop: 20,
+    },
+    progressLabel: {
+        color: '#71717A',
+        fontSize: 12,
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+        marginBottom: 12,
+    },
+    progressBar: {
+        flexDirection: 'row',
+        gap: 4,
+        marginBottom: 8,
+    },
+    progressBlock: {
+        flex: 1,
+        height: 8,
+        backgroundColor: '#27272A',
+        borderRadius: 2,
+    },
+    progressBlockFilled: {
+        backgroundColor: '#22c55e',
+    },
+    progressStatus: {
+        color: '#A1A1AA',
+        fontSize: 14,
+        fontWeight: '600',
+        marginBottom: 16,
+    },
+    progressContext: {
+        backgroundColor: '#0c0c0f',
+        borderRadius: 12,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#1f1f22',
+    },
+    contextTitle: {
+        color: '#71717A',
+        fontSize: 13,
+        fontWeight: '600',
+        marginBottom: 8,
+    },
+    contextItem: {
+        color: '#52525B',
+        fontSize: 13,
+        lineHeight: 22,
+    },
+
+    // V2: Market Dynamics Styles
+    dynamicsBox: {
+        marginTop: 24,
+        borderTopWidth: 1,
+        borderTopColor: '#27272A',
+        paddingTop: 20,
+    },
+    dynamicsLabel: {
+        color: '#71717A',
+        fontSize: 12,
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+        marginBottom: 16,
+    },
+    dynamicItem: {
+        marginBottom: 16,
+        paddingBottom: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#1f1f22',
+    },
+    dynamicChange: {
+        color: '#E4E4E7',
+        fontSize: 14,
+        fontWeight: '500',
+        marginBottom: 4,
+    },
+    dynamicInterpret: {
+        color: '#71717A',
+        fontSize: 13,
+        marginLeft: 12,
+        marginBottom: 2,
+    },
+    dynamicImpact: {
+        color: '#52525B',
+        fontSize: 13,
+        marginLeft: 12,
+        fontStyle: 'italic',
     },
 });
