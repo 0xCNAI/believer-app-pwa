@@ -49,9 +49,45 @@ function getConditionInfo(id: string) {
     };
 }
 
+// 將技術數據轉換為語義描述
+function getSemanticStatus(id: string, detail: string, passed: boolean): { semantic: string; icon: string } {
+    const passIcon = passed ? '✓' : '✗';
+
+    switch (id) {
+        case 'price_vs_200d':
+            if (passed) return { semantic: '接近均線', icon: passIcon };
+            return { semantic: '遠離均線', icon: passIcon };
+        case 'ma_slope_flat':
+            if (passed) return { semantic: '趨平或上升', icon: passIcon };
+            return { semantic: '仍在下跌', icon: passIcon };
+        case 'higher_low':
+            if (passed) return { semantic: '結構改善', icon: passIcon };
+            return { semantic: '尚未確認', icon: passIcon };
+        case 'vol_compression':
+            if (passed) return { semantic: '能量蓄積中', icon: passIcon };
+            return { semantic: '尚未壓縮', icon: passIcon };
+        case 'momentum_divergence':
+            if (passed) return { semantic: '背離形成', icon: passIcon };
+            return { semantic: '無背離', icon: passIcon };
+        case 'volume_confirmation':
+            if (passed) return { semantic: '量能確認', icon: passIcon };
+            return { semantic: '量能不足', icon: passIcon };
+        case 'range_breakout':
+            if (passed) return { semantic: '突破成功', icon: passIcon };
+            return { semantic: '區間內', icon: passIcon };
+        case 'vol_expansion':
+            if (detail?.includes('up')) return { semantic: '向上擴張', icon: passIcon };
+            if (detail?.includes('down')) return { semantic: '向下擴張', icon: passIcon };
+            return { semantic: '波動平穩', icon: passIcon };
+        default:
+            return { semantic: passed ? '成立' : '未成立', icon: passIcon };
+    }
+}
+
 export default function TechConfigScreen() {
     const router = useRouter();
     const [helpModal, setHelpModal] = useState<{ visible: boolean; id: string }>({ visible: false, id: '' });
+    const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
     // Store state
     const {
@@ -88,6 +124,15 @@ export default function TechConfigScreen() {
 
     const showHelp = (id: string) => {
         setHelpModal({ visible: true, id });
+    };
+
+    const toggleExpand = (id: string) => {
+        setExpandedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
     };
 
     const selectedCondition = getConditionInfo(helpModal.id);
@@ -130,142 +175,192 @@ export default function TechConfigScreen() {
                                 <Text style={styles.phaseSubname}>{phaseResult.phase}</Text>
                             </View>
                             <View style={styles.capBadge}>
-                                <Text style={styles.capText}>上限: {phaseResult.adjustedCap}</Text>
+                                <Text style={styles.capText}>上限 {phaseResult.adjustedCap}</Text>
                             </View>
                         </View>
-                        <View style={styles.scoreRow}>
-                            <Text style={styles.scoreLabel}>技術分數</Text>
-                            <Text style={styles.scoreValue}>{Math.round(phaseResult.techScore)}</Text>
-                        </View>
-                        <View style={styles.scoreRow}>
-                            <Text style={styles.scoreLabel}>通過條件數</Text>
-                            <Text style={styles.scoreValue}>{phaseResult.gatesPassedCount}/4</Text>
-                        </View>
-                        {phaseResult.liquidityMultiplier !== 1.0 && (
-                            <View style={styles.scoreRow}>
-                                <Text style={styles.scoreLabel}>流動性係數</Text>
-                                <Text style={[styles.scoreValue, { color: phaseResult.liquidityMultiplier > 1 ? '#22c55e' : '#ef4444' }]}>
-                                    ×{phaseResult.liquidityMultiplier.toFixed(1)}
-                                </Text>
+                        <View style={styles.phaseStats}>
+                            <View style={styles.statItem}>
+                                <Text style={styles.statValue}>{Math.round(phaseResult.techScore)}</Text>
+                                <Text style={styles.statLabel}>技術分</Text>
                             </View>
-                        )}
-                        {phaseResult.warning && (
-                            <Text style={styles.warningText}>{phaseResult.warning}</Text>
-                        )}
-                    </View>
-                )}
-
-                {/* Risk Adjustments */}
-                {phaseResult && (phaseResult.boostersApplied.length > 0 || phaseResult.riskAdjustments.length > 0) && (
-                    <View style={styles.adjustmentsCard}>
-                        <Text style={styles.sectionTitle}>生效調整</Text>
-                        <View style={styles.tagContainer}>
-                            {phaseResult.boostersApplied.map((adj, i) => (
-                                <View key={`b${i}`} style={[styles.tag, { backgroundColor: '#3b82f620' }]}>
-                                    <Text style={[styles.tagText, { color: '#3b82f6' }]}>{adj}</Text>
-                                </View>
-                            ))}
-                            {phaseResult.riskAdjustments.map((adj, i) => (
-                                <View key={`r${i}`} style={[styles.tag, { backgroundColor: '#f59e0b20' }]}>
-                                    <Text style={[styles.tagText, { color: '#f59e0b' }]}>{adj}</Text>
-                                </View>
-                            ))}
+                            <View style={styles.statDivider} />
+                            <View style={styles.statItem}>
+                                <Text style={styles.statValue}>{phaseResult.gatesPassedCount}/4</Text>
+                                <Text style={styles.statLabel}>條件通過</Text>
+                            </View>
+                            {phaseResult.liquidityMultiplier !== 1.0 && (
+                                <>
+                                    <View style={styles.statDivider} />
+                                    <View style={styles.statItem}>
+                                        <Text style={[styles.statValue, { color: phaseResult.liquidityMultiplier > 1 ? '#22c55e' : '#ef4444' }]}>
+                                            ×{phaseResult.liquidityMultiplier.toFixed(1)}
+                                        </Text>
+                                        <Text style={styles.statLabel}>流動性</Text>
+                                    </View>
+                                </>
+                            )}
                         </View>
                     </View>
                 )}
 
-                {/* Engine Gates */}
+                {/* === PHASE GATES === */}
                 <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <Ionicons name="lock-closed" size={16} color="#71717a" />
-                        <Text style={styles.sectionTitle}>核心條件</Text>
-                        <Text style={styles.sectionCount}>{gates.filter(g => g.enabled && g.passed).length}/{gates.length}</Text>
+                    <View style={styles.sectionHeaderBlock}>
+                        <View style={styles.sectionTitleRow}>
+                            <Ionicons name="cube" size={18} color="#22c55e" />
+                            <Text style={styles.sectionTitleGate}>Phase Gates</Text>
+                            <View style={styles.sectionBadge}>
+                                <Text style={styles.sectionBadgeText}>{gates.filter(g => g.enabled && g.passed).length}/{gates.length}</Text>
+                            </View>
+                        </View>
+                        <Text style={styles.sectionDesc}>
+                            決定市場是否允許進入反轉階段。建議保持開啟。
+                        </Text>
                     </View>
+
                     {gates.map(condition => {
                         const info = getConditionInfo(condition.id);
+                        const status = getSemanticStatus(condition.id, condition.detail || '', condition.passed);
+                        const isExpanded = expandedIds.has(condition.id);
+
                         return (
-                            <View key={condition.id} style={styles.conditionRow}>
-                                <View style={styles.conditionInfo}>
-                                    <View style={styles.conditionHeader}>
+                            <View key={condition.id} style={[styles.conditionCard, condition.passed && styles.conditionCardPassed]}>
+                                <TouchableOpacity
+                                    style={styles.conditionMain}
+                                    onPress={() => toggleExpand(condition.id)}
+                                    activeOpacity={0.7}
+                                >
+                                    <View style={styles.conditionLeft}>
                                         <View style={[
-                                            styles.statusDot,
-                                            { backgroundColor: condition.passed ? '#22c55e' : '#71717a' }
-                                        ]} />
+                                            styles.statusBadge,
+                                            { backgroundColor: condition.passed ? '#22c55e20' : '#71717a20' }
+                                        ]}>
+                                            <Text style={[
+                                                styles.statusText,
+                                                { color: condition.passed ? '#22c55e' : '#71717a' }
+                                            ]}>{status.semantic}</Text>
+                                            <Text style={{ color: condition.passed ? '#22c55e' : '#71717a', fontSize: 12 }}>
+                                                {status.icon}
+                                            </Text>
+                                        </View>
                                         <Text style={styles.conditionName}>{info.nameCN}</Text>
+                                    </View>
+                                    <View style={styles.conditionRight}>
                                         <TouchableOpacity
                                             style={styles.helpButton}
                                             onPress={() => showHelp(condition.id)}
                                         >
-                                            <Ionicons name="help-circle-outline" size={18} color="#71717a" />
+                                            <Ionicons name="help-circle-outline" size={20} color="#52525b" />
                                         </TouchableOpacity>
+                                        <Switch
+                                            value={enabledConditions[condition.id]}
+                                            onValueChange={(value) => {
+                                                setConditionEnabled(condition.id, value);
+                                                evaluateAll();
+                                            }}
+                                            trackColor={{ false: '#27272a', true: '#22c55e40' }}
+                                            thumbColor={enabledConditions[condition.id] ? '#22c55e' : '#52525b'}
+                                        />
                                     </View>
-                                    <Text style={styles.conditionDetail}>{condition.detail}</Text>
-                                    <View style={styles.scoreBar}>
-                                        <View style={[styles.scoreBarFill, { width: `${condition.score * 100}%` }]} />
+                                </TouchableOpacity>
+
+                                {/* Expanded Detail */}
+                                {isExpanded && (
+                                    <View style={styles.conditionDetail}>
+                                        <Text style={styles.detailLabel}>原始數據</Text>
+                                        <Text style={styles.detailValue}>{condition.detail}</Text>
+                                        <View style={styles.scoreBar}>
+                                            <View style={[styles.scoreBarFill, { width: `${condition.score * 100}%` }]} />
+                                        </View>
                                     </View>
-                                </View>
-                                <Switch
-                                    value={enabledConditions[condition.id]}
-                                    onValueChange={(value) => {
-                                        setConditionEnabled(condition.id, value);
-                                        evaluateAll();
-                                    }}
-                                    trackColor={{ false: '#27272a', true: '#22c55e40' }}
-                                    thumbColor={enabledConditions[condition.id] ? '#22c55e' : '#71717a'}
-                                />
+                                )}
                             </View>
                         );
                     })}
                 </View>
 
-                {/* Evidence Boosters */}
+                {/* === EVIDENCE BOOSTERS === */}
                 <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <Ionicons name="flash" size={16} color="#71717a" />
-                        <Text style={styles.sectionTitle}>加成條件</Text>
+                    <View style={styles.sectionHeaderBlock}>
+                        <View style={styles.sectionTitleRow}>
+                            <Ionicons name="flash" size={18} color="#3b82f6" />
+                            <Text style={styles.sectionTitleBooster}>Evidence Boosters</Text>
+                        </View>
+                        <Text style={styles.sectionDesc}>
+                            提高或降低可信度，不改變 Phase 判定。可自由開關。
+                        </Text>
                     </View>
+
                     {boosters.map(condition => {
                         const info = getConditionInfo(condition.id);
+                        const status = getSemanticStatus(condition.id, condition.detail || '', condition.passed);
+                        const isExpanded = expandedIds.has(condition.id);
+
                         return (
-                            <View key={condition.id} style={styles.conditionRow}>
-                                <View style={styles.conditionInfo}>
-                                    <View style={styles.conditionHeader}>
+                            <View key={condition.id} style={styles.conditionCard}>
+                                <TouchableOpacity
+                                    style={styles.conditionMain}
+                                    onPress={() => toggleExpand(condition.id)}
+                                    activeOpacity={0.7}
+                                >
+                                    <View style={styles.conditionLeft}>
                                         <View style={[
-                                            styles.statusDot,
-                                            { backgroundColor: condition.passed ? '#3b82f6' : '#71717a' }
-                                        ]} />
+                                            styles.statusBadge,
+                                            { backgroundColor: condition.passed ? '#3b82f620' : '#71717a20' }
+                                        ]}>
+                                            <Text style={[
+                                                styles.statusText,
+                                                { color: condition.passed ? '#3b82f6' : '#71717a' }
+                                            ]}>{status.semantic}</Text>
+                                            <Text style={{ color: condition.passed ? '#3b82f6' : '#71717a', fontSize: 12 }}>
+                                                {status.icon}
+                                            </Text>
+                                        </View>
                                         <Text style={styles.conditionName}>{info.nameCN}</Text>
+                                    </View>
+                                    <View style={styles.conditionRight}>
                                         <TouchableOpacity
                                             style={styles.helpButton}
                                             onPress={() => showHelp(condition.id)}
                                         >
-                                            <Ionicons name="help-circle-outline" size={18} color="#71717a" />
+                                            <Ionicons name="help-circle-outline" size={20} color="#52525b" />
                                         </TouchableOpacity>
+                                        <Switch
+                                            value={enabledConditions[condition.id]}
+                                            onValueChange={(value) => {
+                                                setConditionEnabled(condition.id, value);
+                                                evaluateAll();
+                                            }}
+                                            trackColor={{ false: '#27272a', true: '#3b82f640' }}
+                                            thumbColor={enabledConditions[condition.id] ? '#3b82f6' : '#52525b'}
+                                        />
                                     </View>
-                                    <Text style={styles.conditionDetail}>{condition.detail}</Text>
-                                </View>
-                                <Switch
-                                    value={enabledConditions[condition.id]}
-                                    onValueChange={(value) => {
-                                        setConditionEnabled(condition.id, value);
-                                        evaluateAll();
-                                    }}
-                                    trackColor={{ false: '#27272a', true: '#3b82f640' }}
-                                    thumbColor={enabledConditions[condition.id] ? '#3b82f6' : '#71717a'}
-                                />
+                                </TouchableOpacity>
+
+                                {isExpanded && (
+                                    <View style={styles.conditionDetail}>
+                                        <Text style={styles.detailLabel}>原始數據</Text>
+                                        <Text style={styles.detailValue}>{condition.detail}</Text>
+                                    </View>
+                                )}
                             </View>
                         );
                     })}
                 </View>
 
-                {/* Personal Settings */}
+                {/* === PERSONAL SETTINGS === */}
                 <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <Ionicons name="settings" size={16} color="#71717a" />
-                        <Text style={styles.sectionTitle}>個人設定</Text>
+                    <View style={styles.sectionHeaderBlock}>
+                        <View style={styles.sectionTitleRow}>
+                            <Ionicons name="options" size={18} color="#a1a1aa" />
+                            <Text style={styles.sectionTitlePersonal}>個人偏好</Text>
+                        </View>
+                        <Text style={styles.sectionDesc}>
+                            調整計算參數，不影響 Phase 邏輯，只改變敏感度。
+                        </Text>
                     </View>
 
-                    <View style={styles.paramRow}>
+                    <View style={styles.paramCard}>
                         <Text style={styles.paramLabel}>MA 週期</Text>
                         <View style={styles.paramOptions}>
                             {([120, 200, 250] as const).map(val => (
@@ -289,8 +384,8 @@ export default function TechConfigScreen() {
                         </View>
                     </View>
 
-                    <View style={styles.paramRow}>
-                        <Text style={styles.paramLabel}>HL 窗口</Text>
+                    <View style={styles.paramCard}>
+                        <Text style={styles.paramLabel}>結構判定窗口</Text>
                         <View style={styles.paramOptions}>
                             {([4, 6, 8] as const).map(val => (
                                 <TouchableOpacity
@@ -307,14 +402,14 @@ export default function TechConfigScreen() {
                                     <Text style={[
                                         styles.paramOptionText,
                                         personalParams.hlWindow === val && styles.paramOptionTextActive
-                                    ]}>{val}週</Text>
+                                    ]}>{val} 週</Text>
                                 </TouchableOpacity>
                             ))}
                         </View>
                     </View>
 
-                    <View style={styles.paramRow}>
-                        <Text style={styles.paramLabel}>壓縮百分位</Text>
+                    <View style={styles.paramCard}>
+                        <Text style={styles.paramLabel}>波動壓縮閾值</Text>
                         <View style={styles.paramOptions}>
                             {([10, 15, 20] as const).map(val => (
                                 <TouchableOpacity
@@ -338,33 +433,63 @@ export default function TechConfigScreen() {
                     </View>
                 </View>
 
-                {/* Risk Modifiers Info */}
+                {/* === MARKET ENVIRONMENT (Read-only) === */}
                 {riskModifiers && (
-                    <View style={styles.section}>
-                        <View style={styles.sectionHeader}>
-                            <Ionicons name="shield-checkmark" size={16} color="#71717a" />
-                            <Text style={styles.sectionTitle}>風險指標</Text>
+                    <View style={styles.envSection}>
+                        <View style={styles.envHeader}>
+                            <Ionicons name="globe-outline" size={20} color="#52525b" />
+                            <Text style={styles.envTitle}>市場環境</Text>
+                            <View style={styles.readOnlyBadge}>
+                                <Text style={styles.readOnlyText}>只讀</Text>
+                            </View>
                         </View>
-                        <View style={styles.riskRow}>
-                            <Text style={styles.riskLabel}>資金費率</Text>
-                            <Text style={[styles.riskValue, { color: Math.abs(riskModifiers.fundingRate) > 0.02 ? '#ef4444' : '#22c55e' }]}>
-                                {riskModifiers.fundingRate.toFixed(4)}%
-                            </Text>
+                        <Text style={styles.envDesc}>
+                            外部環境指標，影響反轉可信度，但不可由用戶調整。
+                        </Text>
+
+                        <View style={styles.envCard}>
+                            <View style={styles.envRow}>
+                                <Text style={styles.envLabel}>資金費率</Text>
+                                <View style={styles.envValueRow}>
+                                    <Text style={[styles.envStatus, {
+                                        color: Math.abs(riskModifiers.fundingRate) > 0.02 ? '#ef4444' : '#71717a'
+                                    }]}>
+                                        {Math.abs(riskModifiers.fundingRate) > 0.02 ? '槓桿過熱' : '中性'}
+                                    </Text>
+                                    <Text style={styles.envRaw}>{riskModifiers.fundingRate.toFixed(4)}%</Text>
+                                </View>
+                            </View>
+
+                            <View style={styles.envDivider} />
+
+                            <View style={styles.envRow}>
+                                <Text style={styles.envLabel}>流動性狀態</Text>
+                                <Text style={[styles.envStatus, {
+                                    color: riskModifiers.liquidityStatus === 'improving' ? '#22c55e' :
+                                        riskModifiers.liquidityStatus === 'tight' ? '#ef4444' : '#71717a'
+                                }]}>
+                                    {riskModifiers.liquidityStatus === 'improving' ? '改善中' :
+                                        riskModifiers.liquidityStatus === 'tight' ? '緊縮' : '中性'}
+                                </Text>
+                            </View>
+
+                            <View style={styles.envDivider} />
+
+                            <View style={styles.envRow}>
+                                <Text style={styles.envLabel}>MVRV Z-Score</Text>
+                                <View style={styles.envValueRow}>
+                                    <Text style={[styles.envStatus, {
+                                        color: riskModifiers.mvrvZScore < -1 ? '#22c55e' :
+                                            riskModifiers.mvrvZScore > 2 ? '#ef4444' : '#71717a'
+                                    }]}>
+                                        {riskModifiers.mvrvZScore < -1 ? '低估' :
+                                            riskModifiers.mvrvZScore > 2 ? '高估' : '中性'}
+                                    </Text>
+                                    <Text style={styles.envRaw}>{riskModifiers.mvrvZScore.toFixed(2)}</Text>
+                                </View>
+                            </View>
                         </View>
-                        <View style={styles.riskRow}>
-                            <Text style={styles.riskLabel}>流動性狀態</Text>
-                            <Text style={[styles.riskValue, {
-                                color: riskModifiers.liquidityStatus === 'improving' ? '#22c55e' :
-                                    riskModifiers.liquidityStatus === 'tight' ? '#ef4444' : '#71717a'
-                            }]}>
-                                {riskModifiers.liquidityStatus === 'improving' ? '改善中' :
-                                    riskModifiers.liquidityStatus === 'tight' ? '緊縮' : '中性'}
-                            </Text>
-                        </View>
-                        <View style={styles.riskRow}>
-                            <Text style={styles.riskLabel}>MVRV Z-Score</Text>
-                            <Text style={styles.riskValue}>{riskModifiers.mvrvZScore.toFixed(2)} (模擬)</Text>
-                        </View>
+                        <Text style={styles.envFooter}>數據每 5 分鐘更新</Text>
                     </View>
                 )}
 
@@ -377,7 +502,7 @@ export default function TechConfigScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#000',
+        backgroundColor: '#09090b',
     },
     header: {
         flexDirection: 'row',
@@ -396,10 +521,9 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     headerTitle: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: '#a1a1aa',
-        letterSpacing: 1,
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#fafafa',
     },
     refreshButton: {
         width: 36,
@@ -413,147 +537,196 @@ const styles = StyleSheet.create({
         flex: 1,
         paddingHorizontal: 16,
     },
+
+    // Phase Card
     phaseCard: {
         backgroundColor: '#18181b',
         borderRadius: 16,
-        padding: 16,
-        marginBottom: 16,
+        padding: 20,
+        marginBottom: 24,
     },
     phaseHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        marginBottom: 12,
+        marginBottom: 16,
     },
     phaseName: {
-        fontSize: 24,
+        fontSize: 28,
         fontWeight: '700',
     },
     phaseSubname: {
         fontSize: 12,
-        color: '#71717a',
+        color: '#52525b',
         marginTop: 2,
     },
     capBadge: {
         backgroundColor: '#27272a',
         paddingHorizontal: 12,
-        paddingVertical: 4,
+        paddingVertical: 6,
         borderRadius: 12,
     },
     capText: {
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: '600',
         color: '#a1a1aa',
     },
-    scoreRow: {
+    phaseStats: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 8,
+        alignItems: 'center',
     },
-    scoreLabel: {
+    statItem: {
+        alignItems: 'center',
+        flex: 1,
+    },
+    statValue: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#fafafa',
+    },
+    statLabel: {
+        fontSize: 11,
+        color: '#52525b',
+        marginTop: 4,
+    },
+    statDivider: {
+        width: 1,
+        height: 32,
+        backgroundColor: '#27272a',
+    },
+
+    // Section
+    section: {
+        marginBottom: 28,
+    },
+    sectionHeaderBlock: {
+        marginBottom: 12,
+    },
+    sectionTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 4,
+    },
+    sectionTitleGate: {
         fontSize: 14,
-        color: '#71717a',
+        fontWeight: '700',
+        color: '#22c55e',
+        flex: 1,
     },
-    scoreValue: {
+    sectionTitleBooster: {
         fontSize: 14,
-        fontWeight: '600',
-        color: '#fff',
+        fontWeight: '700',
+        color: '#3b82f6',
+        flex: 1,
     },
-    warningText: {
-        fontSize: 12,
+    sectionTitlePersonal: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#a1a1aa',
+        flex: 1,
+    },
+    sectionTitleRisk: {
+        fontSize: 14,
+        fontWeight: '700',
         color: '#f59e0b',
-        marginTop: 8,
+        flex: 1,
     },
-    adjustmentsCard: {
+    sectionBadge: {
+        backgroundColor: '#22c55e20',
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 8,
+    },
+    sectionBadgeText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#22c55e',
+    },
+    sectionDesc: {
+        fontSize: 12,
+        color: '#52525b',
+        lineHeight: 18,
+    },
+
+    // Condition Card
+    conditionCard: {
         backgroundColor: '#18181b',
         borderRadius: 12,
-        padding: 12,
-        marginBottom: 16,
+        marginBottom: 8,
+        overflow: 'hidden',
     },
-    tagContainer: {
+    conditionCardPassed: {
+        borderLeftWidth: 3,
+        borderLeftColor: '#22c55e',
+    },
+    conditionMain: {
         flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-        marginTop: 8,
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 12,
     },
-    tag: {
+    conditionLeft: {
+        flex: 1,
+        gap: 8,
+    },
+    conditionRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    statusBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        gap: 6,
         paddingHorizontal: 10,
         paddingVertical: 4,
         borderRadius: 8,
     },
-    tagText: {
+    statusText: {
         fontSize: 12,
-        fontWeight: '500',
-    },
-    section: {
-        marginBottom: 24,
-    },
-    sectionHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginBottom: 12,
-    },
-    sectionTitle: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#71717a',
-        letterSpacing: 1,
-        flex: 1,
-    },
-    sectionCount: {
-        fontSize: 12,
-        color: '#71717a',
-    },
-    conditionRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#18181b',
-        borderRadius: 12,
-        padding: 12,
-        marginBottom: 8,
-    },
-    conditionInfo: {
-        flex: 1,
-    },
-    conditionHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    statusDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
+        fontWeight: '600',
     },
     conditionName: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#fff',
-        flex: 1,
+        fontSize: 15,
+        fontWeight: '500',
+        color: '#e4e4e7',
     },
     helpButton: {
         padding: 4,
     },
     conditionDetail: {
-        fontSize: 12,
+        paddingHorizontal: 12,
+        paddingBottom: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#27272a',
+        paddingTop: 12,
+    },
+    detailLabel: {
+        fontSize: 11,
+        color: '#52525b',
+        marginBottom: 4,
+    },
+    detailValue: {
+        fontSize: 13,
         color: '#71717a',
-        marginTop: 4,
-        marginLeft: 16,
+        fontFamily: 'monospace',
     },
     scoreBar: {
         height: 3,
         backgroundColor: '#27272a',
         borderRadius: 2,
         marginTop: 8,
-        marginLeft: 16,
     },
     scoreBarFill: {
         height: '100%',
         backgroundColor: '#22c55e',
         borderRadius: 2,
     },
-    paramRow: {
+
+    // Param Card
+    paramCard: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -571,8 +744,8 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     paramOption: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
+        paddingHorizontal: 14,
+        paddingVertical: 8,
         borderRadius: 8,
         backgroundColor: '#27272a',
     },
@@ -580,20 +753,25 @@ const styles = StyleSheet.create({
         backgroundColor: '#3b82f6',
     },
     paramOptionText: {
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: '600',
-        color: '#71717a',
+        color: '#52525b',
     },
     paramOptionTextActive: {
         color: '#fff',
     },
-    riskRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+
+    // Risk Card
+    riskCard: {
         backgroundColor: '#18181b',
         borderRadius: 12,
         padding: 12,
         marginBottom: 8,
+    },
+    riskRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
     },
     riskLabel: {
         fontSize: 14,
@@ -602,19 +780,26 @@ const styles = StyleSheet.create({
     riskValue: {
         fontSize: 14,
         fontWeight: '600',
+        color: '#a1a1aa',
     },
-    // Modal styles
+    riskDetail: {
+        fontSize: 11,
+        color: '#52525b',
+        marginTop: 4,
+    },
+
+    // Modal
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        backgroundColor: 'rgba(0, 0, 0, 0.85)',
         justifyContent: 'center',
         alignItems: 'center',
         padding: 24,
     },
     modalContent: {
         backgroundColor: '#18181b',
-        borderRadius: 16,
-        padding: 20,
+        borderRadius: 20,
+        padding: 24,
         width: '100%',
         maxWidth: 340,
     },
@@ -622,30 +807,108 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     modalTitle: {
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: '700',
-        color: '#fff',
+        color: '#fafafa',
         marginBottom: 4,
     },
     modalSubtitle: {
         fontSize: 12,
-        color: '#71717a',
+        color: '#52525b',
     },
     modalText: {
-        fontSize: 14,
+        fontSize: 15,
         color: '#a1a1aa',
-        lineHeight: 22,
+        lineHeight: 24,
     },
     modalCloseBtn: {
-        marginTop: 20,
+        marginTop: 24,
         backgroundColor: '#27272a',
-        borderRadius: 8,
-        paddingVertical: 12,
+        borderRadius: 12,
+        paddingVertical: 14,
         alignItems: 'center',
     },
     modalCloseBtnText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#fafafa',
+    },
+
+    // Market Environment (Read-only)
+    envSection: {
+        marginBottom: 28,
+        backgroundColor: '#0c0c0f',
+        borderRadius: 16,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#27272a',
+    },
+    envHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 8,
+    },
+    envTitle: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#fff',
+        color: '#52525b',
+        flex: 1,
+    },
+    readOnlyBadge: {
+        backgroundColor: '#27272a',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 6,
+    },
+    readOnlyText: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: '#52525b',
+        textTransform: 'uppercase',
+    },
+    envDesc: {
+        fontSize: 12,
+        color: '#3f3f46',
+        lineHeight: 18,
+        marginBottom: 16,
+    },
+    envCard: {
+        backgroundColor: '#18181b',
+        borderRadius: 12,
+        padding: 16,
+    },
+    envRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 4,
+    },
+    envLabel: {
+        fontSize: 14,
+        color: '#52525b',
+    },
+    envValueRow: {
+        alignItems: 'flex-end',
+    },
+    envStatus: {
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    envRaw: {
+        fontSize: 11,
+        color: '#3f3f46',
+        marginTop: 2,
+    },
+    envDivider: {
+        height: 1,
+        backgroundColor: '#27272a',
+        marginVertical: 12,
+    },
+    envFooter: {
+        fontSize: 10,
+        color: '#3f3f46',
+        textAlign: 'center',
+        marginTop: 12,
     },
 });
