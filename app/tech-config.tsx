@@ -1,12 +1,57 @@
-import { View, Text, TouchableOpacity, ScrollView, Switch, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Switch, ActivityIndicator, Modal, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect } from 'react';
-import { useTechStore, selectGates, selectBoosters, selectPhase, selectCap, selectTechScore } from '@/stores/techStore';
+import { useEffect, useState } from 'react';
+import { useTechStore } from '@/stores/techStore';
+import { CONDITION_DEFS } from '@/services/techEngine';
 import { StyleSheet } from 'react-native';
+
+// 條件說明彈窗
+interface HelpModalProps {
+    visible: boolean;
+    onClose: () => void;
+    title: string;
+    nameCN: string;
+    explanation: string;
+}
+
+function HelpModal({ visible, onClose, title, nameCN, explanation }: HelpModalProps) {
+    return (
+        <Modal
+            animationType="fade"
+            transparent={true}
+            visible={visible}
+            onRequestClose={onClose}
+        >
+            <Pressable style={styles.modalOverlay} onPress={onClose}>
+                <View style={styles.modalContent}>
+                    <View style={styles.modalHeader}>
+                        <Text style={styles.modalTitle}>{nameCN}</Text>
+                        <Text style={styles.modalSubtitle}>{title}</Text>
+                    </View>
+                    <Text style={styles.modalText}>{explanation}</Text>
+                    <TouchableOpacity style={styles.modalCloseBtn} onPress={onClose}>
+                        <Text style={styles.modalCloseBtnText}>了解</Text>
+                    </TouchableOpacity>
+                </View>
+            </Pressable>
+        </Modal>
+    );
+}
+
+// 獲取條件的中文名稱和說明
+function getConditionInfo(id: string) {
+    const def = CONDITION_DEFS.find(d => d.id === id);
+    return {
+        nameCN: def?.nameCN || def?.name || id,
+        name: def?.name || id,
+        explanation: def?.explanation || '',
+    };
+}
 
 export default function TechConfigScreen() {
     const router = useRouter();
+    const [helpModal, setHelpModal] = useState<{ visible: boolean; id: string }>({ visible: false, id: '' });
 
     // Store state
     const {
@@ -16,7 +61,6 @@ export default function TechConfigScreen() {
         phaseResult,
         riskModifiers,
         isLoading,
-        error,
         setConditionEnabled,
         setPersonalParam,
         evaluateAll,
@@ -30,20 +74,41 @@ export default function TechConfigScreen() {
         evaluateAll();
     }, []);
 
+    const phaseNames = {
+        Accumulation: '蓄積期',
+        Transition: '轉換期',
+        Expansion: '擴張期',
+    };
+
     const phaseColors = {
         Accumulation: '#f59e0b',
         Transition: '#3b82f6',
         Expansion: '#22c55e',
     };
 
+    const showHelp = (id: string) => {
+        setHelpModal({ visible: true, id });
+    };
+
+    const selectedCondition = getConditionInfo(helpModal.id);
+
     return (
         <View style={styles.container}>
+            {/* Help Modal */}
+            <HelpModal
+                visible={helpModal.visible}
+                onClose={() => setHelpModal({ visible: false, id: '' })}
+                title={selectedCondition.name}
+                nameCN={selectedCondition.nameCN}
+                explanation={selectedCondition.explanation}
+            />
+
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
                     <Ionicons name="close" size={20} color="white" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>TECH CONFIG</Text>
+                <Text style={styles.headerTitle}>技術配置</Text>
                 <TouchableOpacity onPress={evaluateAll} style={styles.refreshButton}>
                     {isLoading ? (
                         <ActivityIndicator size="small" color="white" />
@@ -58,24 +123,27 @@ export default function TechConfigScreen() {
                 {phaseResult && (
                     <View style={styles.phaseCard}>
                         <View style={styles.phaseHeader}>
-                            <Text style={[styles.phaseName, { color: phaseColors[phaseResult.phase] }]}>
-                                {phaseResult.phase}
-                            </Text>
+                            <View>
+                                <Text style={[styles.phaseName, { color: phaseColors[phaseResult.phase] }]}>
+                                    {phaseNames[phaseResult.phase]}
+                                </Text>
+                                <Text style={styles.phaseSubname}>{phaseResult.phase}</Text>
+                            </View>
                             <View style={styles.capBadge}>
-                                <Text style={styles.capText}>Cap: {phaseResult.adjustedCap}</Text>
+                                <Text style={styles.capText}>上限: {phaseResult.adjustedCap}</Text>
                             </View>
                         </View>
                         <View style={styles.scoreRow}>
-                            <Text style={styles.scoreLabel}>Tech Score</Text>
+                            <Text style={styles.scoreLabel}>技術分數</Text>
                             <Text style={styles.scoreValue}>{Math.round(phaseResult.techScore)}</Text>
                         </View>
                         <View style={styles.scoreRow}>
-                            <Text style={styles.scoreLabel}>Gates Passed</Text>
+                            <Text style={styles.scoreLabel}>通過條件數</Text>
                             <Text style={styles.scoreValue}>{phaseResult.gatesPassedCount}/4</Text>
                         </View>
                         {phaseResult.liquidityMultiplier !== 1.0 && (
                             <View style={styles.scoreRow}>
-                                <Text style={styles.scoreLabel}>Liquidity</Text>
+                                <Text style={styles.scoreLabel}>流動性係數</Text>
                                 <Text style={[styles.scoreValue, { color: phaseResult.liquidityMultiplier > 1 ? '#22c55e' : '#ef4444' }]}>
                                     ×{phaseResult.liquidityMultiplier.toFixed(1)}
                                 </Text>
@@ -90,7 +158,7 @@ export default function TechConfigScreen() {
                 {/* Risk Adjustments */}
                 {phaseResult && (phaseResult.boostersApplied.length > 0 || phaseResult.riskAdjustments.length > 0) && (
                     <View style={styles.adjustmentsCard}>
-                        <Text style={styles.sectionTitle}>Active Adjustments</Text>
+                        <Text style={styles.sectionTitle}>生效調整</Text>
                         <View style={styles.tagContainer}>
                             {phaseResult.boostersApplied.map((adj, i) => (
                                 <View key={`b${i}`} style={[styles.tag, { backgroundColor: '#3b82f620' }]}>
@@ -110,77 +178,95 @@ export default function TechConfigScreen() {
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <Ionicons name="lock-closed" size={16} color="#71717a" />
-                        <Text style={styles.sectionTitle}>ENGINE GATES</Text>
+                        <Text style={styles.sectionTitle}>核心條件</Text>
                         <Text style={styles.sectionCount}>{gates.filter(g => g.enabled && g.passed).length}/{gates.length}</Text>
                     </View>
-                    {gates.map(condition => (
-                        <View key={condition.id} style={styles.conditionRow}>
-                            <View style={styles.conditionInfo}>
-                                <View style={styles.conditionHeader}>
-                                    <View style={[
-                                        styles.statusDot,
-                                        { backgroundColor: condition.passed ? '#22c55e' : '#71717a' }
-                                    ]} />
-                                    <Text style={styles.conditionName}>{condition.name}</Text>
+                    {gates.map(condition => {
+                        const info = getConditionInfo(condition.id);
+                        return (
+                            <View key={condition.id} style={styles.conditionRow}>
+                                <View style={styles.conditionInfo}>
+                                    <View style={styles.conditionHeader}>
+                                        <View style={[
+                                            styles.statusDot,
+                                            { backgroundColor: condition.passed ? '#22c55e' : '#71717a' }
+                                        ]} />
+                                        <Text style={styles.conditionName}>{info.nameCN}</Text>
+                                        <TouchableOpacity
+                                            style={styles.helpButton}
+                                            onPress={() => showHelp(condition.id)}
+                                        >
+                                            <Ionicons name="help-circle-outline" size={18} color="#71717a" />
+                                        </TouchableOpacity>
+                                    </View>
+                                    <Text style={styles.conditionDetail}>{condition.detail}</Text>
+                                    <View style={styles.scoreBar}>
+                                        <View style={[styles.scoreBarFill, { width: `${condition.score * 100}%` }]} />
+                                    </View>
                                 </View>
-                                <Text style={styles.conditionDetail}>{condition.detail}</Text>
-                                <View style={styles.scoreBar}>
-                                    <View style={[styles.scoreBarFill, { width: `${condition.score * 100}%` }]} />
-                                </View>
+                                <Switch
+                                    value={enabledConditions[condition.id]}
+                                    onValueChange={(value) => {
+                                        setConditionEnabled(condition.id, value);
+                                        evaluateAll();
+                                    }}
+                                    trackColor={{ false: '#27272a', true: '#22c55e40' }}
+                                    thumbColor={enabledConditions[condition.id] ? '#22c55e' : '#71717a'}
+                                />
                             </View>
-                            <Switch
-                                value={enabledConditions[condition.id]}
-                                onValueChange={(value) => {
-                                    setConditionEnabled(condition.id, value);
-                                    evaluateAll();
-                                }}
-                                trackColor={{ false: '#27272a', true: '#22c55e40' }}
-                                thumbColor={enabledConditions[condition.id] ? '#22c55e' : '#71717a'}
-                            />
-                        </View>
-                    ))}
+                        );
+                    })}
                 </View>
 
                 {/* Evidence Boosters */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <Ionicons name="flash" size={16} color="#71717a" />
-                        <Text style={styles.sectionTitle}>EVIDENCE BOOSTERS</Text>
+                        <Text style={styles.sectionTitle}>加成條件</Text>
                     </View>
-                    {boosters.map(condition => (
-                        <View key={condition.id} style={styles.conditionRow}>
-                            <View style={styles.conditionInfo}>
-                                <View style={styles.conditionHeader}>
-                                    <View style={[
-                                        styles.statusDot,
-                                        { backgroundColor: condition.passed ? '#3b82f6' : '#71717a' }
-                                    ]} />
-                                    <Text style={styles.conditionName}>{condition.name}</Text>
+                    {boosters.map(condition => {
+                        const info = getConditionInfo(condition.id);
+                        return (
+                            <View key={condition.id} style={styles.conditionRow}>
+                                <View style={styles.conditionInfo}>
+                                    <View style={styles.conditionHeader}>
+                                        <View style={[
+                                            styles.statusDot,
+                                            { backgroundColor: condition.passed ? '#3b82f6' : '#71717a' }
+                                        ]} />
+                                        <Text style={styles.conditionName}>{info.nameCN}</Text>
+                                        <TouchableOpacity
+                                            style={styles.helpButton}
+                                            onPress={() => showHelp(condition.id)}
+                                        >
+                                            <Ionicons name="help-circle-outline" size={18} color="#71717a" />
+                                        </TouchableOpacity>
+                                    </View>
+                                    <Text style={styles.conditionDetail}>{condition.detail}</Text>
                                 </View>
-                                <Text style={styles.conditionDetail}>{condition.detail}</Text>
+                                <Switch
+                                    value={enabledConditions[condition.id]}
+                                    onValueChange={(value) => {
+                                        setConditionEnabled(condition.id, value);
+                                        evaluateAll();
+                                    }}
+                                    trackColor={{ false: '#27272a', true: '#3b82f640' }}
+                                    thumbColor={enabledConditions[condition.id] ? '#3b82f6' : '#71717a'}
+                                />
                             </View>
-                            <Switch
-                                value={enabledConditions[condition.id]}
-                                onValueChange={(value) => {
-                                    setConditionEnabled(condition.id, value);
-                                    evaluateAll();
-                                }}
-                                trackColor={{ false: '#27272a', true: '#3b82f640' }}
-                                thumbColor={enabledConditions[condition.id] ? '#3b82f6' : '#71717a'}
-                            />
-                        </View>
-                    ))}
+                        );
+                    })}
                 </View>
 
                 {/* Personal Settings */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <Ionicons name="settings" size={16} color="#71717a" />
-                        <Text style={styles.sectionTitle}>PERSONAL SETTINGS</Text>
+                        <Text style={styles.sectionTitle}>個人設定</Text>
                     </View>
 
                     <View style={styles.paramRow}>
-                        <Text style={styles.paramLabel}>MA Period</Text>
+                        <Text style={styles.paramLabel}>MA 週期</Text>
                         <View style={styles.paramOptions}>
                             {([120, 200, 250] as const).map(val => (
                                 <TouchableOpacity
@@ -204,7 +290,7 @@ export default function TechConfigScreen() {
                     </View>
 
                     <View style={styles.paramRow}>
-                        <Text style={styles.paramLabel}>HL Window</Text>
+                        <Text style={styles.paramLabel}>HL 窗口</Text>
                         <View style={styles.paramOptions}>
                             {([4, 6, 8] as const).map(val => (
                                 <TouchableOpacity
@@ -221,14 +307,14 @@ export default function TechConfigScreen() {
                                     <Text style={[
                                         styles.paramOptionText,
                                         personalParams.hlWindow === val && styles.paramOptionTextActive
-                                    ]}>{val}W</Text>
+                                    ]}>{val}週</Text>
                                 </TouchableOpacity>
                             ))}
                         </View>
                     </View>
 
                     <View style={styles.paramRow}>
-                        <Text style={styles.paramLabel}>Vol Percentile</Text>
+                        <Text style={styles.paramLabel}>壓縮百分位</Text>
                         <View style={styles.paramOptions}>
                             {([10, 15, 20] as const).map(val => (
                                 <TouchableOpacity
@@ -257,26 +343,27 @@ export default function TechConfigScreen() {
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
                             <Ionicons name="shield-checkmark" size={16} color="#71717a" />
-                            <Text style={styles.sectionTitle}>RISK MODIFIERS</Text>
+                            <Text style={styles.sectionTitle}>風險指標</Text>
                         </View>
                         <View style={styles.riskRow}>
-                            <Text style={styles.riskLabel}>Funding Rate</Text>
+                            <Text style={styles.riskLabel}>資金費率</Text>
                             <Text style={[styles.riskValue, { color: Math.abs(riskModifiers.fundingRate) > 0.02 ? '#ef4444' : '#22c55e' }]}>
                                 {riskModifiers.fundingRate.toFixed(4)}%
                             </Text>
                         </View>
                         <View style={styles.riskRow}>
-                            <Text style={styles.riskLabel}>Liquidity</Text>
+                            <Text style={styles.riskLabel}>流動性狀態</Text>
                             <Text style={[styles.riskValue, {
                                 color: riskModifiers.liquidityStatus === 'improving' ? '#22c55e' :
                                     riskModifiers.liquidityStatus === 'tight' ? '#ef4444' : '#71717a'
                             }]}>
-                                {riskModifiers.liquidityStatus.toUpperCase()}
+                                {riskModifiers.liquidityStatus === 'improving' ? '改善中' :
+                                    riskModifiers.liquidityStatus === 'tight' ? '緊縮' : '中性'}
                             </Text>
                         </View>
                         <View style={styles.riskRow}>
                             <Text style={styles.riskLabel}>MVRV Z-Score</Text>
-                            <Text style={styles.riskValue}>{riskModifiers.mvrvZScore.toFixed(2)} (mock)</Text>
+                            <Text style={styles.riskValue}>{riskModifiers.mvrvZScore.toFixed(2)} (模擬)</Text>
                         </View>
                     </View>
                 )}
@@ -309,10 +396,10 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     headerTitle: {
-        fontSize: 12,
+        fontSize: 14,
         fontWeight: '700',
-        color: '#71717a',
-        letterSpacing: 2,
+        color: '#a1a1aa',
+        letterSpacing: 1,
     },
     refreshButton: {
         width: 36,
@@ -335,12 +422,17 @@ const styles = StyleSheet.create({
     phaseHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         marginBottom: 12,
     },
     phaseName: {
         fontSize: 24,
         fontWeight: '700',
+    },
+    phaseSubname: {
+        fontSize: 12,
+        color: '#71717a',
+        marginTop: 2,
     },
     capBadge: {
         backgroundColor: '#27272a',
@@ -438,6 +530,10 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: '#fff',
+        flex: 1,
+    },
+    helpButton: {
+        padding: 4,
     },
     conditionDetail: {
         fontSize: 12,
@@ -506,5 +602,50 @@ const styles = StyleSheet.create({
     riskValue: {
         fontSize: 14,
         fontWeight: '600',
+    },
+    // Modal styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 24,
+    },
+    modalContent: {
+        backgroundColor: '#18181b',
+        borderRadius: 16,
+        padding: 20,
+        width: '100%',
+        maxWidth: 340,
+    },
+    modalHeader: {
+        marginBottom: 16,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#fff',
+        marginBottom: 4,
+    },
+    modalSubtitle: {
+        fontSize: 12,
+        color: '#71717a',
+    },
+    modalText: {
+        fontSize: 14,
+        color: '#a1a1aa',
+        lineHeight: 22,
+    },
+    modalCloseBtn: {
+        marginTop: 20,
+        backgroundColor: '#27272a',
+        borderRadius: 8,
+        paddingVertical: 12,
+        alignItems: 'center',
+    },
+    modalCloseBtnText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#fff',
     },
 });

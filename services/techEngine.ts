@@ -54,21 +54,79 @@ interface ConditionDef {
     id: string;
     group: ConditionGroup;
     name: string;
+    nameCN: string;
+    explanation: string;
     defaultEnabled: boolean;
 }
 
 export const CONDITION_DEFS: ConditionDef[] = [
     // Engine Gates
-    { id: 'price_vs_200d', group: 'Gate', name: 'Price vs 200D MA', defaultEnabled: true },
-    { id: 'ma_slope_flat', group: 'Gate', name: 'MA Slope Flatten', defaultEnabled: true },
-    { id: 'higher_low', group: 'Gate', name: 'Higher Low', defaultEnabled: true },
-    { id: 'vol_compression', group: 'Gate', name: 'Volatility Compression', defaultEnabled: true },
+    {
+        id: 'price_vs_200d',
+        group: 'Gate',
+        name: 'Price vs 200D MA',
+        nameCN: '價格 vs 長期均線',
+        explanation: '觀察價格與 200 日均線的距離。當價格接近或突破均線時，代表長期趨勢可能正在轉變。均線是市場成本的共識，往往是機構的心理防線。',
+        defaultEnabled: true
+    },
+    {
+        id: 'ma_slope_flat',
+        group: 'Gate',
+        name: 'MA Slope Flatten',
+        nameCN: '均線斜率趨平',
+        explanation: '觀察長期均線的斜率變化。當均線從下跌轉為走平，代表下跌動能正在衰竭，是趨勢反轉的必要條件。',
+        defaultEnabled: true
+    },
+    {
+        id: 'higher_low',
+        group: 'Gate',
+        name: 'Higher Low',
+        nameCN: '結構性低點抬升',
+        explanation: '比較近期兩個低點，確認是否出現「更高的低點」。這是道氏理論的基礎，代表買盤在更高的價格願意承接。',
+        defaultEnabled: true
+    },
+    {
+        id: 'vol_compression',
+        group: 'Gate',
+        name: 'Volatility Compression',
+        nameCN: '波動率壓縮',
+        explanation: '當波動率降至歷史低位時，代表市場正在蓄能。如同彈簧壓縮，低波動往往是大行情的前兆。',
+        defaultEnabled: true
+    },
 
     // Evidence Boosters
-    { id: 'momentum_divergence', group: 'Booster', name: 'Momentum Divergence', defaultEnabled: true },
-    { id: 'volume_confirmation', group: 'Booster', name: 'Volume Confirmation', defaultEnabled: false },
-    { id: 'range_breakout', group: 'Booster', name: 'Range Breakout', defaultEnabled: false },
-    { id: 'vol_expansion', group: 'Booster', name: 'Volatility Expansion', defaultEnabled: true },
+    {
+        id: 'momentum_divergence',
+        group: 'Booster',
+        name: 'Momentum Divergence',
+        nameCN: '動能背離',
+        explanation: '當價格創新低但 RSI 指標未創新低時，形成「看漲背離」。這代表賣壓正在減弱，是反轉的早期信號。',
+        defaultEnabled: true
+    },
+    {
+        id: 'volume_confirmation',
+        group: 'Booster',
+        name: 'Volume Confirmation',
+        nameCN: '成交量確認',
+        explanation: '觀察上漲時是否伴隨放量。沒有成交量支持的價格變動通常不可持續，量價配合是驗證趨勢真實性的關鍵。',
+        defaultEnabled: false
+    },
+    {
+        id: 'range_breakout',
+        group: 'Booster',
+        name: 'Range Breakout',
+        nameCN: '區間突破',
+        explanation: '觀察價格是否突破近 90 天的高點。長期盤整後的突破，通常代表新趨勢的開始。',
+        defaultEnabled: false
+    },
+    {
+        id: 'vol_expansion',
+        group: 'Booster',
+        name: 'Volatility Expansion',
+        nameCN: '波動率擴張',
+        explanation: '當短期波動率突然高於長期波動率 1.5 倍以上，代表市場正在變盤。若方向向下則需警惕假突破。',
+        defaultEnabled: true
+    },
 ];
 
 // ============ Individual Condition Evaluators ============
