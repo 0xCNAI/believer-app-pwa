@@ -1026,7 +1026,7 @@ const styles = StyleSheet.create({
     envTitle: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#52525b',
+        color: '#a1a1aa',
         flex: 1,
     },
     readOnlyBadge: {
@@ -1043,7 +1043,7 @@ const styles = StyleSheet.create({
     },
     envDesc: {
         fontSize: 12,
-        color: '#3f3f46',
+        color: '#71717a',
         lineHeight: 18,
         marginBottom: 16,
     },
@@ -1060,7 +1060,7 @@ const styles = StyleSheet.create({
     },
     envLabel: {
         fontSize: 14,
-        color: '#52525b',
+        color: '#a1a1aa',
     },
     envValueRow: {
         alignItems: 'flex-end',
@@ -1071,7 +1071,7 @@ const styles = StyleSheet.create({
     },
     envRaw: {
         fontSize: 11,
-        color: '#3f3f46',
+        color: '#71717a',
         marginTop: 2,
     },
     envDivider: {
