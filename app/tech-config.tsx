@@ -39,13 +39,48 @@ function HelpModal({ visible, onClose, title, nameCN, explanation }: HelpModalPr
     );
 }
 
+// Phase 說明內容
+const PHASE_EXPLANATIONS = {
+    Accumulation: {
+        name: '蓄積期（Accumulation）',
+        desc: '技術結構仍為下行或未修復\n市場尚未取得反轉資格\n本階段目的：排除假反轉',
+    },
+    Transition: {
+        name: '過渡期（Transition）',
+        desc: '部分關鍵結構條件成立\n技術面不再否定反轉\n本階段目的：避免誤判',
+    },
+    Expansion: {
+        name: '展開期（Expansion）',
+        desc: '多數結構條件成立\n技術結構已轉向\n本階段目的：確認反轉',
+    },
+};
+
+// Gate 條件與 Phase 關係
+const GATE_PHASE_RELATION: Record<string, string> = {
+    'price_vs_200d': '此條件是進入「過渡期」的必要條件之一',
+    'ma_slope_flat': '此條件是進入「過渡期」的必要條件之一',
+    'higher_low': '此條件是進入「過渡期」的必要條件之一',
+    'vol_compression': '此條件是進入「過渡期」的必要條件之一',
+};
+
 // 獲取條件的中文名稱和說明
 function getConditionInfo(id: string) {
+    // Special case for phase explanation
+    if (id === 'phase_explain') {
+        return {
+            nameCN: 'Phase 階段說明',
+            name: 'Phase Explanation',
+            explanation: `${PHASE_EXPLANATIONS.Accumulation.name}\n${PHASE_EXPLANATIONS.Accumulation.desc}\n\n${PHASE_EXPLANATIONS.Transition.name}\n${PHASE_EXPLANATIONS.Transition.desc}\n\n${PHASE_EXPLANATIONS.Expansion.name}\n${PHASE_EXPLANATIONS.Expansion.desc}`,
+            phaseRelation: '',
+        };
+    }
+
     const def = CONDITION_DEFS.find(d => d.id === id);
     return {
         nameCN: def?.nameCN || def?.name || id,
         name: def?.name || id,
         explanation: def?.explanation || '',
+        phaseRelation: GATE_PHASE_RELATION[id] || '',
     };
 }
 
@@ -164,41 +199,105 @@ export default function TechConfigScreen() {
             </View>
 
             <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-                {/* Phase Display */}
+                {/* Phase Flow Visualization (NEW V2) */}
                 {phaseResult && (
-                    <View style={styles.phaseCard}>
-                        <View style={styles.phaseHeader}>
-                            <View>
-                                <Text style={[styles.phaseName, { color: phaseColors[phaseResult.phase] }]}>
-                                    {phaseNames[phaseResult.phase]}
-                                </Text>
-                                <Text style={styles.phaseSubname}>{phaseResult.phase}</Text>
+                    <View style={styles.phaseFlowCard}>
+                        <Text style={styles.phaseFlowTitle}>技術結構流程</Text>
+
+                        {/* Phase Progress Line */}
+                        <View style={styles.phaseFlowBar}>
+                            {/* 蓄積期 */}
+                            <View style={styles.phaseNode}>
+                                <View style={[
+                                    styles.phaseCircle,
+                                    phaseResult.phase === 'Accumulation' && styles.phaseCircleActive
+                                ]}>
+                                    {phaseResult.phase === 'Accumulation' ? (
+                                        <View style={styles.phaseCircleFill} />
+                                    ) : (
+                                        <Ionicons name="checkmark" size={12} color="#22c55e" />
+                                    )}
+                                </View>
+                                <Text style={[
+                                    styles.phaseNodeLabel,
+                                    phaseResult.phase === 'Accumulation' && styles.phaseNodeLabelActive
+                                ]}>蓄積期</Text>
                             </View>
-                            <View style={styles.capBadge}>
-                                <Text style={styles.capText}>上限 {phaseResult.adjustedCap}</Text>
+
+                            {/* Line 1 */}
+                            <View style={[
+                                styles.phaseLine,
+                                phaseResult.phase !== 'Accumulation' && styles.phaseLineFilled
+                            ]} />
+
+                            {/* 過渡期 */}
+                            <View style={styles.phaseNode}>
+                                <View style={[
+                                    styles.phaseCircle,
+                                    phaseResult.phase === 'Transition' && styles.phaseCircleActive,
+                                    phaseResult.phase === 'Expansion' && styles.phaseCirclePassed
+                                ]}>
+                                    {phaseResult.phase === 'Transition' ? (
+                                        <View style={styles.phaseCircleFill} />
+                                    ) : phaseResult.phase === 'Expansion' ? (
+                                        <Ionicons name="checkmark" size={12} color="#22c55e" />
+                                    ) : null}
+                                </View>
+                                <Text style={[
+                                    styles.phaseNodeLabel,
+                                    phaseResult.phase === 'Transition' && styles.phaseNodeLabelActive
+                                ]}>過渡期</Text>
+                            </View>
+
+                            {/* Line 2 */}
+                            <View style={[
+                                styles.phaseLine,
+                                phaseResult.phase === 'Expansion' && styles.phaseLineFilled
+                            ]} />
+
+                            {/* 展開期 */}
+                            <View style={styles.phaseNode}>
+                                <View style={[
+                                    styles.phaseCircle,
+                                    phaseResult.phase === 'Expansion' && styles.phaseCircleActive
+                                ]}>
+                                    {phaseResult.phase === 'Expansion' && (
+                                        <View style={styles.phaseCircleFill} />
+                                    )}
+                                </View>
+                                <Text style={[
+                                    styles.phaseNodeLabel,
+                                    phaseResult.phase === 'Expansion' && styles.phaseNodeLabelActive
+                                ]}>展開期</Text>
                             </View>
                         </View>
-                        <View style={styles.phaseStats}>
-                            <View style={styles.statItem}>
-                                <Text style={styles.statValue}>{Math.round(phaseResult.techScore)}</Text>
-                                <Text style={styles.statLabel}>技術分</Text>
+
+                        {/* Current Phase + Help */}
+                        <View style={styles.phaseCurrentRow}>
+                            <View style={styles.phaseCurrentInfo}>
+                                <Text style={styles.phaseCurrentLabel}>目前階段：</Text>
+                                <Text style={[styles.phaseCurrentValue, { color: phaseColors[phaseResult.phase] }]}>
+                                    {phaseNames[phaseResult.phase]}
+                                </Text>
                             </View>
-                            <View style={styles.statDivider} />
-                            <View style={styles.statItem}>
-                                <Text style={styles.statValue}>{phaseResult.gatesPassedCount}/4</Text>
-                                <Text style={styles.statLabel}>條件通過</Text>
-                            </View>
-                            {phaseResult.liquidityMultiplier !== 1.0 && (
-                                <>
-                                    <View style={styles.statDivider} />
-                                    <View style={styles.statItem}>
-                                        <Text style={[styles.statValue, { color: phaseResult.liquidityMultiplier > 1 ? '#22c55e' : '#ef4444' }]}>
-                                            ×{phaseResult.liquidityMultiplier.toFixed(1)}
-                                        </Text>
-                                        <Text style={styles.statLabel}>流動性</Text>
-                                    </View>
-                                </>
-                            )}
+                            <TouchableOpacity
+                                style={styles.phaseHelpBtn}
+                                onPress={() => setHelpModal({ visible: true, id: 'phase_explain' })}
+                            >
+                                <Ionicons name="help-circle-outline" size={20} color="#52525b" />
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Next Phase Requirements */}
+                        <View style={styles.phaseNextInfo}>
+                            <Text style={styles.phaseNextText}>
+                                {phaseResult.phase === 'Accumulation'
+                                    ? `進入過渡期需要：${phaseResult.gatesPassedCount} / 4 條件成立`
+                                    : phaseResult.phase === 'Transition'
+                                        ? `進入展開期需要：${phaseResult.gatesPassedCount} / 4 條件成立`
+                                        : '已進入展開期，技術結構已轉向'
+                                }
+                            </Text>
                         </View>
                     </View>
                 )}
@@ -272,6 +371,14 @@ export default function TechConfigScreen() {
                                         <View style={styles.scoreBar}>
                                             <View style={[styles.scoreBarFill, { width: `${condition.score * 100}%` }]} />
                                         </View>
+                                        {/* Phase Relationship */}
+                                        {info.phaseRelation && (
+                                            <View style={styles.phaseRelationBox}>
+                                                <Text style={styles.phaseRelationText}>
+                                                    {info.phaseRelation}
+                                                </Text>
+                                            </View>
+                                        )}
                                     </View>
                                 )}
                             </View>
@@ -947,5 +1054,125 @@ const styles = StyleSheet.create({
         color: '#3f3f46',
         textAlign: 'center',
         marginTop: 12,
+    },
+
+    // Phase Flow Styles (V2)
+    phaseFlowCard: {
+        backgroundColor: '#0c0c0f',
+        borderRadius: 20,
+        padding: 24,
+        marginBottom: 24,
+        borderWidth: 1,
+        borderColor: '#1f1f22',
+    },
+    phaseFlowTitle: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#52525b',
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+        marginBottom: 20,
+        textAlign: 'center',
+    },
+    phaseFlowBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 24,
+    },
+    phaseNode: {
+        alignItems: 'center',
+    },
+    phaseCircle: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: '#3f3f46',
+        backgroundColor: '#18181b',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 8,
+    },
+    phaseCircleActive: {
+        borderColor: '#22c55e',
+        backgroundColor: '#22c55e20',
+    },
+    phaseCirclePassed: {
+        borderColor: '#22c55e',
+        backgroundColor: '#22c55e20',
+    },
+    phaseCircleFill: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: '#22c55e',
+    },
+    phaseNodeLabel: {
+        fontSize: 12,
+        color: '#52525b',
+        fontWeight: '500',
+    },
+    phaseNodeLabelActive: {
+        color: '#fafafa',
+        fontWeight: '700',
+    },
+    phaseLine: {
+        width: 48,
+        height: 2,
+        backgroundColor: '#27272a',
+        marginHorizontal: 8,
+        marginBottom: 24,
+        borderStyle: 'dashed',
+    },
+    phaseLineFilled: {
+        backgroundColor: '#22c55e',
+    },
+    phaseCurrentRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 12,
+    },
+    phaseCurrentInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    phaseCurrentLabel: {
+        fontSize: 14,
+        color: '#71717a',
+    },
+    phaseCurrentValue: {
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    phaseHelpBtn: {
+        marginLeft: 8,
+        padding: 4,
+    },
+    phaseNextInfo: {
+        backgroundColor: '#18181b',
+        borderRadius: 12,
+        padding: 12,
+        alignItems: 'center',
+    },
+    phaseNextText: {
+        fontSize: 13,
+        color: '#a1a1aa',
+        fontWeight: '500',
+    },
+    phaseRelationBox: {
+        marginTop: 12,
+        backgroundColor: '#22c55e10',
+        borderRadius: 8,
+        padding: 10,
+        borderWidth: 1,
+        borderColor: '#22c55e30',
+    },
+    phaseRelationText: {
+        fontSize: 12,
+        color: '#22c55e',
+        fontStyle: 'italic',
+        textAlign: 'center',
     },
 });

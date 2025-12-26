@@ -16,14 +16,23 @@ export default function DashboardScreen() {
     const [expandedCat, setExpandedCat] = useState<string | null>(null);
     const [showNotifications, setShowNotifications] = useState(false);
 
-    // 1. BTC Price Polling (Mock 10s)
+    // 1. BTC Price - Real API
     useEffect(() => {
-        const interval = setInterval(() => {
-            const volatility = (Math.random() - 0.5) * 50;
-            setBtcPrice(btcPrice + volatility);
-        }, 10000);
+        const fetchBtcPrice = async () => {
+            try {
+                const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+                const data = await response.json();
+                if (data.bitcoin?.usd) {
+                    setBtcPrice(data.bitcoin.usd);
+                }
+            } catch (error) {
+                console.log('BTC price fetch error:', error);
+            }
+        };
+        fetchBtcPrice();
+        const interval = setInterval(fetchBtcPrice, 60000); // Update every 60s
         return () => clearInterval(interval);
-    }, [btcPrice]);
+    }, []);
 
     const onRefresh = () => {
         setRefreshing(true);
@@ -80,14 +89,9 @@ export default function DashboardScreen() {
                 contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 100 }}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}
             >
-                {/* V1 Header: BTC Anchor */}
+                {/* BTC Price Header */}
                 <View style={styles.marketAnchor}>
-                    <Text style={styles.anchorLabel}>市場錨點 (Market Anchor)</Text>
                     <Text style={styles.anchorValue}>BTC ${roundedPrice}</Text>
-                    <View style={styles.anchorStats}>
-                        <Text style={styles.statText}>+2.4% (7天)</Text>
-                        <Text style={styles.statText}>成交量: 低</Text>
-                    </View>
                 </View>
 
                 {/* Core Metric: Reversal Index (V2 Simplified) */}
@@ -108,7 +112,7 @@ export default function DashboardScreen() {
 
                     {/* V2: Reversal Progress Bar (X/8 Conditions) */}
                     <View style={styles.progressSection}>
-                        <Text style={styles.progressLabel}>反轉進程（Reversal Progress）</Text>
+                        <Text style={styles.progressLabel}>與反轉的距離</Text>
                         <View style={styles.progressBar}>
                             {[...Array(8)].map((_, i) => (
                                 <View
