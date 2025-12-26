@@ -15,15 +15,17 @@ export default function DashboardScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [expandedCat, setExpandedCat] = useState<string | null>(null);
     const [showNotifications, setShowNotifications] = useState(false);
+    const [btc24hChange, setBtc24hChange] = useState<number | null>(null);
 
-    // 1. BTC Price - Real API
+    // 1. BTC Price - Real API with 24h change
     useEffect(() => {
         const fetchBtcPrice = async () => {
             try {
-                const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+                const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true');
                 const data = await response.json();
                 if (data.bitcoin?.usd) {
                     setBtcPrice(data.bitcoin.usd);
+                    setBtc24hChange(data.bitcoin.usd_24h_change);
                 }
             } catch (error) {
                 console.log('BTC price fetch error:', error);
@@ -92,6 +94,14 @@ export default function DashboardScreen() {
                 {/* BTC Price Header */}
                 <View style={styles.marketAnchor}>
                     <Text style={styles.anchorValue}>BTC ${roundedPrice}</Text>
+                    {btc24hChange !== null && (
+                        <Text style={[
+                            styles.btcChange,
+                            { color: btc24hChange >= 0 ? '#22c55e' : '#ef4444' }
+                        ]}>
+                            {btc24hChange >= 0 ? '+' : ''}{btc24hChange.toFixed(2)}% (24h)
+                        </Text>
+                    )}
                 </View>
 
                 {/* Core Metric: Reversal Index (V2 Simplified) */}
@@ -103,9 +113,9 @@ export default function DashboardScreen() {
                         </View>
                     </View>
 
-                    {/* V2: Just the number, no weights */}
+                    {/* V2: Just the number, bright color */}
                     <View style={styles.indexMeter}>
-                        <Text style={styles.indexValue}>
+                        <Text style={[styles.indexValue, { color: '#22c55e' }]}>
                             {reversalIndex.toFixed(0)}
                         </Text>
                     </View>
@@ -416,6 +426,11 @@ const styles = StyleSheet.create({
     indexValue: {
         fontSize: 96, // text-8xl
         fontWeight: '900',
+    },
+    btcChange: {
+        fontSize: 14,
+        fontWeight: '600',
+        marginTop: 4,
     },
     barContainer: {
         width: '100%',
