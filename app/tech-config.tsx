@@ -243,25 +243,25 @@ export default function TechConfigScreen() {
                                                 {status.icon}
                                             </Text>
                                         </View>
-                                        <Text style={styles.conditionName}>{info.nameCN}</Text>
+                                        <View style={styles.conditionTitleRow}>
+                                            <Text style={styles.conditionName}>{info.nameCN}</Text>
+                                            <TouchableOpacity
+                                                style={styles.helpButtonInline}
+                                                onPress={() => showHelp(condition.id)}
+                                            >
+                                                <Ionicons name="help-circle-outline" size={18} color="#52525b" />
+                                            </TouchableOpacity>
+                                        </View>
                                     </View>
-                                    <View style={styles.conditionRight}>
-                                        <TouchableOpacity
-                                            style={styles.helpButton}
-                                            onPress={() => showHelp(condition.id)}
-                                        >
-                                            <Ionicons name="help-circle-outline" size={20} color="#52525b" />
-                                        </TouchableOpacity>
-                                        <Switch
-                                            value={enabledConditions[condition.id]}
-                                            onValueChange={(value) => {
-                                                setConditionEnabled(condition.id, value);
-                                                evaluateAll();
-                                            }}
-                                            trackColor={{ false: '#27272a', true: '#22c55e40' }}
-                                            thumbColor={enabledConditions[condition.id] ? '#22c55e' : '#52525b'}
-                                        />
-                                    </View>
+                                    <Switch
+                                        value={enabledConditions[condition.id]}
+                                        onValueChange={(value) => {
+                                            setConditionEnabled(condition.id, value);
+                                            evaluateAll();
+                                        }}
+                                        trackColor={{ false: '#27272a', true: '#22c55e40' }}
+                                        thumbColor={enabledConditions[condition.id] ? '#22c55e' : '#52525b'}
+                                    />
                                 </TouchableOpacity>
 
                                 {/* Expanded Detail */}
@@ -316,25 +316,25 @@ export default function TechConfigScreen() {
                                                 {status.icon}
                                             </Text>
                                         </View>
-                                        <Text style={styles.conditionName}>{info.nameCN}</Text>
+                                        <View style={styles.conditionTitleRow}>
+                                            <Text style={styles.conditionName}>{info.nameCN}</Text>
+                                            <TouchableOpacity
+                                                style={styles.helpButtonInline}
+                                                onPress={() => showHelp(condition.id)}
+                                            >
+                                                <Ionicons name="help-circle-outline" size={18} color="#52525b" />
+                                            </TouchableOpacity>
+                                        </View>
                                     </View>
-                                    <View style={styles.conditionRight}>
-                                        <TouchableOpacity
-                                            style={styles.helpButton}
-                                            onPress={() => showHelp(condition.id)}
-                                        >
-                                            <Ionicons name="help-circle-outline" size={20} color="#52525b" />
-                                        </TouchableOpacity>
-                                        <Switch
-                                            value={enabledConditions[condition.id]}
-                                            onValueChange={(value) => {
-                                                setConditionEnabled(condition.id, value);
-                                                evaluateAll();
-                                            }}
-                                            trackColor={{ false: '#27272a', true: '#3b82f640' }}
-                                            thumbColor={enabledConditions[condition.id] ? '#3b82f6' : '#52525b'}
-                                        />
-                                    </View>
+                                    <Switch
+                                        value={enabledConditions[condition.id]}
+                                        onValueChange={(value) => {
+                                            setConditionEnabled(condition.id, value);
+                                            evaluateAll();
+                                        }}
+                                        trackColor={{ false: '#27272a', true: '#3b82f640' }}
+                                        thumbColor={enabledConditions[condition.id] ? '#3b82f6' : '#52525b'}
+                                    />
                                 </TouchableOpacity>
 
                                 {isExpanded && (
@@ -361,7 +361,15 @@ export default function TechConfigScreen() {
                     </View>
 
                     <View style={styles.paramCard}>
-                        <Text style={styles.paramLabel}>MA 週期</Text>
+                        <View style={styles.paramLabelRow}>
+                            <Text style={styles.paramLabel}>MA 週期</Text>
+                            <TouchableOpacity
+                                style={styles.helpButtonInline}
+                                onPress={() => showHelp('price_vs_200d')}
+                            >
+                                <Ionicons name="help-circle-outline" size={16} color="#52525b" />
+                            </TouchableOpacity>
+                        </View>
                         <View style={styles.paramOptions}>
                             {([120, 200, 250] as const).map(val => (
                                 <TouchableOpacity
@@ -385,7 +393,15 @@ export default function TechConfigScreen() {
                     </View>
 
                     <View style={styles.paramCard}>
-                        <Text style={styles.paramLabel}>結構判定窗口</Text>
+                        <View style={styles.paramLabelRow}>
+                            <Text style={styles.paramLabel}>結構判定窗口</Text>
+                            <TouchableOpacity
+                                style={styles.helpButtonInline}
+                                onPress={() => showHelp('higher_low')}
+                            >
+                                <Ionicons name="help-circle-outline" size={16} color="#52525b" />
+                            </TouchableOpacity>
+                        </View>
                         <View style={styles.paramOptions}>
                             {([4, 6, 8] as const).map(val => (
                                 <TouchableOpacity
@@ -409,7 +425,15 @@ export default function TechConfigScreen() {
                     </View>
 
                     <View style={styles.paramCard}>
-                        <Text style={styles.paramLabel}>波動壓縮閾值</Text>
+                        <View style={styles.paramLabelRow}>
+                            <Text style={styles.paramLabel}>波動壓縮閾值</Text>
+                            <TouchableOpacity
+                                style={styles.helpButtonInline}
+                                onPress={() => showHelp('vol_compression')}
+                            >
+                                <Ionicons name="help-circle-outline" size={16} color="#52525b" />
+                            </TouchableOpacity>
+                        </View>
                         <View style={styles.paramOptions}>
                             {([10, 15, 20] as const).map(val => (
                                 <TouchableOpacity
@@ -693,6 +717,14 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         color: '#e4e4e7',
     },
+    conditionTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    helpButtonInline: {
+        padding: 2,
+    },
     helpButton: {
         padding: 4,
     },
@@ -738,6 +770,11 @@ const styles = StyleSheet.create({
     paramLabel: {
         fontSize: 14,
         color: '#a1a1aa',
+    },
+    paramLabelRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
     },
     paramOptions: {
         flexDirection: 'row',
