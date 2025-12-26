@@ -146,21 +146,29 @@ export default function MomentScreen() {
                     {/* Description */}
                     <Text style={styles.eventDescription}>{currentEvent.description}</Text>
 
-                    {/* Stats Grid */}
-                    <View style={styles.statsGrid}>
-                        <View style={styles.statItem}>
-                            <Text style={styles.statLabel}>市場共識</Text>
-                            <Text style={styles.statValue}>{(getEventProbability(currentEvent) * 100).toFixed(0)}%</Text>
+                    {/* Stats Grid - only for prediction markets */}
+                    {currentEvent.markets && currentEvent.markets.length > 0 ? (
+                        <View style={styles.statsGrid}>
+                            <View style={styles.statItem}>
+                                <Text style={styles.statLabel}>市場共識</Text>
+                                <Text style={styles.statValue}>{(getEventProbability(currentEvent) * 100).toFixed(0)}%</Text>
+                            </View>
+                            <View style={styles.statItem}>
+                                <Text style={styles.statLabel}>市場問題</Text>
+                                <Text style={[styles.statValue, { fontSize: 12 }]} numberOfLines={2}>
+                                    {currentEvent.markets[0]?.question || '-'}
+                                </Text>
+                            </View>
                         </View>
-                        <View style={styles.statItem}>
-                            <Text style={styles.statLabel}>總成交量</Text>
-                            <Text style={styles.statValue}>$2.4M</Text>
+                    ) : (
+                        <View style={styles.sourceInfo}>
+                            <Text style={styles.sourceLabel}>數據來源</Text>
+                            <Text style={styles.sourceName}>{currentEvent.source}</Text>
+                            {currentEvent.sourceUrl && (
+                                <Text style={styles.sourceUrl}>{currentEvent.sourceUrl}</Text>
+                            )}
                         </View>
-                        <View style={styles.statItem}>
-                            <Text style={styles.statLabel}>波動程度</Text>
-                            <Text style={styles.statValue}>高</Text>
-                        </View>
-                    </View>
+                    )}
                 </View>
             </ScrollView>
 
@@ -363,5 +371,30 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '900',
         letterSpacing: 1,
+    },
+    sourceInfo: {
+        backgroundColor: '#18181b',
+        borderRadius: 12,
+        padding: 16,
+        marginTop: 24,
+    },
+    sourceLabel: {
+        fontSize: 12,
+        color: '#71717a',
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+        marginBottom: 8,
+    },
+    sourceName: {
+        fontSize: 18,
+        color: '#fafafa',
+        fontWeight: '700',
+        marginBottom: 8,
+    },
+    sourceUrl: {
+        fontSize: 12,
+        color: '#3b82f6',
+        marginTop: 4,
     },
 });
