@@ -124,7 +124,8 @@ export default function SignalsScreen() {
 
                             {/* Signal List */}
                             {group.signals.map(signal => {
-                                const prob = getEventProbability(signal);
+                                const hasPredictionData = signal.markets && signal.markets.length > 0;
+                                const prob = hasPredictionData ? getEventProbability(signal) : 0;
                                 const isTracked = hasInteracted(signal.id);
 
                                 return (
@@ -141,13 +142,19 @@ export default function SignalsScreen() {
                                             </Text>
                                         </View>
                                         <View style={styles.signalRight}>
-                                            <Text style={[
-                                                styles.signalProb,
-                                                prob >= 0.6 && styles.probHigh,
-                                                prob <= 0.4 && styles.probLow,
-                                            ]}>
-                                                {Math.round(prob * 100)}%
-                                            </Text>
+                                            {hasPredictionData ? (
+                                                <Text style={[
+                                                    styles.signalProb,
+                                                    prob >= 0.6 && styles.probHigh,
+                                                    prob <= 0.4 && styles.probLow,
+                                                ]}>
+                                                    {Math.round(prob * 100)}%
+                                                </Text>
+                                            ) : (
+                                                <Text style={styles.signalSource}>
+                                                    {signal.source}
+                                                </Text>
+                                            )}
                                             {isTracked && (
                                                 <View style={styles.trackedBadge}>
                                                     <Ionicons name="checkmark" size={10} color="#22c55e" />
@@ -302,5 +309,12 @@ const styles = StyleSheet.create({
         backgroundColor: '#22c55e20',
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    signalSource: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#71717a',
+        maxWidth: 80,
+        textAlign: 'right',
     },
 });

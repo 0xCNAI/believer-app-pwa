@@ -3,271 +3,254 @@ export { MarketEvent };
 
 export type EventCategory = 'Macro' | 'Liquidity' | 'Risk' | 'Supply' | 'Political' | 'Narrative';
 
-export const BELIEVER_SIGNALS: MarketEvent[] = [
-    // --- ⓪ Liquidity Regime (The Amplifier) ---
-    {
-        id: 'liq_global_m2',
-        title: '全球 M2 流動性',
-        description: '全球資金是否停止緊縮並開始注入',
-        source: 'Central Banks',
-        category: 'Liquidity',
-        slug: 'liq-m2',
-        markets: [{
-            id: 'l1',
-            question: '全球 M2 變動率是否轉正？',
-            outcomePrices: JSON.stringify(["0.60", "0.40"]) as any, // Slightly positive
-            volume: "High",
-            outcomes: ["轉正", "縮減"]
-        }]
-    },
-    {
-        id: 'liq_usd_pressure',
-        title: '美元指數 (DXY) 壓力',
-        description: '美元是否不再強勢吸血',
-        source: 'DXY Index',
-        category: 'Liquidity',
-        slug: 'liq-dxy',
-        markets: [{
-            id: 'l2',
-            question: 'DXY 是否跌破關鍵支撐轉弱？',
-            outcomePrices: JSON.stringify(["0.50", "0.50"]) as any,
-            volume: "Active",
-            outcomes: ["轉弱", "強勢"]
-        }]
-    },
-    {
-        id: 'liq_real_rates',
-        title: '實質利率壓力',
-        description: '實質資金成本是否下降',
-        source: 'Bond Market',
-        category: 'Liquidity',
-        slug: 'liq-rates',
-        markets: [{
-            id: 'l3',
-            question: '實質利率是否從高點顯著回落？',
-            outcomePrices: JSON.stringify(["0.40", "0.60"]) as any, // Still high stress
-            volume: "Active",
-            outcomes: ["回落", "高檔"]
-        }]
-    },
+// Source types:
+// - 'prediction_market': Has real probability data (Polymarket, Kalshi)
+// - 'official_data': Government/institutional data (Fed, BLS) - NO probability
+// - 'market_data': Live market metrics (DXY, yields) - NO probability
+// - 'on_chain': Blockchain data (Glassnode, etc.) - NO probability
 
-    // --- ① Macro Policy ---
+export const BELIEVER_SIGNALS: MarketEvent[] = [
+    // ============================================
+    // MACRO - 宏觀趨勢
+    // ============================================
+
+    // 預測市場 - 有真實機率數據
     {
         id: 'macro_rate_cut',
-        title: '利率政策預期',
-        description: '降息預期是否鬆動或是提前',
-        source: 'Polymarket/Fed',
+        title: '聯準會降息預期',
+        description: '2025年首次降息的市場預期機率',
+        source: 'Polymarket',
+        sourceUrl: 'https://polymarket.com/event/fed-rate-decision',
         category: 'Macro',
         slug: 'macro-rate',
         markets: [{
             id: 'm1',
-            question: '降息機率是否顯著上升？',
+            question: '2025年第一次降息將在何時？',
             outcomePrices: JSON.stringify(["0.65", "0.35"]) as any,
             volume: "High",
-            outcomes: ["上升", "持平/下降"]
-        }]
-    },
-    {
-        id: 'macro_inflation',
-        title: '通膨趨勢 (CPI/PCE)',
-        description: '通膨下行趨勢是否確立',
-        source: 'Official Data',
-        category: 'Macro',
-        slug: 'macro-inflation',
-        markets: [{
-            id: 'm2',
-            question: '通膨數據是否顯示持續改善？',
-            outcomePrices: JSON.stringify(["0.70", "0.30"]) as any,
-            volume: "Active",
-            outcomes: ["改善", "惡化/停滯"]
+            outcomes: ["Q1-Q2", "Q3以後"]
         }]
     },
     {
         id: 'macro_yield_curve',
-        title: '殖利率曲線結構',
-        description: '長短期利差與實質利率壓力',
-        source: 'Kalshi/Rates',
+        title: '殖利率曲線預測',
+        description: '2/10年期利差正常化的市場預期',
+        source: 'Kalshi',
+        sourceUrl: 'https://kalshi.com/markets/yield-curve',
         category: 'Macro',
         slug: 'macro-yield',
         markets: [{
             id: 'm3',
-            question: '殖利率曲線是否趨於陡峭化（正常化）？',
+            question: '殖利率曲線是否將在2025年解除倒掛？',
             outcomePrices: JSON.stringify(["0.55", "0.45"]) as any,
-            volume: "Active",
-            outcomes: ["陡峭化", "倒掛持續"]
-        }]
-    },
-
-    // --- ② Market Risk Sentiment ---
-    {
-        id: 'risk_on_off',
-        title: '風險偏好 (Risk-On/Off)',
-        description: '市場是否開始承受壞消息',
-        source: 'Market Data',
-        category: 'Risk',
-        slug: 'risk-sentiment',
-        markets: [{
-            id: 'r1',
-            question: '傳統風險資產是否展現抗跌性？',
-            outcomePrices: JSON.stringify(["0.60", "0.40"]) as any,
-            volume: "High",
-            outcomes: ["抗跌", "脆弱"]
-        }]
-    },
-    {
-        id: 'risk_volatility',
-        title: '波動率壓縮',
-        description: '波動率壓縮與方向選擇',
-        source: 'Options IV',
-        category: 'Risk',
-        slug: 'risk-vol',
-        markets: [{
-            id: 'r2',
-            question: '隱含波動率 (IV) 是否處於歷史低位並開始反彈？',
-            outcomePrices: JSON.stringify(["0.80", "0.20"]) as any,
             volume: "Active",
             outcomes: ["是", "否"]
         }]
     },
+
+    // 官方數據 - 無機率，只有狀態追蹤
+    {
+        id: 'macro_inflation',
+        title: 'CPI/PCE 通膨數據',
+        description: '美國官方通膨數據追蹤（每月發佈）',
+        source: 'BLS / BEA',
+        sourceUrl: 'https://www.bls.gov/cpi/',
+        category: 'Macro',
+        slug: 'macro-inflation',
+        markets: [] // 官方數據無預測市場
+    },
+
+    // ============================================
+    // LIQUIDITY - 流動性
+    // ============================================
+
+    // 市場數據 - 無機率
+    {
+        id: 'liq_usd_pressure',
+        title: '美元指數 (DXY)',
+        description: '美元強弱對風險資產的壓力',
+        source: 'TradingView',
+        sourceUrl: 'https://www.tradingview.com/symbols/TVC-DXY/',
+        category: 'Liquidity',
+        slug: 'liq-dxy',
+        markets: []
+    },
+    {
+        id: 'liq_global_m2',
+        title: '全球 M2 流動性',
+        description: '主要央行貨幣供應變化率',
+        source: 'FRED',
+        sourceUrl: 'https://fred.stlouisfed.org/series/M2SL',
+        category: 'Liquidity',
+        slug: 'liq-m2',
+        markets: []
+    },
+    {
+        id: 'liq_real_rates',
+        title: '實質利率 (TIPS)',
+        description: '10年期抗通膨債券殖利率',
+        source: 'FRED',
+        sourceUrl: 'https://fred.stlouisfed.org/series/DFII10',
+        category: 'Liquidity',
+        slug: 'liq-rates',
+        markets: []
+    },
+
+    // ============================================
+    // RISK - 風險情緒
+    // ============================================
+
+    // 市場數據 - 無機率
+    {
+        id: 'risk_volatility',
+        title: 'VIX 恐慌指數',
+        description: 'S&P 500 隱含波動率',
+        source: 'CBOE',
+        sourceUrl: 'https://www.cboe.com/tradable_products/vix/',
+        category: 'Risk',
+        slug: 'risk-vix',
+        markets: []
+    },
+    {
+        id: 'risk_btc_vol',
+        title: 'BTC 隱含波動率',
+        description: 'Deribit ATM IV 指數',
+        source: 'Deribit',
+        sourceUrl: 'https://www.deribit.com/statistics/BTC/volatility-index',
+        category: 'Risk',
+        slug: 'risk-btc-vol',
+        markets: []
+    },
     {
         id: 'risk_btc_dom',
         title: '比特幣市佔率 (BTC.D)',
-        description: '資金避險與吸血效應',
-        source: 'Market Structure',
+        description: 'BTC 在加密貨幣總市值中的占比',
+        source: 'TradingView',
+        sourceUrl: 'https://www.tradingview.com/symbols/CRYPTOCAP-BTC.D/',
         category: 'Risk',
         slug: 'risk-btc-dom',
-        markets: [{
-            id: 'r3',
-            question: 'BTC.D 是否持續上升吸血 Altcoins？',
-            outcomePrices: JSON.stringify(["0.75", "0.25"]) as any,
-            volume: "High",
-            outcomes: ["吸血中", "流出"]
-        }]
+        markets: []
     },
 
-    // --- ③ Structural Supply/Demand (BTC Only) ---
+    // ============================================
+    // SUPPLY - 供給結構 (鏈上數據)
+    // ============================================
+
+    // 鏈上數據 - 無機率
     {
         id: 'supply_exchange_flow',
         title: '交易所淨流量',
-        description: '現貨供給壓力趨勢',
-        source: 'On-Chain',
+        description: 'BTC 交易所餘額與淨流出追蹤',
+        source: 'Glassnode',
+        sourceUrl: 'https://studio.glassnode.com/metrics?m=distribution.ExchangeNetPositionChange',
         category: 'Supply',
         slug: 'supply-exchange',
-        markets: [{
-            id: 's1',
-            question: '交易所淨流出是否加速？',
-            outcomePrices: JSON.stringify(["0.50", "0.50"]) as any,
-            volume: "High",
-            outcomes: ["加速流出", "流入/持平"]
-        }]
+        markets: []
     },
     {
         id: 'supply_lth',
-        title: '長期持有者 (LTH)',
-        description: '長期持有者是否停止拋售',
-        source: 'On-Chain',
+        title: '長期持有者 (LTH) 供應',
+        description: '持幣超過155天的地址餘額變化',
+        source: 'Glassnode',
+        sourceUrl: 'https://studio.glassnode.com/metrics?m=supply.LTHSum',
         category: 'Supply',
         slug: 'supply-lth',
-        markets: [{
-            id: 's2',
-            question: 'LTH 供應量是否開始回升（累積）？',
-            outcomePrices: JSON.stringify(["0.45", "0.55"]) as any,
-            volume: "Active",
-            outcomes: ["累積中", "派發中"]
-        }]
+        markets: []
     },
     {
         id: 'supply_sth',
-        title: '短期持有者 (STH) 拋壓',
-        description: '短期持有者虧損賣壓釋放',
-        source: 'On-Chain',
+        title: '短期持有者 (STH) MVRV',
+        description: 'STH 未實現盈虧比率',
+        source: 'Glassnode',
+        sourceUrl: 'https://studio.glassnode.com/metrics?m=market.SthMvrv',
         category: 'Supply',
         slug: 'supply-sth',
-        markets: [{
-            id: 's3',
-            question: 'STH 虧損籌碼是否已清洗完畢？',
-            outcomePrices: JSON.stringify(["0.30", "0.70"]) as any,
-            volume: "Active",
-            outcomes: ["完畢", "仍有賣壓"]
-        }]
-    },
-    {
-        id: 'supply_whale',
-        title: '巨鯨累積',
-        description: '大額資金系統性吸收模式',
-        source: 'On-Chain',
-        category: 'Supply',
-        slug: 'supply-whale',
-        markets: [{
-            id: 's4',
-            question: '是否觀測到鯨魚群體的一致性買入？',
-            outcomePrices: JSON.stringify(["0.60", "0.40"]) as any,
-            volume: "Medium",
-            outcomes: ["有", "無"]
-        }]
+        markets: []
     },
     {
         id: 'supply_etf',
         title: 'ETF 資金流向',
-        description: '機構買盤連續性',
-        source: 'ETF Data',
+        description: '美國現貨 BTC ETF 每日淨流入',
+        source: 'SoSoValue',
+        sourceUrl: 'https://sosovalue.xyz/assets/etf/us-btc-spot',
         category: 'Supply',
         slug: 'supply-etf',
-        markets: [{
-            id: 's5',
-            question: 'ETF 是否呈現連續多日淨流入？',
-            outcomePrices: JSON.stringify(["0.40", "0.60"]) as any,
-            volume: "High",
-            outcomes: ["連續流入", "流出/震盪"]
-        }]
+        markets: []
     },
 
-    // --- ④ Political & Regulatory ---
+    // ============================================
+    // POLITICAL - 政治與監管
+    // ============================================
+
+    // 預測市場 - 有真實機率數據
     {
-        id: 'pol_election',
-        title: '美國政治局勢',
-        description: '政治立場對加密貨幣的轉向',
+        id: 'pol_btc_reserve',
+        title: '美國戰略比特幣儲備',
+        description: '美國是否將建立國家級 BTC 儲備',
         source: 'Polymarket',
+        sourceUrl: 'https://polymarket.com/event/us-bitcoin-reserve',
         category: 'Political',
-        slug: 'pol-election',
+        slug: 'pol-btc-reserve',
         markets: [{
             id: 'p1',
-            question: '對加密友善的政治勝率是否上升？',
-            outcomePrices: JSON.stringify(["0.55", "0.45"]) as any,
-            volume: "Active",
-            outcomes: ["上升", "下降"]
+            question: '美國是否將在2025年建立戰略 BTC 儲備？',
+            outcomePrices: JSON.stringify(["0.35", "0.65"]) as any,
+            volume: "High",
+            outcomes: ["是", "否"]
         }]
     },
     {
         id: 'pol_regulation',
-        title: '監管進展',
-        description: '法案與監管語氣放鬆',
+        title: '加密法案進展',
+        description: 'FIT21 或其他重大法案通過機率',
         source: 'Polymarket',
+        sourceUrl: 'https://polymarket.com/event/crypto-legislation',
         category: 'Political',
         slug: 'pol-reg',
         markets: [{
             id: 'p2',
-            question: '關鍵加密法案通過機率是否增加？',
-            outcomePrices: JSON.stringify(["0.30", "0.70"]) as any,
-            volume: "Low",
-            outcomes: ["增加", "停滯"]
+            question: '加密法案是否將在2025年通過？',
+            outcomePrices: JSON.stringify(["0.40", "0.60"]) as any,
+            volume: "Active",
+            outcomes: ["通過", "未通過"]
         }]
     },
 
-    // --- ⑤ Narrative Shift ---
+    // ============================================
+    // NARRATIVE - 敘事轉變
+    // ============================================
+
+    // 預測市場
     {
-        id: 'narrative_shift',
-        title: '低機率黑天鵝',
-        description: '長期被忽視敘事的重新定價',
-        source: 'Prediction Mkts',
+        id: 'narrative_btc_100k',
+        title: 'BTC 價格里程碑',
+        description: 'BTC 是否將達到 $100,000',
+        source: 'Polymarket',
+        sourceUrl: 'https://polymarket.com/event/bitcoin-100k',
         category: 'Narrative',
-        slug: 'narrative-shift',
+        slug: 'narrative-100k',
         markets: [{
             id: 'n1',
-            question: '某個低機率敘事的發生機率是否突然跳升？',
-            outcomePrices: JSON.stringify(["0.20", "0.80"]) as any,
-            volume: "Low",
-            outcomes: ["跳升", "低迷"]
+            question: 'BTC 是否將在2025年達到 $100,000？',
+            outcomePrices: JSON.stringify(["0.72", "0.28"]) as any,
+            volume: "Very High",
+            outcomes: ["是", "否"]
+        }]
+    },
+    {
+        id: 'narrative_eth_etf',
+        title: 'ETH 現貨 ETF 審批',
+        description: 'SEC 是否將批准 ETH 現貨 ETF',
+        source: 'Polymarket',
+        sourceUrl: 'https://polymarket.com/event/eth-spot-etf',
+        category: 'Narrative',
+        slug: 'narrative-eth-etf',
+        markets: [{
+            id: 'n2',
+            question: 'ETH 現貨 ETF 是否將在2025年獲批？',
+            outcomePrices: JSON.stringify(["0.85", "0.15"]) as any,
+            volume: "High",
+            outcomes: ["獲批", "未獲批"]
         }]
     }
 ];
@@ -278,18 +261,13 @@ export const fetchUnifiedMarkets = async (
     experience?: ExperienceLevel | null,
     focusAreas?: FocusArea[]
 ): Promise<MarketEvent[]> => {
-    // Debug Log
     console.log('[MarketData] Fetching with prefs:', { experience, focusAreas });
 
     return new Promise((resolve) => {
         setTimeout(() => {
             let events = [...BELIEVER_SIGNALS];
 
-            // 1. Filter/Sort by Experience (Mock Logic)
-            // If novice, maybe hide complex 'Supply' or 'Liquidity' complexity? 
-            // For now, we will just keep all but could prioritize simpler ones.
-
-            // 2. Weight by Focus Area
+            // Filter/sort by focus areas
             if (focusAreas && focusAreas.length > 0) {
                 events = events.sort((a, b) => {
                     const aMatch = isMatch(a, focusAreas);
@@ -301,25 +279,17 @@ export const fetchUnifiedMarkets = async (
             }
 
             resolve(events);
-        }, 500);
+        }, 300);
     });
 };
 
-// Helper to map FocusArea to EventCategory/Slug
+// Helper to map FocusArea to EventCategory
 const isMatch = (event: MarketEvent, focusAreas: FocusArea[]): boolean => {
-    // Map FocusArea to logic
-    // 'macro' -> Category: Macro, Liquidity
-    // 'extreme_repair' -> Category: Risk
-    // 'btc_structure' -> Category: Supply
-    // 'policy' -> Category: Political
-    // 'low_prob' -> Category: Narrative
-
     const cat = event.category;
     if (focusAreas.includes('macro') && (cat === 'Macro' || cat === 'Liquidity')) return true;
     if (focusAreas.includes('extreme_repair') && cat === 'Risk') return true;
     if (focusAreas.includes('btc_structure') && cat === 'Supply') return true;
     if (focusAreas.includes('policy') && cat === 'Political') return true;
     if (focusAreas.includes('low_prob') && cat === 'Narrative') return true;
-
     return false;
 };

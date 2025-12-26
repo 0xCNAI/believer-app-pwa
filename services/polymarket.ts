@@ -4,6 +4,7 @@ export interface MarketEvent {
     description: string;
     category?: string;
     source?: string;
+    sourceUrl?: string;
     slug: string;
     markets: Market[];
 }
