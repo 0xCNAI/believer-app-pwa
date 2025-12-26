@@ -256,6 +256,24 @@ export const BELIEVER_SIGNALS: MarketEvent[] = [
 ];
 
 import { ExperienceLevel, FocusArea } from '@/stores/userStore';
+import { fetchRealPolymarketData, fetchBtcDominance, fetchFearGreedIndex } from './realApi';
+
+// Helper to extract probability from Polymarket market
+const extractProbability = (market: any): number => {
+    try {
+        if (market.markets && market.markets.length > 0) {
+            const prices = market.markets[0].outcomePrices;
+            if (typeof prices === 'string') {
+                const parsed = JSON.parse(prices);
+                return parseFloat(parsed[0]) || 0.5;
+            }
+            if (Array.isArray(prices)) {
+                return parseFloat(prices[0]) || 0.5;
+            }
+        }
+    } catch (e) { }
+    return 0.5;
+};
 
 export const fetchUnifiedMarkets = async (
     experience?: ExperienceLevel | null,
@@ -263,24 +281,124 @@ export const fetchUnifiedMarkets = async (
 ): Promise<MarketEvent[]> => {
     console.log('[MarketData] Fetching with prefs:', { experience, focusAreas });
 
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            let events = [...BELIEVER_SIGNALS];
+    // Start with static signals
+    let events = [...BELIEVER_SIGNALS];
 
-            // Filter/sort by focus areas
-            if (focusAreas && focusAreas.length > 0) {
-                events = events.sort((a, b) => {
-                    const aMatch = isMatch(a, focusAreas);
-                    const bMatch = isMatch(b, focusAreas);
-                    if (aMatch && !bMatch) return -1;
-                    if (!aMatch && bMatch) return 1;
-                    return 0;
-                });
+    try {
+        // Fetch real Polymarket data
+        const [realPolymarkets, btcDominance, fearGreed] = await Promise.all([
+            fetchRealPolymarketData(),
+            fetchBtcDominance(),
+            fetchFearGreedIndex(),
+        ]);
+
+        console.log('[MarketData] Got real data:', {
+            polymarkets: realPolymarkets.size,
+            btcDominance,
+            fearGreed: fearGreed?.value
+        });
+
+        // Update events with real data where available
+        events = events.map(event => {
+            // Fed rate market
+            if (event.id === 'macro_rate_cut' && realPolymarkets.has('fed_rate')) {
+                const realData = realPolymarkets.get('fed_rate')!;
+                const prob = extractProbability(realData);
+                return {
+                    ...event,
+                    title: realData.title || event.title,
+                    description: realData.description || event.description,
+                    markets: [{
+                        id: realData.id,
+                        question: realData.markets?.[0]?.question || event.markets[0]?.question,
+                        outcomePrices: JSON.stringify([prob.toString(), (1 - prob).toString()]) as any,
+                        volume: realData.markets?.[0]?.volume || "High",
+                        outcomes: realData.markets?.[0]?.outcomes || ["Yes", "No"]
+                    }]
+                };
             }
 
-            resolve(events);
-        }, 300);
-    });
+            // BTC price target
+            if (event.id === 'narrative_btc_100k' && realPolymarkets.has('btc_price')) {
+                const realData = realPolymarkets.get('btc_price')!;
+                const prob = extractProbability(realData);
+                return {
+                    ...event,
+                    title: realData.title || event.title,
+                    description: realData.description || event.description,
+                    markets: [{
+                        id: realData.id,
+                        question: realData.markets?.[0]?.question || event.markets[0]?.question,
+                        outcomePrices: JSON.stringify([prob.toString(), (1 - prob).toString()]) as any,
+                        volume: realData.markets?.[0]?.volume || "Very High",
+                        outcomes: realData.markets?.[0]?.outcomes || ["Yes", "No"]
+                    }]
+                };
+            }
+
+            // BTC strategic reserve
+            if (event.id === 'pol_btc_reserve' && realPolymarkets.has('btc_reserve')) {
+                const realData = realPolymarkets.get('btc_reserve')!;
+                const prob = extractProbability(realData);
+                return {
+                    ...event,
+                    title: realData.title || event.title,
+                    description: realData.description || event.description,
+                    markets: [{
+                        id: realData.id,
+                        question: realData.markets?.[0]?.question || event.markets[0]?.question,
+                        outcomePrices: JSON.stringify([prob.toString(), (1 - prob).toString()]) as any,
+                        volume: realData.markets?.[0]?.volume || "High",
+                        outcomes: realData.markets?.[0]?.outcomes || ["Yes", "No"]
+                    }]
+                };
+            }
+
+            // Crypto legislation
+            if (event.id === 'pol_regulation' && realPolymarkets.has('crypto_bill')) {
+                const realData = realPolymarkets.get('crypto_bill')!;
+                const prob = extractProbability(realData);
+                return {
+                    ...event,
+                    title: realData.title || event.title,
+                    description: realData.description || event.description,
+                    markets: [{
+                        id: realData.id,
+                        question: realData.markets?.[0]?.question || event.markets[0]?.question,
+                        outcomePrices: JSON.stringify([prob.toString(), (1 - prob).toString()]) as any,
+                        volume: realData.markets?.[0]?.volume || "Active",
+                        outcomes: realData.markets?.[0]?.outcomes || ["Yes", "No"]
+                    }]
+                };
+            }
+
+            // BTC Dominance - add real data
+            if (event.id === 'risk_btc_dom' && btcDominance !== null) {
+                return {
+                    ...event,
+                    description: `BTC 市佔率: ${btcDominance.toFixed(1)}%`,
+                };
+            }
+
+            return event;
+        });
+
+    } catch (error) {
+        console.error('[MarketData] Error fetching real data:', error);
+    }
+
+    // Filter/sort by focus areas
+    if (focusAreas && focusAreas.length > 0) {
+        events = events.sort((a, b) => {
+            const aMatch = isMatch(a, focusAreas);
+            const bMatch = isMatch(b, focusAreas);
+            if (aMatch && !bMatch) return -1;
+            if (!aMatch && bMatch) return 1;
+            return 0;
+        });
+    }
+
+    return events;
 };
 
 // Helper to map FocusArea to EventCategory
