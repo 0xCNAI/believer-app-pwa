@@ -204,36 +204,37 @@ export const useBeliefStore = create<BeliefState>()(
             },
 
             getReversalIndex: () => {
-                // Formula: (Tech * LiquidityModifier) + User Belief
+                // V2: Phase-based calculation using TechStore
                 const { beliefs } = get();
 
-                // 1. Technical Score (60% Base) -> Mocked 55
-                // 2. Liquidity Modifier (The Amplifier)
-                // For V1, we simulate this based on the "Liquidity" category events if present,
-                // or default to Neutral (1.0)
+                // Try to get Tech Score from techStore
+                let techScore = 33; // Fallback
+                let cap = 60;
+                let liquidityMultiplier = 1.0;
 
-                // Simple mock logic for "Background State":
-                // If any Liquidity event > 50%, we say Improving. Else Neutral/Tight.
-                // In production this would come from a dedicated "Regime Signal".
-
-                const liqEvents = BELIEVER_SIGNALS.filter(e => e.category === 'Liquidity');
-                // Mock: Assume 1 Improving event exists
-                const liquidityStatus: string = 'neutral';
-                const modifier = liquidityStatus === 'improving' ? 1.2 : (liquidityStatus === 'tight' ? 0.8 : 1.0);
-
-                const techComponent = (55 * 0.6) * modifier; // Base ~33, modified up/down
-
-                // 3. User Belief Score (40%)
-                let userComponent = 20;
-
-                if (beliefs.length > 0) {
-                    const totalProb = beliefs.reduce((sum, b) => sum + b.currentProbability, 0);
-                    const avgProb = totalProb / beliefs.length; // 0-100
-                    userComponent = avgProb * 0.4; // Max 40
+                try {
+                    const techState = require('./techStore').useTechStore.getState();
+                    if (techState.phaseResult) {
+                        techScore = techState.phaseResult.techScore;
+                        cap = techState.phaseResult.adjustedCap;
+                        liquidityMultiplier = techState.phaseResult.liquidityMultiplier;
+                    }
+                } catch (e) {
+                    // TechStore not available, use fallback
                 }
 
-                // Cap at 100
-                return Math.min(100, techComponent + userComponent);
+                // Tech Component (60%)
+                const techComponent = techScore * 0.6;
+
+                // User Belief Component (40%)
+                let userComponent = 20; // Default
+                if (beliefs.length > 0) {
+                    const avgProb = beliefs.reduce((sum, b) => sum + b.currentProbability, 0) / beliefs.length;
+                    userComponent = avgProb * 0.4;
+                }
+
+                // Apply cap from Phase Engine
+                return Math.min(cap, techComponent + userComponent);
             },
 
             getInterpretation: () => {
