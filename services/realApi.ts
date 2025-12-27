@@ -1,4 +1,4 @@
-import { MarketEvent, Market } from './polymarket';
+import { MarketEvent } from './polymarket';
 
 // Polymarket Gamma API
 const POLYMARKET_API = 'https://gamma-api.polymarket.com';
@@ -147,16 +147,334 @@ export const fetchFearGreedIndex = async (): Promise<FearGreedData | null> => {
 };
 
 // Aggregate function to fetch all real data
-export const fetchAllRealData = async () => {
-    const [polymarkets, btcDominance, fearGreed] = await Promise.all([
+// ==========================================
+// CACHING LOGIC (Firebase System Metrics)
+// ==========================================
+
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from './firebase';
+
+// Internal function to hit actual 3rd party APIs
+const _fetchFromExternalApis = async () => {
+    const [polymarkets, btcDominance, fearGreed, derivatives, mvrvZ, puell] = await Promise.all([
         fetchRealPolymarketData(),
         fetchBtcDominance(),
         fetchFearGreedIndex(),
+        fetchDerivativesData(),
+        fetchMvrvZScore(),
+        fetchPuellMultiple()
     ]);
 
     return {
         polymarkets,
         btcDominance,
         fearGreed,
+        derivatives,
+        mvrvZ,
+        puell
     };
+};
+
+export const fetchAllRealData = async () => {
+    const CACHE_Collection = 'system_metrics';
+    const CACHE_DOC = 'latest';
+    const CACHE_DURATION = 12 * 60 * 60 * 1000; // 12 Hours
+
+    try {
+        console.log('[API] Checking firebase cache...');
+        const docRef = doc(db, CACHE_Collection, CACHE_DOC);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            const now = Date.now();
+            const elapsed = now - (data.updatedAt || 0);
+
+            if (elapsed < CACHE_DURATION) {
+                console.log(`[API] Returning cached data (${(elapsed / 1000 / 60).toFixed(1)} min old)`);
+
+                // Rehydrate Maps if needed (Polymarkets is a Map)
+                // Firestore stores Maps as Objects. We need to convert back if downstream expects Map.
+                // In generic usage we often just need the object. 
+                // BUT fetchRealPolymarketData returns Map<string, MarketEvent>.
+                // We should reconstruct the Map.
+                let polyMap = new Map<string, MarketEvent>();
+                if (data.polymarkets) {
+                    Object.entries(data.polymarkets).forEach(([k, v]) => polyMap.set(k, v as MarketEvent));
+                }
+
+                return {
+                    ...data,
+                    polymarkets: polyMap
+                };
+            }
+            console.log('[API] Cache stale, fetching new data...');
+        } else {
+            console.log('[API] No cache found, fetching new data...');
+        }
+    } catch (e) {
+        console.warn('[API] Cache check failed, falling back to live fetch:', e);
+    }
+
+    // fallback or fresh fetch
+    const freshData = await _fetchFromExternalApis();
+
+    // Save to Cache
+    try {
+        // Convert Map to Object for Firestore
+        const polyObj = Object.fromEntries(freshData.polymarkets);
+
+        const cachePayload = {
+            ...freshData,
+            polymarkets: polyObj,
+            updatedAt: Date.now()
+        };
+
+        const docRef = doc(db, CACHE_Collection, CACHE_DOC);
+        await setDoc(docRef, cachePayload);
+        console.log('[API] System metrics cached to Firestore.');
+    } catch (e) {
+        console.error('[API] Failed to cache system metrics:', e);
+    }
+
+    return freshData;
+};
+
+// ==========================================
+// NEW INDICATORS (Puell, MVRV, Derivatives)
+// ==========================================
+
+export interface DerivativesData {
+    funding24hWeighted: number; // % (e.g. 0.01)
+    oiTotalUsd: number;         // USD
+    oi3dChangePct: number;      // % (e.g. 5.2)
+}
+
+// 1. Derivatives (Binance)
+// Open Interest History Endpoint: https://fapi.binance.com/futures/data/openInterestHist
+export const fetchDerivativesData = async (): Promise<DerivativesData | null> => {
+    try {
+        // Fetch Current OI & Funding
+        // Funding: https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&limit=3 (Last 24h = 3 * 8h)
+        // OI Current: https://fapi.binance.com/fapi/v1/openInterest?symbol=BTCUSDT
+        // OI History: https://fapi.binance.com/futures/data/openInterestHist?symbol=BTCUSDT&period=1d&limit=4
+
+        const [fundingRes, oiRes, oiHistRes] = await Promise.all([
+            fetch('https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&limit=3'),
+            fetch('https://fapi.binance.com/fapi/v1/openInterest?symbol=BTCUSDT'),
+            fetch('https://fapi.binance.com/futures/data/openInterestHist?symbol=BTCUSDT&period=1d&limit=4')
+        ]);
+
+        if (!fundingRes.ok || !oiRes.ok || !oiHistRes.ok) return null;
+
+        const fundingData = await fundingRes.json();
+        const oiData = await oiRes.json();
+        const oiHistData = await oiHistRes.json();
+
+        // 1. Funding 24h (Average of last 3 records)
+        // Rate is returned as string "0.00010000"
+        let fundingSum = 0;
+        fundingData.forEach((f: any) => fundingSum += parseFloat(f.fundingRate));
+        const funding24h = (fundingSum / fundingData.length) * 100; // Convert to %? Or keep as raw? Typically funding is e.g. 0.01%. 
+        // Let's keep it as is? Request says "funding_24h_weighted". 
+        // We'll return it as a percentage number (e.g. 0.01 for 0.01%)
+        const funding24hPct = (fundingSum / fundingData.length) * 100;
+
+        // 2. OI Total USD
+        const currentOi = parseFloat(oiData.openInterest) * parseFloat(oiData.price || '0');
+        // Note: fapi openInterest returns amount in BTC usually? 
+        // Actually fapi openInterest returns: { symbol: "BTCUSDT", openInterest: "123.45", time: 123 } (in BTC quantity)
+        // But /futures/data/openInterestHist returns sumOpenInterestValue (USD).
+        // Let's use the one from oiHistData[last] which has USD value, or calculate current.
+        // Let's rely on oiHistData for consistency if possible, but it might be delayed.
+        // Actually current OI endpoint gives quantity. 
+        // Let's use `openInterest` (quantity) * price to get USD approx if needed.
+        // WAIT: The user asked for "oi_total_usd".
+        // Use the value from `openInterestHist` (sumOpenInterestValue) which is explicitly USD.
+        // The last item in oiHistData is the latest closed candle? Or current? 
+        // "limit=4" gives us enough to look back 3 days.
+        // oiHistData is array of { symbol, sumOpenInterest, sumOpenInterestValue, timestamp ... }
+        // Sort by timestamp desc just in case? Usually asc.
+        // verification showed: [{"symbol":"BTCUSDT","sumOpenInterest":...}, ...]
+
+        // Let's just use current OI * current Price for real-time accuracy?
+        // Check `oiData`: { symbol, openInterest, time } -> doesn't have price.
+        // We can fetch price separately or assume we have it.
+        // Let's use oiHistData for the "3d change" comparison, and use the LATEST value in oiHistData for current?
+        // Or better: use the latest from `current` endpoint and use price from CoinGecko or implicit.
+
+        // Let's try to get price from the funding endpoint! "markPrice" is there.
+        const currentPrice = parseFloat(fundingData[fundingData.length - 1].markPrice);
+        const currentOiUsd = parseFloat(oiData.openInterest) * currentPrice;
+
+        // 3. OI 3d Change
+        // 3 days ago = index 0 (if we fetched 4 items: [D-3, D-2, D-1, Today/Partial?])
+        // If we fetch limit=4 daily candles.
+        // The array is usually Oldest -> Newest.
+        // So index 2 is yesterday, index 3 is today (open?).
+        // Actually checking the timestamp is safer.
+        const sortedHist = oiHistData.sort((a: any, b: any) => b.timestamp - a.timestamp); // Newest first
+        // Newest is likely "yesterday close" or "today current"? API docs say "Open Interest Statistics". 
+        // Verification output showed `sumOpenInterestValue`.
+        // If we want exactly 3 days ago shift.
+        // Let's compare Current (calculated) vs 3 days ago (from hist).
+        // 3 days ago approx = sortedHist[3] (index 3 if 0-based, so 4th item).
+        const oi3d = sortedHist[3]?.sumOpenInterestValue
+            ? parseFloat(sortedHist[3].sumOpenInterestValue)
+            : currentOiUsd; // fallback
+
+        const oiChange = ((currentOiUsd - oi3d) / oi3d) * 100;
+
+        return {
+            funding24hWeighted: funding24hPct,
+            oiTotalUsd: currentOiUsd,
+            oi3dChangePct: oiChange
+        };
+
+    } catch (e) {
+        console.error('[API] Derivatives fetch error:', e);
+        return null;
+    }
+}
+
+// 2. MVRV Z-Score
+// Using CoinMetrics Community API (Free, Daily)
+// Strategy:
+// 1. Fetch MVRV Ratio (CapMVRVCur) and Market Cap (CapMrktCurUSD)
+// 2. Derive Realized Cap = Market Cap / MVRV Ratio
+// 3. Fetch full history of Market Cap to calculate Standard Deviation
+// 4. Z-Score = (Market Cap - Realized Cap) / StdDev(Market Cap)
+
+const COINMETRICS_API = 'https://community-api.coinmetrics.io/v4/timeseries/asset-metrics';
+
+interface CoinMetricsData {
+    time: string;
+    CapMrktCurUSD?: string;
+    CapMVRVCur?: string;
+}
+
+export const fetchMvrvZScore = async (): Promise<number | null> => {
+    try {
+        console.log('[API] Fetching MVRV Z-Score data from CoinMetrics...');
+
+        // 1. Fetch Latest Data (Market Cap & MVRV Ratio)
+        const latestResponse = await fetch(
+            `${COINMETRICS_API}?assets=btc&metrics=CapMrktCurUSD,CapMVRVCur&frequency=1d&page_size=1`
+        );
+
+        if (!latestResponse.ok) {
+            console.error('[API] CoinMetrics latest fetch failed');
+            return null;
+        }
+
+        const latestJson = await latestResponse.json();
+        const latestData = latestJson.data?.[0];
+
+        if (!latestData || !latestData.CapMrktCurUSD || !latestData.CapMVRVCur) {
+            console.error('[API] Missing latest data from CoinMetrics');
+            return null;
+        }
+
+        const currentMarketCap = parseFloat(latestData.CapMrktCurUSD);
+        const currentMvrvRatio = parseFloat(latestData.CapMVRVCur);
+
+        // Derive Realized Cap
+        const currentRealizedCap = currentMarketCap / currentMvrvRatio;
+
+        // 2. Fetch Historical Market Cap (for StdDev)
+        // We need the full history to calculate the "population standard deviation" used in Z-Score
+        const historyResponse = await fetch(
+            `${COINMETRICS_API}?assets=btc&metrics=CapMrktCurUSD&frequency=1d&page_size=10000`
+        );
+
+        if (!historyResponse.ok) {
+            console.error('[API] CoinMetrics history fetch failed');
+            return null;
+        }
+
+        const historyJson = await historyResponse.json();
+        const historyRows = historyJson.data;
+
+        if (!historyRows || historyRows.length === 0) {
+            console.error('[API] No historical data found');
+            return null;
+        }
+
+        const marketCaps: number[] = historyRows
+            .map((r: any) => parseFloat(r.CapMrktCurUSD))
+            .filter((v: number) => !isNaN(v));
+
+        if (marketCaps.length === 0) return null;
+
+        // 3. Calculate Standard Deviation of Market Cap
+        const n = marketCaps.length;
+        const mean = marketCaps.reduce((a, b) => a + b, 0) / n;
+        const variance = marketCaps.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / n;
+        const stdDev = Math.sqrt(variance);
+
+        // 4. Calculate Z-Score
+        if (stdDev === 0) return null;
+
+        const zScore = (currentMarketCap - currentRealizedCap) / stdDev;
+
+        console.log('[API] MVRV Z-Score calculated:', {
+            marketCap: currentMarketCap,
+            realizedCap: currentRealizedCap,
+            stdDev,
+            zScore
+        });
+
+        return zScore;
+
+    } catch (e) {
+        console.error('[API] CoinMetrics MVRV calculation error:', e);
+        return null;
+    }
+};
+
+// 3. Puell Multiple
+// Daily Coin Issuance (USD) / 365-day MA of Daily Coin Issuance (USD)
+export const fetchPuellMultiple = async (): Promise<number | null> => {
+    try {
+        // 1. Fetch 365 days of price
+        const res = await fetch(`${COINGECKO_API}/coins/bitcoin/market_chart?vs_currency=usd&days=365&interval=daily`);
+        const data = await res.json();
+        const prices: [number, number][] = data.prices; // [timestamp, price]
+
+        if (!prices || prices.length < 365) return null;
+
+        // 2. Calculate Issuance
+        // Block Reward Schedule:
+        // Before 2024-04-20: 6.25 BTC/block (~900/day)
+        // After: 3.125 BTC/block (~450/day)
+        // We really just need the daily issuance in USD.
+        // Timestamp check for halving.
+
+        const HALVING_DATE = new Date('2024-04-20').getTime();
+        const BLOCKS_PER_DAY = 144; // approx
+
+        const getDailyEmission = (ts: number) => {
+            const reward = ts < HALVING_DATE ? 6.25 : 3.125;
+            return reward * BLOCKS_PER_DAY;
+        };
+
+        const issuances = prices.map(([ts, price]) => {
+            const coins = getDailyEmission(ts);
+            return coins * price; // Daily Issuance in USD
+        });
+
+        // 3. Current Issuance (Last day)
+        const currentIssuance = issuances[issuances.length - 1];
+
+        // 4. MA365
+        const sum = issuances.reduce((a, b) => a + b, 0);
+        const ma365 = sum / issuances.length;
+
+        // 5. Puell
+        return currentIssuance / ma365;
+
+    } catch (e) {
+        console.error('[API] Puell fetch error:', e);
+        return null;
+    }
 };

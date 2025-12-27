@@ -5,17 +5,21 @@
  * for the technical analysis engine.
  */
 
+import {
+    calculateReversalState,
+    ReversalInputs,
+    ReversalState
+} from '@/services/phaseEngine';
+import { fetchAllRealData } from '@/services/realApi';
+import {
+    CONDITION_DEFS,
+    ConditionResult,
+    DEFAULT_PERSONAL_PARAMS,
+    evaluateTechConditions,
+    PersonalParams,
+} from '@/services/techEngine';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import {
-    evaluateTechConditions,
-    CONDITION_DEFS,
-    PersonalParams,
-    DEFAULT_PERSONAL_PARAMS,
-    ConditionResult,
-    TechEvaluationResult,
-} from '@/services/techEngine';
-import { calculatePhase, PhaseResult, RiskModifiers, fetchRiskModifiers } from '@/services/phaseEngine';
 
 // ============ Types ============
 
@@ -26,8 +30,8 @@ interface TechState {
 
     // Evaluation Results
     conditions: ConditionResult[];
-    phaseResult: PhaseResult | null;
-    riskModifiers: RiskModifiers | null;
+    reversalState: ReversalState | null; // Replaces phaseResult
+    reversalInputs: ReversalInputs | null; // Replaces riskModifiers
     lastEvaluated: number;
     isLoading: boolean;
     error: string | null;
@@ -58,8 +62,8 @@ export const useTechStore = create<TechState>()(
             enabledConditions: getDefaultEnabledConditions(),
             personalParams: { ...DEFAULT_PERSONAL_PARAMS },
             conditions: [],
-            phaseResult: null,
-            riskModifiers: null,
+            reversalState: null,
+            reversalInputs: null,
             lastEvaluated: 0,
             isLoading: false,
             error: null,
@@ -94,20 +98,81 @@ export const useTechStore = create<TechState>()(
                         .filter(([_, enabled]) => enabled)
                         .map(([id]) => id);
 
-                    // Fetch Risk Modifiers and evaluate conditions in parallel
-                    const [result, riskModifiers] = await Promise.all([
+                    // 1. Fetch ALL Real Data
+                    const [techResults, realData] = await Promise.all([
                         evaluateTechConditions(enabledIds, personalParams),
-                        fetchRiskModifiers(),
+                        fetchAllRealData()
                     ]);
 
-                    // Calculate phase with risk modifiers
-                    const phaseResult = calculatePhase(result.conditions, riskModifiers);
+                    // 2. Prepare Inputs
+                    // Get 'gateCount' and 'higherLow' from techResults
+                    const gates = techResults.conditions.filter(c => c.group === 'Gate');
+                    const enabledGates = gates.filter(g => g.enabled);
+                    const passedGates = enabledGates.filter(g => g.passed);
+                    const higherLowPassed = gates.find(g => g.id === 'higher_low')?.passed || false;
+
+                    // Get passed boosters for tracking
+                    const activeBoosters = techResults.conditions
+                        .filter(c => c.group === 'Booster' && c.enabled && c.passed)
+                        .map(b => b.id);
+
+                    // Get Belief Points (Need to access beliefStore safely)
+                    let beliefPoints = 0;
+                    try {
+                        const beliefState = require('./beliefStore').useBeliefStore.getState();
+                        const beliefs = beliefState.beliefs || [];
+                        if (beliefs.length > 0) {
+                            // Current Logic: avg prob * 0.4 (approx 20 pts max)
+                            const avgProb = beliefs.reduce((sum: number, b: any) => sum + b.currentProbability, 0) / beliefs.length;
+                            beliefPoints = avgProb * 0.4;
+                        }
+                    } catch (e) {
+                        console.warn('[TechStore] Could not access beliefStore:', e);
+                    }
+
+                    const inputs: ReversalInputs = {
+                        gateCount: passedGates.length,
+                        higherLow: higherLowPassed,
+                        puell: realData.puell ?? 0.8,     // Fallback to neutral
+                        mvrvZScore: realData.mvrvZ ?? 1.5,// Fallback to neutral
+                        funding24hWeighted: realData.derivatives?.funding24hWeighted ?? 0.01,
+                        oi3dChangePct: realData.derivatives?.oi3dChangePct ?? 0,
+                        beliefPoints
+                    };
+
+                    console.log('[TechStore] Calculating Reversal with:', inputs);
+
+                    // 3. Calculate Dual-Track Reversal State
+                    const reversalState = calculateReversalState(inputs, activeBoosters);
+
+                    // 4. Persistence & Diff Check (Edge Trigger Notification)
+                    try {
+                        const { useAuthStore } = require('./authStore');
+                        const user = useAuthStore.getState().user;
+
+                        if (user?.uid) { // Ensure using 'uid' or 'id' consistent with your auth store
+                            const { syncStateAndCheckDiff } = require('@/services/statePersistence');
+
+                            // Running in background to not block UI? 
+                            // Or await if we want to show toast immediately?
+                            // Let's await to be safe.
+                            syncStateAndCheckDiff(user.uid, reversalState).then((result: any) => {
+                                if (result.hasChanged && result.notifications.length > 0) {
+                                    console.log('[Notifier]', result.notifications);
+                                    // TODO: Trigger UI Toast/Alert here if needed
+                                    // e.g. useToast.getState().show(...) 
+                                }
+                            });
+                        }
+                    } catch (e) {
+                        console.warn('[TechStore] Persistence check skipped:', e);
+                    }
 
                     set({
-                        conditions: result.conditions,
-                        phaseResult,
-                        riskModifiers,
-                        lastEvaluated: result.dataTimestamp,
+                        conditions: techResults.conditions,
+                        reversalState,
+                        reversalInputs: inputs,
+                        lastEvaluated: techResults.dataTimestamp,
                         isLoading: false,
                     });
                 } catch (error) {
@@ -129,14 +194,12 @@ export const useTechStore = create<TechState>()(
         {
             name: 'tech-store',
             storage: createJSONStorage(() => {
-                // Use same safe storage as beliefStore
                 try {
                     return require('@/utils/storage').safeStorage;
                 } catch {
                     return localStorage;
                 }
             }),
-            // Only persist user settings, not evaluation results
             partialize: (state) => ({
                 enabledConditions: state.enabledConditions,
                 personalParams: state.personalParams,
@@ -153,11 +216,9 @@ export const selectGates = (state: TechState) =>
 export const selectBoosters = (state: TechState) =>
     state.conditions.filter(c => c.group === 'Booster');
 
-export const selectTechScore = (state: TechState) =>
-    state.phaseResult?.techScore ?? 0;
+export const selectReversalScore = (state: TechState) =>
+    state.reversalState?.finalScore ?? 0;
 
-export const selectPhase = (state: TechState) =>
-    state.phaseResult?.phase ?? 'Accumulation';
+export const selectReversalStage = (state: TechState) =>
+    state.reversalState?.stage ?? 'Bottom Break';
 
-export const selectCap = (state: TechState) =>
-    state.phaseResult?.adjustedCap ?? 60;

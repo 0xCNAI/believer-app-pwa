@@ -118,30 +118,121 @@ export default function DashboardScreen() {
                         <Text style={[styles.indexValue, { color: '#22c55e' }]}>
                             {reversalIndex.toFixed(0)}
                         </Text>
+
+                        {/* Dual-Track Sub-scores */}
+                        {(() => {
+                            try {
+                                const { reversalState } = require('@/stores/techStore').useTechStore();
+                                if (!reversalState) return null;
+                                return (
+                                    <View style={{ flexDirection: 'row', gap: 16, marginTop: 8 }}>
+                                        <View style={{ alignItems: 'center' }}>
+                                            <Text style={{ color: '#71717A', fontSize: 10, textTransform: 'uppercase', fontWeight: '700' }}>Cycle (Fund)</Text>
+                                            <Text style={{ color: '#E4E4E7', fontSize: 16, fontWeight: '700' }}>{reversalState.cycleScore.toFixed(0)}</Text>
+                                        </View>
+                                        <View style={{ width: 1, height: '100%', backgroundColor: '#27272A' }} />
+                                        <View style={{ alignItems: 'center' }}>
+                                            <Text style={{ color: '#71717A', fontSize: 10, textTransform: 'uppercase', fontWeight: '700' }}>Trend (Tech)</Text>
+                                            <Text style={{ color: '#E4E4E7', fontSize: 16, fontWeight: '700' }}>{reversalState.trendScore.toFixed(0)}</Text>
+                                        </View>
+                                    </View>
+                                );
+                            } catch (e) { return null; }
+                        })()}
                     </View>
 
-                    {/* V2: Reversal Progress Bar (X/8 Conditions) */}
+                    {/* V2: Reversal Stage Display */}
                     <View style={styles.progressSection}>
-                        <Text style={styles.progressLabel}>與反轉的距離</Text>
-                        <View style={styles.progressBar}>
-                            {[...Array(8)].map((_, i) => (
-                                <View
-                                    key={i}
-                                    style={[
-                                        styles.progressBlock,
-                                        i < 3 && styles.progressBlockFilled
-                                    ]}
-                                />
-                            ))}
-                        </View>
-                        <Text style={styles.progressStatus}>3 / 8 關鍵條件完成</Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                            <Text style={styles.progressLabel}>目前階段</Text>
+                            {(() => {
+                                try {
+                                    const { reversalState } = require('@/stores/techStore').useTechStore();
+                                    const stage = reversalState?.stage || 'Bottom Break';
+                                    const map: any = { 'Bottom Break': '破底 (Bottom Break)', 'Watch': '觀察 (Watch)', 'Prepare': '準備 (Prepare)', 'Confirmed': '確認 (Confirmed)' };
 
-                        {/* Expandable Context */}
+                                    // Veto Badge
+                                    if (reversalState?.veto) {
+                                        return (
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                                <View style={{ backgroundColor: 'rgba(239, 68, 68, 0.2)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.5)' }}>
+                                                    <Text style={{ color: '#EF4444', fontSize: 10, fontWeight: '700' }}>VETO ACTIVE</Text>
+                                                </View>
+                                                <Text style={{ color: '#E4E4E7', fontSize: 14, fontWeight: '700' }}>{map[stage]}</Text>
+                                            </View>
+                                        );
+                                    }
+                                    return <Text style={{ color: '#E4E4E7', fontSize: 14, fontWeight: '700' }}>{map[stage]}</Text>;
+                                } catch (e) { return <Text style={{ color: '#71717A' }}>Loading...</Text>; }
+                            })()}
+                        </View>
+
+                        {/* Dynamic Progress Bar based on Score (Visual Only) */}
+                        <View style={styles.progressBar}>
+                            {[...Array(8)].map((_, i) => {
+                                // Maps roughly to 12.5 points per block
+                                const filled = reversalIndex > (i * 12.5);
+                                return (
+                                    <View
+                                        key={i}
+                                        style={[
+                                            styles.progressBlock,
+                                            filled && styles.progressBlockFilled
+                                        ]}
+                                    />
+                                );
+                            })}
+                        </View>
+
+                        {/* Context Info */}
                         <View style={styles.progressContext}>
-                            <Text style={styles.contextTitle}>目前尚未進入反轉階段：</Text>
-                            <Text style={styles.contextItem}>• 趨勢結構仍為下降</Text>
-                            <Text style={styles.contextItem}>• 波動率尚未充分壓縮</Text>
-                            <Text style={styles.contextItem}>• 流動性尚未轉為改善</Text>
+                            {(() => {
+                                try {
+                                    const { reversalState } = require('@/stores/techStore').useTechStore();
+                                    if (!reversalState) return <Text style={styles.contextItem}>系統初始化中...</Text>;
+
+                                    const { stage, veto, cycleZone, watchReason } = reversalState;
+
+                                    if (veto) {
+                                        return (
+                                            <>
+                                                <Text style={[styles.contextTitle, { color: '#ef4444' }]}>⚠️ 衍生品否決 (Overheated)</Text>
+                                                <Text style={styles.contextItem}>• 資金費率或持倉量過熱 (Cap Active)</Text>
+                                                <Text style={styles.contextItem}>• 上漲潛力受限，建議觀望</Text>
+                                            </>
+                                        );
+                                    }
+
+                                    if (stage === 'Bottom Break') {
+                                        return (
+                                            <>
+                                                <Text style={styles.contextTitle}>尚未築底 (Bottom Break)</Text>
+                                                <Text style={styles.contextItem}>• 鏈上週期信號：{cycleZone}</Text>
+                                                <Text style={styles.contextItem}>• 技術結構偏弱，等待轉強</Text>
+                                            </>
+                                        );
+                                    }
+
+                                    if (stage === 'Watch') {
+                                        return (
+                                            <>
+                                                <Text style={[styles.contextTitle, { color: '#f97316' }]}>進入觀察區 (Watch)</Text>
+                                                <Text style={styles.contextItem}>• 觸發原因：{watchReason === 'ZONE_GUARANTEE' ? '強週期保底 (Strong Zone)' : '分數達標 (Score > 45)'}</Text>
+                                                <Text style={styles.contextItem}>• 等待進一步確認信號</Text>
+                                            </>
+                                        );
+                                    }
+
+                                    return (
+                                        <>
+                                            <Text style={[styles.contextTitle, { color: '#22c55e' }]}>結構轉強 ({stage})</Text>
+                                            <Text style={styles.contextItem}>• 趨勢與週期信號共振</Text>
+                                            <Text style={styles.contextItem}>• 衍生品結構健康</Text>
+                                        </>
+                                    );
+
+                                } catch (e) { return null; }
+                            })()}
                         </View>
                     </View>
 

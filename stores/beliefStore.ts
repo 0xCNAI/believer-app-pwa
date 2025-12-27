@@ -204,64 +204,49 @@ export const useBeliefStore = create<BeliefState>()(
             },
 
             getReversalIndex: () => {
-                // V2: Phase-based calculation using TechStore
-                const { beliefs } = get();
-
-                // Try to get Tech Score from techStore
-                let techScore = 33; // Fallback
-                let cap = 60;
-                let liquidityMultiplier = 1.0;
-
+                // V2.0: Dual-Track Score from TechStore
                 try {
                     const techState = require('./techStore').useTechStore.getState();
-                    if (techState.phaseResult) {
-                        techScore = techState.phaseResult.techScore;
-                        cap = techState.phaseResult.adjustedCap;
-                        liquidityMultiplier = techState.phaseResult.liquidityMultiplier;
-                    }
+                    return techState.reversalState?.finalScore ?? 0;
                 } catch (e) {
-                    // TechStore not available, use fallback
+                    return 0;
                 }
-
-                // Tech Component (60%)
-                const techComponent = techScore * 0.6;
-
-                // User Belief Component (40%)
-                let userComponent = 20; // Default
-                if (beliefs.length > 0) {
-                    const avgProb = beliefs.reduce((sum, b) => sum + b.currentProbability, 0) / beliefs.length;
-                    userComponent = avgProb * 0.4;
-                }
-
-                // Apply cap from Phase Engine
-                return Math.min(cap, techComponent + userComponent);
             },
 
             getInterpretation: () => {
-                const index = get().getReversalIndex();
-                // Access user prefs directly from store (outside React hook)
+                // Access user prefs directly from store
                 const { experience } = require('./userStore').useUserStore.getState();
 
+                // Get Stage from TechStore
+                let stage = 'Bottom Break';
+                try {
+                    const techState = require('./techStore').useTechStore.getState();
+                    stage = techState.reversalState?.stage ?? 'Bottom Break';
+                } catch (e) { }
+
                 // Calibrated Interpretation based on Experience Level
-                // 1. Conservative (Novice/No Exp) - Focus on basic structure
+                // 1. Conservative (Novice/No Exp)
                 if (experience === 'none' || !experience) {
-                    if (index < 40) return "觀察基礎結構：賣壓仍重，尚未築底。";
-                    if (index < 60) return "觀察基礎結構：處於修復期，靜待方向明確。";
-                    return "觀察基礎結構：底部型態確立，正向發展。";
+                    if (stage === 'Bottom Break') return "觀察基礎結構：賣壓仍重，尚未築底。";
+                    if (stage === 'Watch') return "觀察基礎結構：底部初現，進入觀察清單。";
+                    if (stage === 'Prepare') return "觀察基礎結構：反轉結構成型，準備進場。";
+                    return "觀察基礎結構：趨勢確認反轉，正向發展。";
                 }
 
-                // 2. Balanced (1-3 Years) - Focus on momentum
+                // 2. Balanced (1-3 Years)
                 if (experience === '1-3_years') {
-                    if (index < 40) return "觀察中期動能：趨勢向下，等待止跌訊號。";
-                    if (index < 60) return "觀察中期動能：動能中性，留意關鍵點位突破。";
-                    return "觀察中期動能：多頭動能增強，趨勢延續中。";
+                    if (stage === 'Bottom Break') return "觀察中期動能：趨勢向下，切勿接刀。";
+                    if (stage === 'Watch') return "觀察中期動能：動能減弱，留意止跌訊號。";
+                    if (stage === 'Prepare') return "觀察中期動能：多頭動能轉強，嘗試建倉。";
+                    return "觀察中期動能：趨勢反轉確認，順勢操作。";
                 }
 
-                // 3. Sensitive (5+ Years) - Focus on multi-frame/details
+                // 3. Sensitive (5+ Years)
                 if (experience === '5_plus_years') {
-                    if (index < 40) return "微觀結構掃描：流動性緊縮，尋找極端錯價。";
-                    if (index < 60) return "微觀結構掃描：多空博弈激烈，等待主力表態。";
-                    return "微觀結構掃描：結構性買盤進駐，Alpha 機會浮現。";
+                    if (stage === 'Bottom Break') return "微觀結構掃描：流動性緊縮，尋找極端錯價。";
+                    if (stage === 'Watch') return "微觀結構掃描：Smart Money 潛伏，監控異常量能。";
+                    if (stage === 'Prepare') return "微觀結構掃描：結構性買盤進駐，Alpha 機會浮現。";
+                    return "微觀結構掃描：主升段啟動，擴大曝險。";
                 }
 
                 return "系統等待校準中...";
