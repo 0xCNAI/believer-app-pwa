@@ -174,6 +174,8 @@ export const useTechStore = create<TechState>()(
                         reversalInputs: inputs,
                         lastEvaluated: techResults.dataTimestamp,
                         isLoading: false,
+                        gateCount: passedGates.length, // Update gateCount in state
+                        higherLow: higherLowPassed, // Update higherLow in state
                     });
                 } catch (error) {
                     console.error('[TechStore] Evaluation failed:', error);

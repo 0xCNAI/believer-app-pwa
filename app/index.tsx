@@ -17,8 +17,20 @@ export default function DashboardScreen() {
     const [showNotifications, setShowNotifications] = useState(false);
     const [btc24hChange, setBtc24hChange] = useState<number | null>(null);
 
+    // Debug Log
+    console.log('[Dashboard] Rendering. Index:', reversalIndex);
+
     // 1. BTC Price - Real API with 24h change
     useEffect(() => {
+        console.log('[Dashboard] Mount: Fetching BTC Price & refreshing TechStore...');
+
+        // Trigger TechStore update on mount
+        try {
+            require('@/stores/techStore').useTechStore.getState().fetchAndEvaluate();
+        } catch (e) {
+            console.error('[Dashboard] Failed to trigger techStore update:', e);
+        }
+
         const fetchBtcPrice = async () => {
             try {
                 const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true');
@@ -38,6 +50,8 @@ export default function DashboardScreen() {
 
     const onRefresh = () => {
         setRefreshing(true);
+        console.log('[Dashboard] Manual Refresh Triggered');
+        require('@/stores/techStore').useTechStore.getState().fetchAndEvaluate();
         setTimeout(() => setRefreshing(false), 1500);
     };
 
