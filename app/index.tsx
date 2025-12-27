@@ -21,37 +21,59 @@ export default function DashboardScreen() {
     // Wooden Fish Animation State
     const [showMerit, setShowMerit] = useState(false);
     const scaleAnim = useRef(new Animated.Value(1)).current;
+    const stickAnim = useRef(new Animated.Value(0)).current; // 0 = resting, 1 = hit
 
     const handleFishClick = () => {
         incrementFaith();
 
-        // Haptics with Web Fallback
-        if (Platform.OS === 'web') {
-            if (typeof navigator !== 'undefined' && navigator.vibrate) {
-                navigator.vibrate(10); // Check if 10ms is enough, maybe 50? sticking to light.
+        // Haptics with Web Fallback (Trigger on Impact)
+        const triggerHaptic = () => {
+            if (Platform.OS === 'web') {
+                if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                    navigator.vibrate(10);
+                }
+            } else {
+                import('expo-haptics').then(Haptics => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }).catch(() => { });
             }
-        } else {
-            import('expo-haptics').then(Haptics => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            }).catch(() => { });
-        }
+        };
 
-        // Bounce Animation (Web compatible)
+        // Coordinated Animation: Stick Hit -> Fish Bounce
         Animated.sequence([
-            Animated.timing(scaleAnim, {
-                toValue: 0.8,
-                duration: 50,
-                // Native driver not fully supported for scale on some web implementations or causes warnings
-                useNativeDriver: Platform.OS !== 'web',
-                easing: Easing.out(Easing.quad),
-            }),
-            Animated.timing(scaleAnim, {
+            // 1. Stick swings down (Hit)
+            Animated.timing(stickAnim, {
                 toValue: 1,
-                duration: 150,
+                duration: 100,
                 useNativeDriver: Platform.OS !== 'web',
-                easing: Easing.elastic(1.5), // Bouncy effect
-            })
+                easing: Easing.in(Easing.quad),
+            }),
+            // 2. Impact! (Stick moves back up + Fish Bounces)
+            Animated.parallel([
+                Animated.timing(stickAnim, {
+                    toValue: 0,
+                    duration: 150,
+                    useNativeDriver: Platform.OS !== 'web',
+                    easing: Easing.out(Easing.quad),
+                }),
+                Animated.sequence([
+                    Animated.timing(scaleAnim, {
+                        toValue: 0.9,
+                        duration: 50,
+                        useNativeDriver: Platform.OS !== 'web',
+                    }),
+                    Animated.timing(scaleAnim, {
+                        toValue: 1,
+                        duration: 150,
+                        useNativeDriver: Platform.OS !== 'web',
+                        easing: Easing.elastic(1.5),
+                    })
+                ])
+            ])
         ]).start();
+
+        // Trigger haptic slightly after start to sync with impact
+        setTimeout(triggerHaptic, 100);
 
         setShowMerit(true);
         setTimeout(() => setShowMerit(false), 500);
@@ -463,9 +485,32 @@ export default function DashboardScreen() {
             {/* Cyber Wooden Fish FAB */}
             <TouchableOpacity
                 onPress={handleFishClick}
-                activeOpacity={1}
                 style={styles.fishFabContainer}
             >
+                {/* The Wooden Stick (Mallet) */}
+                <Animated.View
+                    style={[
+                        styles.woodenStick,
+                        {
+                            transform: [
+                                { translateX: 20 }, // Pivot adjust
+                                { translateY: -20 },
+                                {
+                                    rotate: stickAnim.interpolate({
+                                        inputRange: [0, 1],
+                                        outputRange: ['-30deg', '15deg'] // Swing from -30 to 15
+                                    })
+                                },
+                                { translateX: -20 }, // Pivot back
+                                { translateY: 20 }
+                            ]
+                        }
+                    ]}
+                >
+                    <View style={styles.stickHead} />
+                    <View style={styles.stickHandle} />
+                </Animated.View>
+
                 <Animated.View style={[styles.fishFab, { transform: [{ scale: scaleAnim }] }]}>
                     <View style={styles.fishIconBg}>
                         {/* Use Image instead of Icon */}
@@ -932,6 +977,27 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.5,
         shadowRadius: 16,
         elevation: 8,
+    },
+    woodenStick: {
+        position: 'absolute',
+        top: -24,
+        right: -10,
+        zIndex: 50, // Above the fish
+        alignItems: 'center',
+    },
+    stickHead: {
+        width: 12,
+        height: 24,
+        backgroundColor: '#78350F', // Dark Wood
+        borderRadius: 6,
+        marginBottom: -4,
+        zIndex: 2,
+    },
+    stickHandle: {
+        width: 6,
+        height: 48,
+        backgroundColor: '#92400E', // Lighter Wood
+        borderRadius: 3,
     },
     fishIconBg: {
         width: 56,
