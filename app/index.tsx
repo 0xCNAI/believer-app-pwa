@@ -45,6 +45,12 @@ export default function DashboardScreen() {
             }
         };
         fetchBtcPrice();
+
+        // Refresh Beliefs (Polymarkets Data)
+        try {
+            useBeliefStore.getState().refreshBeliefs();
+        } catch (e) { }
+
         const interval = setInterval(fetchBtcPrice, 60000); // Update every 60s
         return () => clearInterval(interval);
     }, []);
@@ -251,27 +257,45 @@ export default function DashboardScreen() {
                         })()}
                     </View>
 
-                    {/* V2: Market Dynamics (replaces 趨勢感知) */}
+                    {/* V2: Market Dynamics (Real User Signals) */}
                     <View style={styles.dynamicsBox}>
                         <Text style={styles.dynamicsLabel}>市場動態（Market Dynamics）</Text>
 
-                        <View style={styles.dynamicItem}>
-                            <Text style={styles.dynamicChange}>• Open Interest 上升、價格下跌</Text>
-                            <Text style={styles.dynamicInterpret}>→ 槓桿部位增加，市場仍在承壓</Text>
-                            <Text style={styles.dynamicImpact}>→ 反轉可信度下降</Text>
-                        </View>
+                        {beliefs.length === 0 ? (
+                            <Text style={{ color: '#71717A', marginTop: 8 }}>尚未追蹤任何市場信號。</Text>
+                        ) : (
+                            beliefs.filter(b => !b.id.startsWith('custom')).slice(0, 3).map((belief) => {
+                                // Dynamic Interpretation Logic
+                                const prob = belief.currentProbability;
+                                const isPositive = prob > 50;
+                                const probText = `${prob.toFixed(0)}%`;
 
-                        <View style={styles.dynamicItem}>
-                            <Text style={styles.dynamicChange}>• Funding Rate 回落至中性</Text>
-                            <Text style={styles.dynamicInterpret}>→ 去槓桿進行中</Text>
-                            <Text style={styles.dynamicImpact}>→ 有利於反轉準備階段</Text>
-                        </View>
+                                let interpret = '→ 市場共識未形成';
+                                let impact = '→ 影響中性';
 
-                        <View style={styles.dynamicItem}>
-                            <Text style={styles.dynamicChange}>• 穩定幣供給近 30 日持平</Text>
-                            <Text style={styles.dynamicInterpret}>→ 資金尚未進場</Text>
-                            <Text style={styles.dynamicImpact}>→ 流動性不支持反轉加速</Text>
-                        </View>
+                                if (prob >= 70) {
+                                    interpret = '→ 市場高度共識';
+                                    impact = '→ 強化當前趨勢';
+                                } else if (prob >= 55) {
+                                    interpret = '→ 市場預期偏高';
+                                    impact = '→ 支撐力道增強';
+                                } else if (prob <= 30) {
+                                    interpret = '→ 市場預期低落';
+                                    impact = '→ 潛在利空風險';
+                                } else if (prob <= 45) {
+                                    interpret = '→ 市場信心不足';
+                                    impact = '→ 動能稍微轉弱';
+                                }
+
+                                return (
+                                    <View key={belief.id} style={styles.dynamicItem}>
+                                        <Text style={styles.dynamicChange}>• {belief.marketEvent.title} ({probText})</Text>
+                                        <Text style={styles.dynamicInterpret}>{interpret}</Text>
+                                        <Text style={styles.dynamicImpact}>{impact}</Text>
+                                    </View>
+                                );
+                            })
+                        )}
                     </View>
                 </View>
 

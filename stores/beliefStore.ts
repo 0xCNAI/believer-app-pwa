@@ -22,6 +22,7 @@ interface BeliefState {
     removeBelief: (id: string) => void;
     incrementFaith: () => void;
     updateBeliefs: (freshEvents: MarketEvent[]) => void;
+    refreshBeliefs: () => Promise<void>;
     setBtcPrice: (price: number) => void;
     seedFromFocusAreas: (focusAreas: string[]) => void;
     syncBeliefs: (userId: string) => () => void; // Returns unsubscribe function
@@ -177,6 +178,19 @@ export const useBeliefStore = create<BeliefState>()(
                     });
                     return { beliefs: updatedBeliefs };
                 });
+            },
+
+            refreshBeliefs: async () => {
+                try {
+                    // Get current user prefs for optimal fetching
+                    // const { experience } = require('./userStore').useUserStore.getState();
+                    // Just fetch default for now to get fresh prices
+                    const freshEvents = await fetchUnifiedMarkets();
+                    get().updateBeliefs(freshEvents);
+                    console.log('[BeliefStore] Refreshed beliefs with live data');
+                } catch (e) {
+                    console.error('[BeliefStore] Failed to refresh beliefs:', e);
+                }
             },
 
             syncBeliefs: (userId: string) => {
