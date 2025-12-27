@@ -61,6 +61,11 @@ export interface ReversalState {
     // Debug/UI Details
     vetoReason?: string;
     boostersApplied: string[];
+    // AI / Copywriting Metadata
+    cycleUser: number;
+    driver: 'TREND' | 'CYCLE';
+    zoneBonus: number;
+    derivAdj: number;
 }
 
 // ============ Logic ============
@@ -160,6 +165,9 @@ export function calculateReversalState(
     let finalScore = Math.max(trendScoreRaw, cycleScoreRaw);
     finalScore = Math.min(phaseCap, finalScore);
 
+    // Determine Driver
+    const driver = trendScoreRaw >= cycleScoreRaw ? 'TREND' : 'CYCLE';
+
     // --- E. Stage Determination ---
     let stage: ReversalStage = 'Bottom Break';
     let watchReason: 'ZONE_GUARANTEE' | 'SCORE_THRESHOLD' | undefined;
@@ -220,6 +228,11 @@ export function calculateReversalState(
         trendScore: trendScoreRaw, // Alias
         vetoReason: vetoResult.reason,
         phaseCap,
-        boostersApplied: activeBoosters
+        boostersApplied: activeBoosters,
+        // AI / Copywriting fields
+        cycleUser,
+        driver,
+        zoneBonus: onChainPts,
+        derivAdj: derivPts
     };
 }

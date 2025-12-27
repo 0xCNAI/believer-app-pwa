@@ -1,3 +1,4 @@
+import { resolveReversalCopy } from '@/services/copyService';
 import { EventCategory } from '@/services/marketData';
 import { useBeliefStore } from '@/stores/beliefStore';
 import { Ionicons } from '@expo/vector-icons';
@@ -156,98 +157,98 @@ export default function DashboardScreen() {
                     </View>
 
                     {/* V2: Reversal Stage Display */}
+                    {/* V2: Reversal Stage Display (AI Copywriting) */}
                     <View style={styles.progressSection}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                            <Text style={styles.progressLabel}>目前階段</Text>
-                            {(() => {
-                                try {
-                                    const { reversalState } = require('@/stores/techStore').useTechStore();
-                                    const stage = reversalState?.stage || 'Bottom Break';
-                                    const map: any = { 'Bottom Break': '破底 (Bottom Break)', 'Watch': '觀察 (Watch)', 'Prepare': '準備 (Prepare)', 'Confirmed': '確認 (Confirmed)' };
+                        {(() => {
+                            try {
+                                const { reversalState } = require('@/stores/techStore').useTechStore();
+                                // Generate Copy
+                                const copy = resolveReversalCopy(reversalState);
 
-                                    // Veto Badge
-                                    if (reversalState?.veto) {
-                                        return (
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                                <View style={{ backgroundColor: 'rgba(239, 68, 68, 0.2)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.5)' }}>
-                                                    <Text style={{ color: '#EF4444', fontSize: 10, fontWeight: '700' }}>VETO ACTIVE</Text>
-                                                </View>
-                                                <Text style={{ color: '#E4E4E7', fontSize: 14, fontWeight: '700' }}>{map[stage]}</Text>
-                                            </View>
-                                        );
+                                // Color Logic
+                                const getStageColor = (stage: string) => {
+                                    switch (stage) {
+                                        case 'OVERHEATED': return '#ef4444';
+                                        case 'CONFIRMED': return '#22c55e';
+                                        case 'PREPARE': return '#eab308'; // dimmed yellow
+                                        case 'WATCH': return '#f97316';
+                                        default: return '#71717a';
                                     }
-                                    return <Text style={{ color: '#E4E4E7', fontSize: 14, fontWeight: '700' }}>{map[stage]}</Text>;
-                                } catch (e) { return <Text style={{ color: '#71717A' }}>Loading...</Text>; }
-                            })()}
-                        </View>
+                                };
+                                const activeColor = getStageColor(copy.displayStage);
 
-                        {/* Dynamic Progress Bar based on Score (Visual Only) */}
-                        <View style={styles.progressBar}>
-                            {[...Array(8)].map((_, i) => {
-                                // Maps roughly to 12.5 points per block
-                                const filled = reversalIndex > (i * 12.5);
                                 return (
-                                    <View
-                                        key={i}
-                                        style={[
-                                            styles.progressBlock,
-                                            filled && styles.progressBlockFilled
-                                        ]}
-                                    />
+                                    <>
+                                        {/* 1. Header: Stage Title & Tags */}
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                                <Text style={[styles.progressLabel, { color: activeColor, marginBottom: 0 }]}>
+                                                    {copy.title}
+                                                </Text>
+                                                {/* Tags */}
+                                                {copy.tags?.map((tag, i) => (
+                                                    <View key={i} style={{
+                                                        backgroundColor: 'rgba(39, 39, 42, 0.5)',
+                                                        paddingHorizontal: 8, paddingVertical: 2,
+                                                        borderRadius: 4, borderWidth: 1, borderColor: '#27272A'
+                                                    }}>
+                                                        <Text style={{ color: '#A1A1AA', fontSize: 10, fontWeight: '600' }}>{tag}</Text>
+                                                    </View>
+                                                ))}
+                                            </View>
+                                        </View>
+
+                                        {/* 2. One Liner (Hero) */}
+                                        <Text style={{
+                                            color: '#FFFFFF',
+                                            fontSize: 16,
+                                            fontWeight: '700',
+                                            lineHeight: 24,
+                                            marginBottom: 16
+                                        }}>
+                                            {copy.oneLiner}
+                                        </Text>
+
+                                        {/* 3. Progress Bar (Visual) */}
+                                        <View style={styles.progressBar}>
+                                            {[...Array(8)].map((_, i) => {
+                                                const filled = reversalIndex > (i * 12.5);
+                                                return (
+                                                    <View
+                                                        key={i}
+                                                        style={[
+                                                            styles.progressBlock,
+                                                            filled && { backgroundColor: activeColor, opacity: 0.8 } // Tint with stage color
+                                                        ]}
+                                                    />
+                                                );
+                                            })}
+                                        </View>
+
+                                        {/* 4. Context: Reason & Next Steps */}
+                                        <View style={styles.progressContext}>
+                                            {/* Reasons */}
+                                            <View style={{ marginBottom: 16 }}>
+                                                <Text style={styles.contextTitle}>目前的依據</Text>
+                                                {copy.reasonLines.map((line, i) => (
+                                                    <Text key={i} style={styles.contextItem}>• {line}</Text>
+                                                ))}
+                                            </View>
+
+                                            {/* Next Steps */}
+                                            <View>
+                                                <Text style={[styles.contextTitle, { color: activeColor }]}>下一步</Text>
+                                                {copy.next.map((line, i) => (
+                                                    <Text key={i} style={styles.contextItem}>👉 {line}</Text>
+                                                ))}
+                                            </View>
+                                        </View>
+                                    </>
                                 );
-                            })}
-                        </View>
-
-                        {/* Context Info */}
-                        <View style={styles.progressContext}>
-                            {(() => {
-                                try {
-                                    const { reversalState } = require('@/stores/techStore').useTechStore();
-                                    if (!reversalState) return <Text style={styles.contextItem}>系統初始化中...</Text>;
-
-                                    const { stage, veto, cycleZone, watchReason } = reversalState;
-
-                                    if (veto) {
-                                        return (
-                                            <>
-                                                <Text style={[styles.contextTitle, { color: '#ef4444' }]}>⚠️ 衍生品否決 (Overheated)</Text>
-                                                <Text style={styles.contextItem}>• 資金費率或持倉量過熱 (Cap Active)</Text>
-                                                <Text style={styles.contextItem}>• 上漲潛力受限，建議觀望</Text>
-                                            </>
-                                        );
-                                    }
-
-                                    if (stage === 'Bottom Break') {
-                                        return (
-                                            <>
-                                                <Text style={styles.contextTitle}>尚未築底 (Bottom Break)</Text>
-                                                <Text style={styles.contextItem}>• 鏈上週期信號：{cycleZone}</Text>
-                                                <Text style={styles.contextItem}>• 技術結構偏弱，等待轉強</Text>
-                                            </>
-                                        );
-                                    }
-
-                                    if (stage === 'Watch') {
-                                        return (
-                                            <>
-                                                <Text style={[styles.contextTitle, { color: '#f97316' }]}>進入觀察區 (Watch)</Text>
-                                                <Text style={styles.contextItem}>• 觸發原因：{watchReason === 'ZONE_GUARANTEE' ? '強週期保底 (Strong Zone)' : '分數達標 (Score > 45)'}</Text>
-                                                <Text style={styles.contextItem}>• 等待進一步確認信號</Text>
-                                            </>
-                                        );
-                                    }
-
-                                    return (
-                                        <>
-                                            <Text style={[styles.contextTitle, { color: '#22c55e' }]}>結構轉強 ({stage})</Text>
-                                            <Text style={styles.contextItem}>• 趨勢與週期信號共振</Text>
-                                            <Text style={styles.contextItem}>• 衍生品結構健康</Text>
-                                        </>
-                                    );
-
-                                } catch (e) { return null; }
-                            })()}
-                        </View>
+                            } catch (e) {
+                                return <Text style={{ color: '#71717A' }}>Loading Analysis...</Text>;
+                            }
+                        })()}
                     </View>
 
                     {/* V2: Market Dynamics (replaces 趨勢感知) */}
