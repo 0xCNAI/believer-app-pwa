@@ -462,7 +462,7 @@ export default function DashboardScreen() {
                         {/* Use Image instead of Icon */}
                         <Image
                             source={require('../assets/images/wooden-fish.png')}
-                            style={{ width: 44, height: 44, tintColor: '#F59E0B' }}
+                            style={{ width: 44, height: 44 }}
                             resizeMode="contain"
                         />
                     </View>
