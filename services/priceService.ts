@@ -30,7 +30,9 @@ export async function fetchBTCKlines(days: number = 365): Promise<KlineData[]> {
         return klineCache.slice(-days);
     }
 
+    // 1. Try Binance
     try {
+        console.log('[PriceService] Fetching klines from Binance...');
         const response = await fetch(
             `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=${Math.min(days, 1000)}`
         );
@@ -51,12 +53,48 @@ export async function fetchBTCKlines(days: number = 365): Promise<KlineData[]> {
             volume: parseFloat(k[5]),
         }));
 
+        console.log('[PriceService] Binance fetch success. Points:', klineCache.length);
         lastFetchTime = now;
         return klineCache;
-    } catch (error) {
-        console.error('[PriceService] Failed to fetch klines:', error);
-        // Return cached data if available, otherwise empty
-        return klineCache.length > 0 ? klineCache : [];
+
+    } catch (binanceError) {
+        console.warn('[PriceService] Binance failed, trying CryptoCompare...', binanceError);
+
+        // 2. Fallback: CryptoCompare
+        try {
+            const limit = Math.min(days, 2000);
+            const response = await fetch(
+                `https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&limit=${limit}`
+            );
+
+            if (!response.ok) {
+                throw new Error(`CryptoCompare API error: ${response.status}`);
+            }
+
+            const json = await response.json();
+
+            if (json.Response !== 'Success' || !json.Data || !json.Data.Data) {
+                throw new Error(`CryptoCompare API response error: ${json.Message}`);
+            }
+
+            // CryptoCompare format: { time (s), open, high, low, close, volumefrom, volumeto }
+            klineCache = json.Data.Data.map((d: any) => ({
+                timestamp: d.time * 1000, // Convert s to ms
+                open: d.open,
+                high: d.high,
+                low: d.low,
+                close: d.close,
+                volume: d.volumefrom, // BTC Volume
+            }));
+
+            console.log('[PriceService] CryptoCompare fetch success. Points:', klineCache.length);
+            lastFetchTime = now;
+            return klineCache;
+
+        } catch (ccError) {
+            console.error('[PriceService] All kline sources failed:', ccError);
+            return klineCache.length > 0 ? klineCache : [];
+        }
     }
 }
 
