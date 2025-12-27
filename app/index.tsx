@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Image, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Easing, Image, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function DashboardScreen() {
@@ -24,22 +24,31 @@ export default function DashboardScreen() {
 
     const handleFishClick = () => {
         incrementFaith();
-        import('expo-haptics').then(Haptics => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        }).catch(() => { });
 
-        // Bounce Animation
+        // Haptics with Web Fallback
+        if (Platform.OS === 'web') {
+            if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                navigator.vibrate(10); // Check if 10ms is enough, maybe 50? sticking to light.
+            }
+        } else {
+            import('expo-haptics').then(Haptics => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }).catch(() => { });
+        }
+
+        // Bounce Animation (Web compatible)
         Animated.sequence([
             Animated.timing(scaleAnim, {
                 toValue: 0.8,
                 duration: 50,
-                useNativeDriver: true,
+                // Native driver not fully supported for scale on some web implementations or causes warnings
+                useNativeDriver: Platform.OS !== 'web',
                 easing: Easing.out(Easing.quad),
             }),
             Animated.timing(scaleAnim, {
                 toValue: 1,
                 duration: 150,
-                useNativeDriver: true,
+                useNativeDriver: Platform.OS !== 'web',
                 easing: Easing.elastic(1.5), // Bouncy effect
             })
         ]).start();

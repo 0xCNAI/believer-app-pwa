@@ -1,13 +1,24 @@
+import { Platform } from 'react-native';
 import { MarketEvent } from './polymarket';
 
-// Polymarket Gamma API
-const POLYMARKET_API = 'https://gamma-api.polymarket.com';
+// Polymarket Gamma API Base
+const POLYMARKET_API_BASE = 'https://gamma-api.polymarket.com/events';
+
+// Helper to get correct URL based on platform
+const getPolymarketUrl = (queryString: string): string => {
+    if (Platform.OS === 'web') {
+        // Use local API proxy on web (bypasses CORS)
+        return `/api/polymarket?${queryString}`;
+    }
+    // Direct fetch on native
+    return `${POLYMARKET_API_BASE}?${queryString}`;
+};
 
 // Search for specific markets on Polymarket
 export const searchPolymarkets = async (query: string): Promise<MarketEvent[]> => {
     try {
         const response = await fetch(
-            `${POLYMARKET_API}/events?limit=10&active=true&closed=false&tag_slug=${encodeURIComponent(query)}`
+            getPolymarketUrl(`limit=10&active=true&closed=false&tag_slug=${encodeURIComponent(query)}`)
         );
         if (!response.ok) return [];
         return await response.json();
@@ -20,7 +31,7 @@ export const searchPolymarkets = async (query: string): Promise<MarketEvent[]> =
 // Fetch specific market by slug
 export const fetchPolymarketBySlug = async (slug: string): Promise<MarketEvent | null> => {
     try {
-        const response = await fetch(`${POLYMARKET_API}/events?slug=${encodeURIComponent(slug)}`);
+        const response = await fetch(getPolymarketUrl(`slug=${encodeURIComponent(slug)}`));
         if (!response.ok) return null;
         const data = await response.json();
         return data[0] || null;
@@ -46,8 +57,8 @@ export const fetchRealPolymarketData = async (): Promise<Map<string, MarketEvent
     try {
         // Fetch top crypto/economics markets
         const [cryptoMarkets, politicsMarkets] = await Promise.all([
-            fetch(`${POLYMARKET_API}/events?limit=20&active=true&closed=false&tag_slug=crypto`).then(r => r.json()).catch(() => []),
-            fetch(`${POLYMARKET_API}/events?limit=20&active=true&closed=false&tag_slug=politics`).then(r => r.json()).catch(() => []),
+            fetch(getPolymarketUrl(`limit=20&active=true&closed=false&tag_slug=crypto`)).then(r => r.json()).catch(() => []),
+            fetch(getPolymarketUrl(`limit=20&active=true&closed=false&tag_slug=politics`)).then(r => r.json()).catch(() => []),
         ]);
 
         const allMarkets = [...cryptoMarkets, ...politicsMarkets];
