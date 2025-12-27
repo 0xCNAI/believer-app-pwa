@@ -462,7 +462,7 @@ export default function DashboardScreen() {
                         {/* Use Image instead of Icon */}
                         <Image
                             source={require('../assets/images/wooden-fish.png')}
-                            style={{ width: 28, height: 28, tintColor: '#F59E0B' }}
+                            style={{ width: 44, height: 44, tintColor: '#F59E0B' }}
                             resizeMode="contain"
                         />
                     </View>
@@ -912,22 +912,25 @@ const styles = StyleSheet.create({
     fishFab: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#18181B',
-        padding: 8,
-        paddingRight: 16,
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: '#F59E0B', // Amber color for "Wooden Fish"
+        backgroundColor: 'rgba(24, 24, 27, 0.95)', // Increased opacity
+        padding: 4, // Tighter padding for "card" look
+        paddingRight: 20,
+        borderRadius: 24,
+        borderWidth: 1.5,
+        borderColor: '#F59E0B',
         shadowColor: '#F59E0B',
         shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.3,
-        shadowRadius: 10,
+        shadowOpacity: 0.5,
+        shadowRadius: 16,
+        elevation: 8,
     },
     fishIconBg: {
-        width: 40,
-        height: 40,
-        borderRadius: 999,
-        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+        width: 56,
+        height: 56,
+        borderRadius: 28, // Circle
+        backgroundColor: '#27272A',
+        borderWidth: 1,
+        borderColor: 'rgba(245, 158, 11, 0.3)',
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 12,
@@ -937,15 +940,20 @@ const styles = StyleSheet.create({
     },
     fishCountText: {
         color: '#F59E0B',
-        fontSize: 16,
-        fontWeight: '700',
+        fontSize: 24, // Larger font
+        fontWeight: '800',
         fontVariant: ['tabular-nums'],
+        lineHeight: 28,
+        textShadowColor: 'rgba(245, 158, 11, 0.5)',
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 8,
     },
     fishLabelText: {
-        color: '#71717A',
-        fontSize: 8,
+        color: '#A1A1AA',
+        fontSize: 10,
         fontWeight: '700',
-        letterSpacing: 1,
+        letterSpacing: 1.5,
+        textTransform: 'uppercase',
     },
     meritPopup: {
         position: 'absolute',

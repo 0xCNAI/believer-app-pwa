@@ -1,4 +1,4 @@
-import { BELIEVER_SIGNALS, MarketEvent } from '@/services/marketData';
+import { BELIEVER_SIGNALS, MarketEvent, fetchUnifiedMarkets } from '@/services/marketData';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
