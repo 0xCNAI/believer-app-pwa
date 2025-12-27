@@ -10,13 +10,26 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function DashboardScreen() {
     const router = useRouter();
-    const { getReversalIndex, getInterpretation, btcPrice, setBtcPrice, beliefs } = useBeliefStore();
+    const { getReversalIndex, getInterpretation, btcPrice, setBtcPrice, beliefs, faithClicks, incrementFaith } = useBeliefStore();
     const reversalIndex = getReversalIndex();
     const interpretation = getInterpretation();
     const [refreshing, setRefreshing] = useState(false);
     const [expandedCat, setExpandedCat] = useState<string | null>(null);
     const [showNotifications, setShowNotifications] = useState(false);
     const [btc24hChange, setBtc24hChange] = useState<number | null>(null);
+
+    // Wooden Fish Animation State
+    const [showMerit, setShowMerit] = useState(false);
+
+    const handleFishClick = () => {
+        incrementFaith();
+        import('expo-haptics').then(Haptics => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }).catch(() => { });
+
+        setShowMerit(true);
+        setTimeout(() => setShowMerit(false), 500);
+    };
 
     // Debug Log
     console.log('[Dashboard] Rendering. Index:', reversalIndex);
@@ -420,6 +433,26 @@ export default function DashboardScreen() {
                     </View>
                 )
             }
+
+            {/* Cyber Wooden Fish FAB */}
+            <TouchableOpacity
+                onPress={handleFishClick}
+                style={styles.fishFab}
+                activeOpacity={0.8}
+            >
+                <View style={styles.fishIconBg}>
+                    <Ionicons name="hardware-chip-outline" size={24} color="#F59E0B" />
+                </View>
+                <View style={styles.fishCounter}>
+                    <Text style={styles.fishCountText}>{faithClicks}</Text>
+                    <Text style={styles.fishLabelText}>MERIT</Text>
+                </View>
+                {showMerit && (
+                    <View style={styles.meritPopup}>
+                        <Text style={styles.meritText}>功德 +1</Text>
+                    </View>
+                )}
+            </TouchableOpacity>
         </SafeAreaView >
     );
 }
@@ -824,29 +857,84 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
-        marginBottom: 4,
+        marginBottom: 8,
     },
     dotSmall: {
-        width: 8,
-        height: 8,
+        width: 6,
+        height: 6,
         borderRadius: 999,
     },
     notifType: {
-        color: '#A1A1AA',
-        fontSize: 12,
+        color: '#FFFFFF',
+        fontSize: 10,
         fontWeight: '700',
     },
     notifContent: {
-        color: '#E4E4E7', // zinc-200
-        fontSize: 14,
+        color: '#E4E4E7',
+        fontSize: 12,
+        lineHeight: 18,
+        marginBottom: 8,
     },
     notifTime: {
-        color: '#52525B', // zinc-600
+        color: '#71717A',
         fontSize: 10,
-        marginTop: 8,
     },
-
-    // V2: Progress Section Styles
+    fishFab: {
+        position: 'absolute',
+        bottom: 32,
+        right: 24,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#18181B',
+        padding: 8,
+        paddingRight: 16,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: '#F59E0B', // Amber color for "Wooden Fish"
+        shadowColor: '#F59E0B',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+        zIndex: 40,
+    },
+    fishIconBg: {
+        width: 40,
+        height: 40,
+        borderRadius: 999,
+        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 12,
+    },
+    fishCounter: {
+        alignItems: 'flex-start',
+    },
+    fishCountText: {
+        color: '#F59E0B',
+        fontSize: 16,
+        fontWeight: '700',
+        fontVariant: ['tabular-nums'],
+    },
+    fishLabelText: {
+        color: '#71717A',
+        fontSize: 8,
+        fontWeight: '700',
+        letterSpacing: 1,
+    },
+    meritPopup: {
+        position: 'absolute',
+        top: -30,
+        right: 0,
+        backgroundColor: '#F59E0B',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 4,
+    },
+    meritText: {
+        color: '#000',
+        fontSize: 10,
+        fontWeight: '900',
+    },
     progressSection: {
         marginTop: 24,
         borderTopWidth: 1,
