@@ -35,11 +35,14 @@ interface TechState {
     lastEvaluated: number;
     isLoading: boolean;
     error: string | null;
+    gateCount: number;
+    higherLow: boolean;
 
     // Actions
     setConditionEnabled: (id: string, enabled: boolean) => void;
     setPersonalParam: <K extends keyof PersonalParams>(key: K, value: PersonalParams[K]) => void;
     evaluateAll: () => Promise<void>;
+    fetchAndEvaluate: () => Promise<void>;
     resetToDefaults: () => void;
 }
 
@@ -67,6 +70,8 @@ export const useTechStore = create<TechState>()(
             lastEvaluated: 0,
             isLoading: false,
             error: null,
+            gateCount: 0,
+            higherLow: false,
 
             // Actions
             setConditionEnabled: (id, enabled) => {
@@ -85,6 +90,11 @@ export const useTechStore = create<TechState>()(
                         [key]: value,
                     },
                 }));
+            },
+
+            fetchAndEvaluate: async () => {
+                console.log('[TechStore] fetchAndEvaluate triggered');
+                await get().evaluateAll();
             },
 
             evaluateAll: async () => {
@@ -156,7 +166,7 @@ export const useTechStore = create<TechState>()(
                             // Running in background to not block UI? 
                             // Or await if we want to show toast immediately?
                             // Let's await to be safe.
-                            syncStateAndCheckDiff(user.uid, reversalState).then((result: any) => {
+                            syncStateAndCheckDiff({ id: user.uid, email: user.email }, reversalState).then((result: any) => {
                                 if (result.hasChanged && result.notifications.length > 0) {
                                     console.log('[Notifier]', result.notifications);
                                     // TODO: Trigger UI Toast/Alert here if needed
