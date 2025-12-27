@@ -108,6 +108,11 @@ export const useTechStore = create<TechState>()(
                         .filter(([_, enabled]) => enabled)
                         .map(([id]) => id);
 
+                    console.log('[TechStore] Evaluation Context:', {
+                        enabledIds,
+                        params: personalParams
+                    });
+
                     // 1. Fetch ALL Real Data
                     const [techResults, realData] = await Promise.all([
                         evaluateTechConditions(enabledIds, personalParams),

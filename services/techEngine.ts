@@ -8,15 +8,15 @@
  */
 
 import {
-    fetchBTCKlines,
     calculateMA,
     calculateRSI,
     calculateSlope,
     calculateVolatility,
-    percentileRank,
     checkHigherLow,
+    fetchBTCKlines,
     findHighestHigh,
     KlineData,
+    percentileRank,
 } from './priceService';
 
 // ============ Types ============
@@ -157,6 +157,8 @@ function evaluatePriceVsMA(data: KlineData[], period: number): ConditionResult {
     const distance = (lastClose - lastMA) / lastMA;
     const passed = distance > -0.05; // Within 5% below
     const score = Math.max(0, Math.min(1, (distance + 0.1) / 0.15)); // -10% -> 0, +5% -> 1
+
+    console.log(`[TechEngine] Gate 1 (Price vs MA): Close=${lastClose}, MA=${lastMA}, Dist=${distance.toFixed(3)}, Passed=${passed}`);
 
     return {
         id: 'price_vs_200d',
