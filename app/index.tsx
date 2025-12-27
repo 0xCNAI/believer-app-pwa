@@ -4,8 +4,8 @@ import { useBeliefStore } from '@/stores/beliefStore';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, Image, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function DashboardScreen() {
@@ -20,12 +20,29 @@ export default function DashboardScreen() {
 
     // Wooden Fish Animation State
     const [showMerit, setShowMerit] = useState(false);
+    const scaleAnim = useRef(new Animated.Value(1)).current;
 
     const handleFishClick = () => {
         incrementFaith();
         import('expo-haptics').then(Haptics => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         }).catch(() => { });
+
+        // Bounce Animation
+        Animated.sequence([
+            Animated.timing(scaleAnim, {
+                toValue: 0.8,
+                duration: 50,
+                useNativeDriver: true,
+                easing: Easing.out(Easing.quad),
+            }),
+            Animated.timing(scaleAnim, {
+                toValue: 1,
+                duration: 150,
+                useNativeDriver: true,
+                easing: Easing.elastic(1.5), // Bouncy effect
+            })
+        ]).start();
 
         setShowMerit(true);
         setTimeout(() => setShowMerit(false), 500);
@@ -437,16 +454,23 @@ export default function DashboardScreen() {
             {/* Cyber Wooden Fish FAB */}
             <TouchableOpacity
                 onPress={handleFishClick}
-                style={styles.fishFab}
-                activeOpacity={0.8}
+                activeOpacity={1}
+                style={styles.fishFabContainer}
             >
-                <View style={styles.fishIconBg}>
-                    <Ionicons name="hardware-chip-outline" size={24} color="#F59E0B" />
-                </View>
-                <View style={styles.fishCounter}>
-                    <Text style={styles.fishCountText}>{faithClicks}</Text>
-                    <Text style={styles.fishLabelText}>MERIT</Text>
-                </View>
+                <Animated.View style={[styles.fishFab, { transform: [{ scale: scaleAnim }] }]}>
+                    <View style={styles.fishIconBg}>
+                        {/* Use Image instead of Icon */}
+                        <Image
+                            source={require('../assets/images/wooden-fish.png')}
+                            style={{ width: 28, height: 28, tintColor: '#F59E0B' }}
+                            resizeMode="contain"
+                        />
+                    </View>
+                    <View style={styles.fishCounter}>
+                        <Text style={styles.fishCountText}>{faithClicks}</Text>
+                        <Text style={styles.fishLabelText}>MERIT</Text>
+                    </View>
+                </Animated.View>
                 {showMerit && (
                     <View style={styles.meritPopup}>
                         <Text style={styles.meritText}>功德 +1</Text>
@@ -879,10 +903,13 @@ const styles = StyleSheet.create({
         color: '#71717A',
         fontSize: 10,
     },
-    fishFab: {
+    fishFabContainer: {
         position: 'absolute',
         bottom: 32,
         right: 24,
+        zIndex: 40,
+    },
+    fishFab: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#18181B',
@@ -895,7 +922,6 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.3,
         shadowRadius: 10,
-        zIndex: 40,
     },
     fishIconBg: {
         width: 40,
