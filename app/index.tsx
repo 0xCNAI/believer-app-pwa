@@ -512,6 +512,10 @@ export default function DashboardScreen() {
                 </Animated.View>
 
                 <Animated.View style={[styles.fishFab, { transform: [{ scale: scaleAnim }] }]}>
+                    <View style={styles.fishCounter}>
+                        <Text style={styles.fishCountText}>{faithClicks}</Text>
+                        <Text style={styles.fishLabelText}>MERIT</Text>
+                    </View>
                     <View style={styles.fishIconBg}>
                         {/* Use Image instead of Icon */}
                         <Image
@@ -519,10 +523,6 @@ export default function DashboardScreen() {
                             style={{ width: 44, height: 44 }}
                             resizeMode="contain"
                         />
-                    </View>
-                    <View style={styles.fishCounter}>
-                        <Text style={styles.fishCountText}>{faithClicks}</Text>
-                        <Text style={styles.fishLabelText}>MERIT</Text>
                     </View>
                 </Animated.View>
                 {showMerit && (
@@ -968,7 +968,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: 'rgba(24, 24, 27, 0.95)', // Increased opacity
         padding: 4, // Tighter padding for "card" look
-        paddingRight: 20,
+        paddingLeft: 24, // Text on left needs padding
+        paddingRight: 6, // Fish on right needs less padding
         borderRadius: 24,
         borderWidth: 1.5,
         borderColor: '#F59E0B',
@@ -1008,10 +1009,10 @@ const styles = StyleSheet.create({
         borderColor: 'rgba(245, 158, 11, 0.3)',
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 12,
+        marginLeft: 16, // Spacing between Text and Fish
     },
     fishCounter: {
-        alignItems: 'flex-start',
+        alignItems: 'flex-end', // Align text to right (towards fish) or center? Let's use flex-end to make number align right next to fish
     },
     fishCountText: {
         color: '#F59E0B',
