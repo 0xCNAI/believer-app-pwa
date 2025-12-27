@@ -137,9 +137,9 @@ export const useTechStore = create<TechState>()(
                         const beliefState = require('./beliefStore').useBeliefStore.getState();
                         const beliefs = beliefState.beliefs || [];
                         if (beliefs.length > 0) {
-                            // Current Logic: avg prob * 0.4 (approx 20 pts max)
+                            // Current Logic: avg prob * 0.25 (25 pts max)
                             const avgProb = beliefs.reduce((sum: number, b: any) => sum + b.currentProbability, 0) / beliefs.length;
-                            beliefPoints = avgProb * 0.4;
+                            beliefPoints = avgProb * 0.25;
                         }
                     } catch (e) {
                         console.warn('[TechStore] Could not access beliefStore:', e);
