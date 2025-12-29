@@ -3,6 +3,7 @@ import { BELIEVER_SIGNALS } from '@/services/marketData';
 import { useBeliefStore } from '@/stores/beliefStore';
 import { useUserStore } from '@/stores/userStore';
 import { useAuthStore } from '@/stores/authStore';
+import { useOnboardingStore } from '@/stores/onboardingStore';
 import { Ionicons, FontAwesome } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -746,7 +747,9 @@ export default function DashboardScreen() {
                         <Text style={{ color: '#71717a', fontSize: 10, paddingHorizontal: 16, marginTop: 8, marginBottom: 4 }}>ACCOUNT</Text>
 
                         <TouchableOpacity style={styles.settingsItem} onPress={() => {
+                            // Reset all stores
                             resetProfile();
+                            useOnboardingStore.getState().resetOnboarding();
                             setShowSettings(false);
                             router.replace('/onboarding');
                         }}>
