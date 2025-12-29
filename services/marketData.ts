@@ -17,8 +17,8 @@ export type EventCategory = 'Macro' | 'Structural' | 'Political' | 'Narrative';
 export const BELIEVER_SIGNALS: MarketEvent[] = [
     {
         id: 'fed_policy',
-        title: 'Fed Monetary Policy',
-        description: 'Market expectation for rate cuts (25bps+)',
+        title: '聯準會降息預期',
+        description: '市場預期降息機率（25-50bps）',
         source: 'Polymarket',
         sourceUrl: 'https://polymarket.com/event/fed-decision-in-january',
         category: 'Macro',
@@ -28,8 +28,8 @@ export const BELIEVER_SIGNALS: MarketEvent[] = [
     },
     {
         id: 'us_recession',
-        title: 'US Recession Risk',
-        description: 'Probability of NO recession in medium term',
+        title: '美國衰退風險',
+        description: '中期內不發生經濟衰退的機率',
         source: 'Polymarket',
         sourceUrl: 'https://polymarket.com/search?_q=recession',
         category: 'Macro',
@@ -39,8 +39,8 @@ export const BELIEVER_SIGNALS: MarketEvent[] = [
     },
     {
         id: 'gov_shutdown',
-        title: 'US Gov Fiscal Stability',
-        description: 'Probability of NO government shutdown',
+        title: '美國財政穩定性',
+        description: '政府不停擺的機率',
         source: 'Polymarket',
         sourceUrl: 'https://polymarket.com/search?_q=shutdown',
         category: 'Political',
@@ -50,8 +50,8 @@ export const BELIEVER_SIGNALS: MarketEvent[] = [
     },
     {
         id: 'btc_reserve',
-        title: 'Bitcoin Strategic Reserve',
-        description: 'US Government adoption of BTC Reserve',
+        title: '比特幣戰略儲備',
+        description: '美國政府採納 BTC 戰略儲備的機率',
         source: 'Polymarket',
         sourceUrl: 'https://polymarket.com/event/us-national-bitcoin-reserve-before-2027',
         category: 'Structural',
