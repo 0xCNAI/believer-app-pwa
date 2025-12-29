@@ -3,7 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { useOnboardingStore } from '@/stores/onboardingStore';
-import { useUserStore, ExperienceLevel, FocusArea, AlertStyle } from '@/stores/userStore';
+import { useUserStore, ExperienceLevel, PredictionTopic, AlertStyle } from '@/stores/userStore';
 import { useBeliefStore } from '@/stores/beliefStore';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
@@ -21,12 +21,16 @@ const EXPERIENCE_OPTIONS: { id: ExperienceLevel; label: string; desc: string }[]
     { id: '5_plus_years', label: '5 年以上', desc: '技術趨勢門檻：敏感 (多時間框架結構)' },
 ];
 
-const FOCUS_AREA_OPTIONS: { id: FocusArea; label: string }[] = [
-    { id: 'macro', label: '宏觀政策與流動性' },
-    { id: 'extreme_repair', label: '市場極端情緒修復' },
-    { id: 'btc_structure', label: 'Bitcoin 結構性供需變化' },
-    { id: 'policy', label: '政治與監管事件' },
-    { id: 'low_prob', label: '長期低機率敘事' },
+// 8 Prediction Market Topics (唯一敘事層選項)
+const PREDICTION_TOPIC_OPTIONS: { id: PredictionTopic; label: string; desc: string }[] = [
+    { id: 'fed_rate', label: '聯準會降息預期', desc: 'Fed 利率決策、降息時機與次數' },
+    { id: 'yield_curve', label: '殖利率曲線轉向預期', desc: '倒掛解除、曲線正常化' },
+    { id: 'crypto_regulation', label: '美國加密監管與法案進展', desc: '國會法案、SEC 訴訟結果' },
+    { id: 'btc_reserve', label: '美國比特幣戰略儲備', desc: '國家級 BTC 儲備政策' },
+    { id: 'pro_crypto_pol', label: '親加密政治結果', desc: '選舉、政權更替對加密的影響' },
+    { id: 'eth_etf', label: 'ETH 現貨 ETF 預期', desc: 'SEC 批准 ETH 現貨 ETF' },
+    { id: 'institutional', label: '機構級加密採用', desc: '銀行託管、機構產品擴展' },
+    { id: 'systemic_risk', label: '系統性金融風險事件', desc: '銀行倒閉、政府停擺、金融危機' },
 ];
 
 const ALERT_STYLE_OPTIONS: { id: AlertStyle; label: string; desc: string }[] = [
@@ -38,10 +42,10 @@ const ALERT_STYLE_OPTIONS: { id: AlertStyle; label: string; desc: string }[] = [
 export default function OnboardingScreen() {
     const router = useRouter();
     const { completeOnboarding } = useOnboardingStore();
-    const { seedFromFocusAreas } = useBeliefStore();
+    const { seedFromPredictionTopics } = useBeliefStore();
     const {
         experience, setExperience,
-        focusAreas, toggleFocusArea,
+        predictionTopics, togglePredictionTopic,
         alertStyle, setAlertStyle
     } = useUserStore();
 
@@ -50,14 +54,14 @@ export default function OnboardingScreen() {
     const handleNext = () => {
         // Validation per step
         if (currentStep === 0 && !experience) return;
-        if (currentStep === 1 && focusAreas.length === 0) return;
+        if (currentStep === 1 && predictionTopics.length === 0) return;
         if (currentStep === 2 && !alertStyle) return;
 
         if (currentStep < 3) {
             setCurrentStep(currentStep + 1);
         } else {
-            // Seed Dashboard with initial signals based on user focus
-            seedFromFocusAreas(focusAreas);
+            // Seed Dashboard with initial signals based on prediction topics
+            seedFromPredictionTopics(predictionTopics);
             completeOnboarding();
             router.replace('/');
         }
@@ -90,30 +94,35 @@ export default function OnboardingScreen() {
                     </StyledView>
                 );
 
-            case 1: // Focus Areas
+            case 1: // Prediction Topics (新的敘事選項)
                 return (
                     <StyledView className="flex-1">
-                        <StyledText className="text-white text-2xl font-bold mb-2 leading-8">當市場可能出現趨勢轉變時，{'\n'}你比較關注哪一類變化？</StyledText>
-                        <StyledText className="text-zinc-400 text-sm mb-8">最多選擇 3 項 (目前 {focusAreas.length}/3)</StyledText>
-                        <StyledView className="gap-3 mb-6">
-                            {FOCUS_AREA_OPTIONS.map((opt) => {
-                                const isSelected = focusAreas.includes(opt.id);
+                        <StyledText className="text-white text-2xl font-bold mb-2 leading-8">你想追蹤哪些{'\n'}預測市場主題？</StyledText>
+                        <StyledText className="text-zinc-400 text-sm mb-6">選擇你關注的市場預期（最多 5 項，目前 {predictionTopics.length}/5）</StyledText>
+                        <StyledView className="gap-2 mb-6">
+                            {PREDICTION_TOPIC_OPTIONS.map((opt) => {
+                                const isSelected = predictionTopics.includes(opt.id);
                                 return (
                                     <StyledTouchableOpacity
                                         key={opt.id}
-                                        className={`p-5 rounded-2xl border ${isSelected ? 'bg-blue-500/10 border-blue-500' : 'bg-zinc-900 border-zinc-800'}`}
-                                        onPress={() => toggleFocusArea(opt.id)}
+                                        className={`p-4 rounded-2xl border ${isSelected ? 'bg-blue-500/10 border-blue-500' : 'bg-zinc-900 border-zinc-800'}`}
+                                        onPress={() => togglePredictionTopic(opt.id)}
                                     >
-                                        <StyledView className="flex-row items-center gap-4">
-                                            <StyledView className={`w-5 h-5 rounded-md border-2 ${isSelected ? 'border-blue-500 bg-blue-500' : 'border-zinc-600'}`} />
-                                            <StyledText className={`text-base font-bold ${isSelected ? 'text-blue-500' : 'text-white'}`}>{opt.label}</StyledText>
+                                        <StyledView className="flex-row items-center gap-3">
+                                            <StyledView className={`w-5 h-5 rounded-md border-2 items-center justify-center ${isSelected ? 'border-blue-500 bg-blue-500' : 'border-zinc-600'}`}>
+                                                {isSelected && <Ionicons name="checkmark" size={14} color="#fff" />}
+                                            </StyledView>
+                                            <StyledView className="flex-1">
+                                                <StyledText className={`text-sm font-bold ${isSelected ? 'text-blue-500' : 'text-white'}`}>{opt.label}</StyledText>
+                                                <StyledText className={`text-xs ${isSelected ? 'text-blue-300' : 'text-zinc-500'}`}>{opt.desc}</StyledText>
+                                            </StyledView>
                                         </StyledView>
                                     </StyledTouchableOpacity>
                                 );
                             })}
                         </StyledView>
-                        {focusAreas.length > 0 && (
-                            <StyledText className="text-emerald-500 text-xs font-bold mt-2 leading-5">反轉指數將優先反映你所關注的市場變化類型。</StyledText>
+                        {predictionTopics.length > 0 && (
+                            <StyledText className="text-emerald-500 text-xs font-bold mt-2 leading-5">系統將為你訂閱對應的 Polymarket / Kalshi 預測市場。</StyledText>
                         )}
                     </StyledView>
                 );
@@ -151,7 +160,7 @@ export default function OnboardingScreen() {
                         <StyledText className="text-zinc-400 text-center text-base leading-6 mb-12">
                             你的反轉指數已完成校準，{'\n'}
                             將依照你的觀察偏好，{'\n'}
-                            持續追蹤市場結構與趨勢狀態的變化。
+                            持續追蹤市場預期與趨勢狀態的變化。
                         </StyledText>
 
                         <StyledView className="bg-zinc-900 rounded-3xl p-6 gap-4">
@@ -160,8 +169,8 @@ export default function OnboardingScreen() {
                                 <StyledText className="text-white font-bold text-sm">完成</StyledText>
                             </StyledView>
                             <StyledView className="flex-row justify-between items-center">
-                                <StyledText className="text-zinc-500 text-xs uppercase font-bold">關注權重</StyledText>
-                                <StyledText className="text-white font-bold text-sm">已配置 {focusAreas.length} 項</StyledText>
+                                <StyledText className="text-zinc-500 text-xs uppercase font-bold">追蹤主題</StyledText>
+                                <StyledText className="text-white font-bold text-sm">已配置 {predictionTopics.length} 項</StyledText>
                             </StyledView>
                             <StyledView className="flex-row justify-between items-center">
                                 <StyledText className="text-zinc-500 text-xs uppercase font-bold">提醒風格</StyledText>
@@ -203,13 +212,13 @@ export default function OnboardingScreen() {
                 <StyledTouchableOpacity
                     onPress={handleNext}
                     className={`h-14 rounded-full flex-row items-center justify-center gap-2 ${(currentStep === 0 && !experience) ||
-                            (currentStep === 1 && focusAreas.length === 0) ||
-                            (currentStep === 2 && !alertStyle)
-                            ? 'bg-zinc-800 opacity-50' : 'bg-white'
+                        (currentStep === 1 && predictionTopics.length === 0) ||
+                        (currentStep === 2 && !alertStyle)
+                        ? 'bg-zinc-800 opacity-50' : 'bg-white'
                         }`}
                     disabled={
                         (currentStep === 0 && !experience) ||
-                        (currentStep === 1 && focusAreas.length === 0) ||
+                        (currentStep === 1 && predictionTopics.length === 0) ||
                         (currentStep === 2 && !alertStyle)
                     }
                     activeOpacity={0.8}

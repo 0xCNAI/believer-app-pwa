@@ -1,261 +1,177 @@
 import { MarketEvent } from './polymarket';
 export { MarketEvent };
 
-export type EventCategory = 'Macro' | 'Liquidity' | 'Risk' | 'Supply' | 'Political' | 'Narrative';
+export type EventCategory = 'Macro' | 'Political' | 'Narrative';
 
-// Source types:
-// - 'prediction_market': Has real probability data (Polymarket, Kalshi)
-// - 'official_data': Government/institutional data (Fed, BLS) - NO probability
-// - 'market_data': Live market metrics (DXY, yields) - NO probability
-// - 'on_chain': Blockchain data (Glassnode, etc.) - NO probability
-
+/**
+ * BELIEVER SIGNALS - 8 Prediction Market Topics Only
+ * 
+ * 敘事層唯一接受「市場化預期」，不接受數據、指標、價格或主觀判斷。
+ * Source: Polymarket / Kalshi only
+ */
 export const BELIEVER_SIGNALS: MarketEvent[] = [
     // ============================================
-    // MACRO - 宏觀趨勢
+    // Topic 1: Fed Rate Cuts Expectation (聯準會降息預期)
     // ============================================
-
-    // 預測市場 - 有真實機率數據
     {
         id: 'macro_rate_cut',
         title: '聯準會降息預期',
-        description: '2025年首次降息的市場預期機率',
+        description: 'Fed 利率決策、降息時機與次數',
         source: 'Polymarket',
         sourceUrl: 'https://polymarket.com/event/fed-rate-decision',
         category: 'Macro',
-        slug: 'macro-rate',
+        slug: 'fed-rate',
         markets: [{
             id: 'm1',
-            question: '2025年第一次降息將在何時？',
+            question: 'Will the Federal Reserve cut interest rates in 2025?',
             outcomePrices: JSON.stringify(["0.65", "0.35"]) as any,
             volume: "High",
-            outcomes: ["Q1-Q2", "Q3以後"]
+            outcomes: ["Yes", "No"]
         }]
     },
+
+    // ============================================
+    // Topic 2: Yield Curve Outlook (殖利率曲線轉向預期)
+    // ============================================
     {
         id: 'macro_yield_curve',
-        title: '殖利率曲線預測',
-        description: '2/10年期利差正常化的市場預期',
+        title: '殖利率曲線轉向預期',
+        description: '倒掛解除、曲線正常化',
         source: 'Kalshi',
         sourceUrl: 'https://kalshi.com/markets/yield-curve',
         category: 'Macro',
-        slug: 'macro-yield',
+        slug: 'yield-curve',
         markets: [{
-            id: 'm3',
-            question: '殖利率曲線是否將在2025年解除倒掛？',
+            id: 'm2',
+            question: 'Will the U.S. yield curve uninvert by end of 2025?',
             outcomePrices: JSON.stringify(["0.55", "0.45"]) as any,
             volume: "Active",
-            outcomes: ["是", "否"]
+            outcomes: ["Yes", "No"]
         }]
     },
 
-    // 官方數據 - 無機率，只有狀態追蹤
-    {
-        id: 'macro_inflation',
-        title: 'CPI/PCE 通膨數據',
-        description: '美國官方通膨數據追蹤（每月發佈）',
-        source: 'BLS / BEA',
-        sourceUrl: 'https://www.bls.gov/cpi/',
-        category: 'Macro',
-        slug: 'macro-inflation',
-        markets: [] // 官方數據無預測市場
-    },
-
     // ============================================
-    // LIQUIDITY - 流動性
+    // Topic 3: U.S. Crypto Regulation (美國加密監管與法案進展)
     // ============================================
-
-    // 市場數據 - 無機率
-    {
-        id: 'liq_usd_pressure',
-        title: '美元指數 (DXY)',
-        description: '美元強弱對風險資產的壓力',
-        source: 'TradingView',
-        sourceUrl: 'https://www.tradingview.com/symbols/TVC-DXY/',
-        category: 'Liquidity',
-        slug: 'liq-dxy',
-        markets: []
-    },
-    {
-        id: 'liq_global_m2',
-        title: '全球 M2 流動性',
-        description: '主要央行貨幣供應變化率',
-        source: 'FRED',
-        sourceUrl: 'https://fred.stlouisfed.org/series/M2SL',
-        category: 'Liquidity',
-        slug: 'liq-m2',
-        markets: []
-    },
-    {
-        id: 'liq_real_rates',
-        title: '實質利率 (TIPS)',
-        description: '10年期抗通膨債券殖利率',
-        source: 'FRED',
-        sourceUrl: 'https://fred.stlouisfed.org/series/DFII10',
-        category: 'Liquidity',
-        slug: 'liq-rates',
-        markets: []
-    },
-
-    // ============================================
-    // RISK - 風險情緒
-    // ============================================
-
-    // 市場數據 - 無機率
-    {
-        id: 'risk_volatility',
-        title: 'VIX 恐慌指數',
-        description: 'S&P 500 隱含波動率',
-        source: 'CBOE',
-        sourceUrl: 'https://www.cboe.com/tradable_products/vix/',
-        category: 'Risk',
-        slug: 'risk-vix',
-        markets: []
-    },
-    {
-        id: 'risk_btc_vol',
-        title: 'BTC 隱含波動率',
-        description: 'Deribit ATM IV 指數',
-        source: 'Deribit',
-        sourceUrl: 'https://www.deribit.com/statistics/BTC/volatility-index',
-        category: 'Risk',
-        slug: 'risk-btc-vol',
-        markets: []
-    },
-    {
-        id: 'risk_btc_dom',
-        title: '比特幣市佔率 (BTC.D)',
-        description: 'BTC 在加密貨幣總市值中的占比',
-        source: 'TradingView',
-        sourceUrl: 'https://www.tradingview.com/symbols/CRYPTOCAP-BTC.D/',
-        category: 'Risk',
-        slug: 'risk-btc-dom',
-        markets: []
-    },
-
-    // ============================================
-    // SUPPLY - 供給結構 (鏈上數據)
-    // ============================================
-
-    // 鏈上數據 - 無機率
-    {
-        id: 'supply_exchange_flow',
-        title: '交易所淨流量',
-        description: 'BTC 交易所餘額與淨流出追蹤',
-        source: 'Glassnode',
-        sourceUrl: 'https://studio.glassnode.com/metrics?m=distribution.ExchangeNetPositionChange',
-        category: 'Supply',
-        slug: 'supply-exchange',
-        markets: []
-    },
-    {
-        id: 'supply_lth',
-        title: '長期持有者 (LTH) 供應',
-        description: '持幣超過155天的地址餘額變化',
-        source: 'Glassnode',
-        sourceUrl: 'https://studio.glassnode.com/metrics?m=supply.LTHSum',
-        category: 'Supply',
-        slug: 'supply-lth',
-        markets: []
-    },
-    {
-        id: 'supply_sth',
-        title: '短期持有者 (STH) MVRV',
-        description: 'STH 未實現盈虧比率',
-        source: 'Glassnode',
-        sourceUrl: 'https://studio.glassnode.com/metrics?m=market.SthMvrv',
-        category: 'Supply',
-        slug: 'supply-sth',
-        markets: []
-    },
-    {
-        id: 'supply_etf',
-        title: 'ETF 資金流向',
-        description: '美國現貨 BTC ETF 每日淨流入',
-        source: 'SoSoValue',
-        sourceUrl: 'https://sosovalue.xyz/assets/etf/us-btc-spot',
-        category: 'Supply',
-        slug: 'supply-etf',
-        markets: []
-    },
-
-    // ============================================
-    // POLITICAL - 政治與監管
-    // ============================================
-
-    // 預測市場 - 有真實機率數據
-    {
-        id: 'pol_btc_reserve',
-        title: '美國戰略比特幣儲備',
-        description: '美國是否將建立國家級 BTC 儲備',
-        source: 'Polymarket',
-        sourceUrl: 'https://polymarket.com/event/us-bitcoin-reserve',
-        category: 'Political',
-        slug: 'pol-btc-reserve',
-        markets: [{
-            id: 'p1',
-            question: '美國是否將在2025年建立戰略 BTC 儲備？',
-            outcomePrices: JSON.stringify(["0.35", "0.65"]) as any,
-            volume: "High",
-            outcomes: ["是", "否"]
-        }]
-    },
     {
         id: 'pol_regulation',
-        title: '加密法案進展',
-        description: 'FIT21 或其他重大法案通過機率',
+        title: '美國加密監管與法案進展',
+        description: '國會法案、SEC 訴訟結果',
         source: 'Polymarket',
         sourceUrl: 'https://polymarket.com/event/crypto-legislation',
         category: 'Political',
-        slug: 'pol-reg',
+        slug: 'crypto-regulation',
         markets: [{
-            id: 'p2',
-            question: '加密法案是否將在2025年通過？',
+            id: 'p1',
+            question: 'Will major U.S. crypto legislation pass in 2025?',
             outcomePrices: JSON.stringify(["0.40", "0.60"]) as any,
             volume: "Active",
-            outcomes: ["通過", "未通過"]
+            outcomes: ["Yes", "No"]
         }]
     },
 
     // ============================================
-    // NARRATIVE - 敘事轉變
+    // Topic 4: U.S. Bitcoin Strategic Reserve (美國比特幣戰略儲備)
     // ============================================
-
-    // 預測市場
     {
-        id: 'narrative_btc_100k',
-        title: 'BTC 價格里程碑',
-        description: 'BTC 是否將達到 $100,000',
+        id: 'pol_btc_reserve',
+        title: '美國比特幣戰略儲備',
+        description: '國家級 BTC 儲備政策',
         source: 'Polymarket',
-        sourceUrl: 'https://polymarket.com/event/bitcoin-100k',
-        category: 'Narrative',
-        slug: 'narrative-100k',
+        sourceUrl: 'https://polymarket.com/event/us-bitcoin-reserve',
+        category: 'Political',
+        slug: 'btc-reserve',
         markets: [{
-            id: 'n1',
-            question: 'BTC 是否將在2025年達到 $100,000？',
-            outcomePrices: JSON.stringify(["0.72", "0.28"]) as any,
-            volume: "Very High",
-            outcomes: ["是", "否"]
+            id: 'p2',
+            question: 'Will the U.S. establish a Bitcoin strategic reserve?',
+            outcomePrices: JSON.stringify(["0.35", "0.65"]) as any,
+            volume: "High",
+            outcomes: ["Yes", "No"]
         }]
     },
+
+    // ============================================
+    // Topic 5: Pro-Crypto Political Outcome (親加密政治結果)
+    // ============================================
+    {
+        id: 'pol_pro_crypto',
+        title: '親加密政治結果',
+        description: '選舉、政權更替對加密的影響',
+        source: 'Polymarket',
+        sourceUrl: 'https://polymarket.com/event/pro-crypto-politics',
+        category: 'Political',
+        slug: 'pro-crypto-pol',
+        markets: [{
+            id: 'p3',
+            question: 'Will the next U.S. administration be pro-crypto?',
+            outcomePrices: JSON.stringify(["0.70", "0.30"]) as any,
+            volume: "Very High",
+            outcomes: ["Yes", "No"]
+        }]
+    },
+
+    // ============================================
+    // Topic 6: ETH Spot ETF Approval (ETH 現貨 ETF 預期)
+    // ============================================
     {
         id: 'narrative_eth_etf',
-        title: 'ETH 現貨 ETF 審批',
-        description: 'SEC 是否將批准 ETH 現貨 ETF',
+        title: 'ETH 現貨 ETF 預期',
+        description: 'SEC 批准 ETH 現貨 ETF',
         source: 'Polymarket',
         sourceUrl: 'https://polymarket.com/event/eth-spot-etf',
         category: 'Narrative',
-        slug: 'narrative-eth-etf',
+        slug: 'eth-etf',
         markets: [{
-            id: 'n2',
-            question: 'ETH 現貨 ETF 是否將在2025年獲批？',
+            id: 'n1',
+            question: 'Will an ETH spot ETF be approved in 2025?',
             outcomePrices: JSON.stringify(["0.85", "0.15"]) as any,
             volume: "High",
-            outcomes: ["獲批", "未獲批"]
+            outcomes: ["Yes", "No"]
         }]
-    }
+    },
+
+    // ============================================
+    // Topic 7: Institutional Crypto Adoption (機構級加密採用)
+    // ============================================
+    {
+        id: 'narrative_institutional',
+        title: '機構級加密採用',
+        description: '銀行託管、機構產品擴展',
+        source: 'Polymarket',
+        sourceUrl: 'https://polymarket.com/event/institutional-crypto',
+        category: 'Narrative',
+        slug: 'institutional',
+        markets: [{
+            id: 'n2',
+            question: 'Will major U.S. banks offer crypto custody services?',
+            outcomePrices: JSON.stringify(["0.50", "0.50"]) as any,
+            volume: "Active",
+            outcomes: ["Yes", "No"]
+        }]
+    },
+
+    // ============================================
+    // Topic 8: Systemic Financial Risk (系統性金融風險事件)
+    // ============================================
+    {
+        id: 'narrative_systemic_risk',
+        title: '系統性金融風險事件',
+        description: '銀行倒閉、政府停擺、金融危機',
+        source: 'Kalshi',
+        sourceUrl: 'https://kalshi.com/markets/financial-crisis',
+        category: 'Narrative',
+        slug: 'systemic-risk',
+        markets: [{
+            id: 'n3',
+            question: 'Will a major U.S. bank fail in 2025?',
+            outcomePrices: JSON.stringify(["0.15", "0.85"]) as any,
+            volume: "Active",
+            outcomes: ["Yes", "No"]
+        }]
+    },
 ];
 
-import { ExperienceLevel, FocusArea } from '@/stores/userStore';
+import { ExperienceLevel, PredictionTopic } from '@/stores/userStore';
 import { fetchRealPolymarketData, fetchBtcDominance, fetchFearGreedIndex } from './realApi';
 
 // Helper to extract probability from Polymarket market
@@ -277,26 +193,18 @@ const extractProbability = (market: any): number => {
 
 export const fetchUnifiedMarkets = async (
     experience?: ExperienceLevel | null,
-    focusAreas?: FocusArea[]
+    topics?: PredictionTopic[]
 ): Promise<MarketEvent[]> => {
-    console.log('[MarketData] Fetching with prefs:', { experience, focusAreas });
+    console.log('[MarketData] Fetching with prefs:', { experience, topics });
 
-    // Start with static signals
+    // Start with all 8 signals
     let events = [...BELIEVER_SIGNALS];
 
     try {
         // Fetch real Polymarket data
-        const [realPolymarkets, btcDominance, fearGreed] = await Promise.all([
-            fetchRealPolymarketData(),
-            fetchBtcDominance(),
-            fetchFearGreedIndex(),
-        ]);
+        const realPolymarkets = await fetchRealPolymarketData();
 
-        console.log('[MarketData] Got real data:', {
-            polymarkets: realPolymarkets.size,
-            btcDominance,
-            fearGreed: fearGreed?.value
-        });
+        console.log('[MarketData] Got real Polymarket data:', realPolymarkets.size, 'markets');
 
         // Update events with real data where available
         events = events.map(event => {
@@ -307,31 +215,10 @@ export const fetchUnifiedMarkets = async (
                 return {
                     ...event,
                     title: realData.title || event.title,
-                    description: realData.description || event.description,
                     markets: [{
-                        id: realData.id,
+                        ...event.markets[0],
                         question: realData.markets?.[0]?.question || event.markets[0]?.question,
                         outcomePrices: JSON.stringify([prob.toString(), (1 - prob).toString()]) as any,
-                        volume: realData.markets?.[0]?.volume || "High",
-                        outcomes: realData.markets?.[0]?.outcomes || ["Yes", "No"]
-                    }]
-                };
-            }
-
-            // BTC price target
-            if (event.id === 'narrative_btc_100k' && realPolymarkets.has('btc_price')) {
-                const realData = realPolymarkets.get('btc_price')!;
-                const prob = extractProbability(realData);
-                return {
-                    ...event,
-                    title: realData.title || event.title,
-                    description: realData.description || event.description,
-                    markets: [{
-                        id: realData.id,
-                        question: realData.markets?.[0]?.question || event.markets[0]?.question,
-                        outcomePrices: JSON.stringify([prob.toString(), (1 - prob).toString()]) as any,
-                        volume: realData.markets?.[0]?.volume || "Very High",
-                        outcomes: realData.markets?.[0]?.outcomes || ["Yes", "No"]
                     }]
                 };
             }
@@ -343,13 +230,10 @@ export const fetchUnifiedMarkets = async (
                 return {
                     ...event,
                     title: realData.title || event.title,
-                    description: realData.description || event.description,
                     markets: [{
-                        id: realData.id,
+                        ...event.markets[0],
                         question: realData.markets?.[0]?.question || event.markets[0]?.question,
                         outcomePrices: JSON.stringify([prob.toString(), (1 - prob).toString()]) as any,
-                        volume: realData.markets?.[0]?.volume || "High",
-                        outcomes: realData.markets?.[0]?.outcomes || ["Yes", "No"]
                     }]
                 };
             }
@@ -361,22 +245,26 @@ export const fetchUnifiedMarkets = async (
                 return {
                     ...event,
                     title: realData.title || event.title,
-                    description: realData.description || event.description,
                     markets: [{
-                        id: realData.id,
+                        ...event.markets[0],
                         question: realData.markets?.[0]?.question || event.markets[0]?.question,
                         outcomePrices: JSON.stringify([prob.toString(), (1 - prob).toString()]) as any,
-                        volume: realData.markets?.[0]?.volume || "Active",
-                        outcomes: realData.markets?.[0]?.outcomes || ["Yes", "No"]
                     }]
                 };
             }
 
-            // BTC Dominance - add real data
-            if (event.id === 'risk_btc_dom' && btcDominance !== null) {
+            // ETH ETF
+            if (event.id === 'narrative_eth_etf' && realPolymarkets.has('eth_etf')) {
+                const realData = realPolymarkets.get('eth_etf')!;
+                const prob = extractProbability(realData);
                 return {
                     ...event,
-                    description: `BTC 市佔率: ${btcDominance.toFixed(1)}%`,
+                    title: realData.title || event.title,
+                    markets: [{
+                        ...event.markets[0],
+                        question: realData.markets?.[0]?.question || event.markets[0]?.question,
+                        outcomePrices: JSON.stringify([prob.toString(), (1 - prob).toString()]) as any,
+                    }]
                 };
             }
 
@@ -387,11 +275,25 @@ export const fetchUnifiedMarkets = async (
         console.error('[MarketData] Error fetching real data:', error);
     }
 
-    // Filter/sort by focus areas
-    if (focusAreas && focusAreas.length > 0) {
+    // Filter by selected topics if provided
+    if (topics && topics.length > 0) {
+        const topicToIds: Record<PredictionTopic, string[]> = {
+            'fed_rate': ['macro_rate_cut'],
+            'yield_curve': ['macro_yield_curve'],
+            'crypto_regulation': ['pol_regulation'],
+            'btc_reserve': ['pol_btc_reserve'],
+            'pro_crypto_pol': ['pol_pro_crypto'],
+            'eth_etf': ['narrative_eth_etf'],
+            'institutional': ['narrative_institutional'],
+            'systemic_risk': ['narrative_systemic_risk'],
+        };
+
+        const selectedIds = new Set(topics.flatMap(t => topicToIds[t] || []));
+
+        // Sort: selected topics first
         events = events.sort((a, b) => {
-            const aMatch = isMatch(a, focusAreas);
-            const bMatch = isMatch(b, focusAreas);
+            const aMatch = selectedIds.has(a.id);
+            const bMatch = selectedIds.has(b.id);
             if (aMatch && !bMatch) return -1;
             if (!aMatch && bMatch) return 1;
             return 0;
@@ -401,13 +303,16 @@ export const fetchUnifiedMarkets = async (
     return events;
 };
 
-// Helper to map FocusArea to EventCategory
-const isMatch = (event: MarketEvent, focusAreas: FocusArea[]): boolean => {
-    const cat = event.category;
-    if (focusAreas.includes('macro') && (cat === 'Macro' || cat === 'Liquidity')) return true;
-    if (focusAreas.includes('extreme_repair') && cat === 'Risk') return true;
-    if (focusAreas.includes('btc_structure') && cat === 'Supply') return true;
-    if (focusAreas.includes('policy') && cat === 'Political') return true;
-    if (focusAreas.includes('low_prob') && cat === 'Narrative') return true;
-    return false;
+// Helper function to get event probability
+export const getEventProbability = (event: MarketEvent): number => {
+    if (!event.markets || event.markets.length === 0) return 0.5;
+    const market = event.markets[0];
+    try {
+        const prices = typeof market.outcomePrices === 'string'
+            ? JSON.parse(market.outcomePrices)
+            : market.outcomePrices;
+        return parseFloat(prices[0]) || 0.5;
+    } catch {
+        return 0.5;
+    }
 };

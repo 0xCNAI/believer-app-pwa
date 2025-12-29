@@ -1,4 +1,5 @@
 import { BELIEVER_SIGNALS, MarketEvent, fetchUnifiedMarkets } from '@/services/marketData';
+import { PredictionTopic } from '@/stores/userStore';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
@@ -25,6 +26,7 @@ interface BeliefState {
     refreshBeliefs: () => Promise<void>;
     setBtcPrice: (price: number) => void;
     seedFromFocusAreas: (focusAreas: string[]) => void;
+    seedFromPredictionTopics: (topics: PredictionTopic[]) => void;
     syncBeliefs: (userId: string) => () => void; // Returns unsubscribe function
 
     // Getters
@@ -90,6 +92,51 @@ export const useBeliefStore = create<BeliefState>()(
                         });
                         existingIds.add(candidate.id);
                     }
+                });
+
+                if (newBeliefs.length > 0) {
+                    set((prev) => ({
+                        beliefs: [...prev.beliefs, ...newBeliefs]
+                    }));
+                }
+            },
+
+            // New: Seed from 8 Prediction Topics
+            seedFromPredictionTopics: (topics) => {
+                const state = get();
+                const existingIds = new Set(state.beliefs.map(b => b.id));
+                const newBeliefs: Belief[] = [];
+
+                // Map topics to signal IDs
+                const topicToSignalIds: Record<PredictionTopic, string[]> = {
+                    'fed_rate': ['macro_rate_cut'],
+                    'yield_curve': ['macro_yield_curve'],
+                    'crypto_regulation': ['pol_regulation'],
+                    'btc_reserve': ['pol_btc_reserve'],
+                    'pro_crypto_pol': ['pol_pro_crypto'],
+                    'eth_etf': ['narrative_eth_etf'],
+                    'institutional': ['narrative_institutional'],
+                    'systemic_risk': ['narrative_systemic_risk'],
+                };
+
+                topics.forEach(topic => {
+                    const signalIds = topicToSignalIds[topic] || [];
+                    signalIds.forEach(signalId => {
+                        if (existingIds.has(signalId)) return;
+
+                        const candidate = BELIEVER_SIGNALS.find(e => e.id === signalId);
+                        if (candidate && candidate.markets?.[0]) {
+                            const initialProb = parsePrice(candidate.markets[0].outcomePrices);
+                            newBeliefs.push({
+                                id: candidate.id,
+                                marketEvent: candidate,
+                                initialProbability: initialProb,
+                                currentProbability: initialProb,
+                                addedAt: Date.now(),
+                            });
+                            existingIds.add(candidate.id);
+                        }
+                    });
                 });
 
                 if (newBeliefs.length > 0) {
