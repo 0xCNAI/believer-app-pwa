@@ -738,7 +738,11 @@ export default function DashboardScreen() {
 
                         <Text style={{ color: '#71717a', fontSize: 10, paddingHorizontal: 16, marginTop: 8, marginBottom: 4 }}>ACCOUNT</Text>
 
-                        <TouchableOpacity style={styles.settingsItem} onPress={resetProfile}>
+                        <TouchableOpacity style={styles.settingsItem} onPress={() => {
+                            resetProfile();
+                            setShowSettings(false);
+                            router.replace('/onboarding');
+                        }}>
                             <Ionicons name="refresh" size={16} color="#E4E4E7" />
                             <Text style={styles.settingsItemText}>重置偏好設定</Text>
                         </TouchableOpacity>
