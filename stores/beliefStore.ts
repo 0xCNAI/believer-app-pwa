@@ -159,8 +159,11 @@ export const useBeliefStore = create<BeliefState>()(
                         if (existingIds.has(signalId)) return;
 
                         const candidate = BELIEVER_SIGNALS.find(e => e.id === signalId);
-                        if (candidate && candidate.markets?.[0]) {
-                            const initialProb = parsePrice(candidate.markets[0].outcomePrices);
+                        if (candidate) {
+                            // Create belief even if markets is empty - will be populated by refreshBeliefs
+                            const initialProb = candidate.markets?.[0]
+                                ? parsePrice(candidate.markets[0].outcomePrices)
+                                : 50; // Default 50% if no market data yet
                             newBeliefs.push({
                                 id: candidate.id,
                                 marketEvent: candidate,
