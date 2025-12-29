@@ -77,12 +77,12 @@ const calculateCycleZone = (puell: number, mvrv: number): CycleZone => {
     // 2. Else check WEAK.
     // 3. Default NONE.
 
-    // STRONG: Deep Value (Puell < 0.6 OR MVRV < 0.8)
-    if (puell < 0.6 || mvrv < 0.8) return 'STRONG';
+    // STRONG: Deep Value (Puell < 0.6 OR MVRV < 0.1)
+    if (puell < 0.6 || mvrv < 0.1) return 'STRONG';
 
-    // WEAK: Moderate Value (Puell < 0.8 OR MVRV < 1.2)
+    // WEAK: Moderate Value (Puell < 0.8 OR MVRV < 1.0)
     // Implicitly means NOT Strong because of previous return.
-    if (puell < 0.8 || mvrv < 1.2) return 'WEAK';
+    if (puell < 0.8 || mvrv < 1.0) return 'WEAK';
 
     return 'NONE';
 };

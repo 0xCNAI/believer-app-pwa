@@ -265,22 +265,25 @@ export interface DerivativesData {
 // Open Interest History Endpoint: https://fapi.binance.com/futures/data/openInterestHist
 export const fetchDerivativesData = async (): Promise<DerivativesData | null> => {
     try {
-        // Fetch Current OI & Funding
+        // Fetch Current OI & Funding & Price
         // Funding: https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&limit=3 (Last 24h = 3 * 8h)
         // OI Current: https://fapi.binance.com/fapi/v1/openInterest?symbol=BTCUSDT
         // OI History: https://fapi.binance.com/futures/data/openInterestHist?symbol=BTCUSDT&period=1d&limit=4
+        // Mark Price: https://fapi.binance.com/fapi/v1/premiumIndex?symbol=BTCUSDT
 
-        const [fundingRes, oiRes, oiHistRes] = await Promise.all([
+        const [fundingRes, oiRes, oiHistRes, priceRes] = await Promise.all([
             fetch('https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&limit=3'),
             fetch('https://fapi.binance.com/fapi/v1/openInterest?symbol=BTCUSDT'),
-            fetch('https://fapi.binance.com/futures/data/openInterestHist?symbol=BTCUSDT&period=1d&limit=4')
+            fetch('https://fapi.binance.com/futures/data/openInterestHist?symbol=BTCUSDT&period=1d&limit=4'),
+            fetch('https://fapi.binance.com/fapi/v1/premiumIndex?symbol=BTCUSDT')
         ]);
 
-        if (!fundingRes.ok || !oiRes.ok || !oiHistRes.ok) return null;
+        if (!fundingRes.ok || !oiRes.ok || !oiHistRes.ok || !priceRes.ok) return null;
 
         const fundingData = await fundingRes.json();
         const oiData = await oiRes.json();
         const oiHistData = await oiHistRes.json();
+        const priceData = await priceRes.json();
 
         // 1. Funding 24h (Average of last 3 records)
         // Rate is returned as string "0.00010000"
@@ -292,30 +295,8 @@ export const fetchDerivativesData = async (): Promise<DerivativesData | null> =>
         const funding24hPct = (fundingSum / fundingData.length) * 100;
 
         // 2. OI Total USD
-        const currentOi = parseFloat(oiData.openInterest) * parseFloat(oiData.price || '0');
-        // Note: fapi openInterest returns amount in BTC usually? 
-        // Actually fapi openInterest returns: { symbol: "BTCUSDT", openInterest: "123.45", time: 123 } (in BTC quantity)
-        // But /futures/data/openInterestHist returns sumOpenInterestValue (USD).
-        // Let's use the one from oiHistData[last] which has USD value, or calculate current.
-        // Let's rely on oiHistData for consistency if possible, but it might be delayed.
-        // Actually current OI endpoint gives quantity. 
-        // Let's use `openInterest` (quantity) * price to get USD approx if needed.
-        // WAIT: The user asked for "oi_total_usd".
-        // Use the value from `openInterestHist` (sumOpenInterestValue) which is explicitly USD.
-        // The last item in oiHistData is the latest closed candle? Or current? 
-        // "limit=4" gives us enough to look back 3 days.
-        // oiHistData is array of { symbol, sumOpenInterest, sumOpenInterestValue, timestamp ... }
-        // Sort by timestamp desc just in case? Usually asc.
-        // verification showed: [{"symbol":"BTCUSDT","sumOpenInterest":...}, ...]
-
-        // Let's just use current OI * current Price for real-time accuracy?
-        // Check `oiData`: { symbol, openInterest, time } -> doesn't have price.
-        // We can fetch price separately or assume we have it.
-        // Let's use oiHistData for the "3d change" comparison, and use the LATEST value in oiHistData for current?
-        // Or better: use the latest from `current` endpoint and use price from CoinGecko or implicit.
-
-        // Let's try to get price from the funding endpoint! "markPrice" is there.
-        const currentPrice = parseFloat(fundingData[fundingData.length - 1].markPrice);
+        // Use real-time Mark Price from premiumIndex endpoint
+        const currentPrice = parseFloat(priceData.markPrice);
         const currentOiUsd = parseFloat(oiData.openInterest) * currentPrice;
 
         // 3. OI 3d Change
