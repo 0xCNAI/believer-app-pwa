@@ -132,7 +132,7 @@ export default function DashboardScreen() {
 
         const fetchBtcPrice = async () => {
             try {
-                const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true');
+                const response = await fetch('/api/coingecko');
                 const data = await response.json();
                 if (data.bitcoin?.usd) {
                     setBtcPrice(data.bitcoin.usd);
