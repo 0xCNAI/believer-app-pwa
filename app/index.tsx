@@ -1,11 +1,13 @@
 import { resolveReversalCopy } from '@/services/copyService';
 import { BELIEVER_SIGNALS } from '@/services/marketData';
 import { useBeliefStore } from '@/stores/beliefStore';
-import { Ionicons } from '@expo/vector-icons';
+import { useUserStore } from '@/stores/userStore';
+import { useAuthStore } from '@/stores/authStore';
+import { Ionicons, FontAwesome } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Image, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Easing, Image, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View, Switch, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function DashboardScreen() {
@@ -18,6 +20,28 @@ export default function DashboardScreen() {
     const [showSettings, setShowSettings] = useState(false);
     const [btc24hChange, setBtc24hChange] = useState<number | null>(null);
     const [expandedTopic, setExpandedTopic] = useState<string | null>(null);
+
+    // Settings & Notifications State
+    const {
+        notificationSettings,
+        setNotificationSetting,
+        resetProfile,
+    } = useUserStore();
+
+    // Auth & Profile
+    const { user, logout, updateProfile } = useAuthStore();
+    const [editingName, setEditingName] = useState(false);
+    const [tempName, setTempName] = useState('');
+
+    const handleUpdateName = async () => {
+        if (!tempName.trim()) return;
+        try {
+            await updateProfile(tempName);
+            setEditingName(false);
+        } catch (e) {
+            alert('Failed to update name');
+        }
+    };
 
     // Wooden Fish Animation State
     const [showMerit, setShowMerit] = useState(false);
@@ -510,20 +534,26 @@ export default function DashboardScreen() {
 
                 {/* BetalphaX Footer */}
                 <View style={{ padding: 24, paddingBottom: 60, alignItems: 'center' }}>
-                    <Text style={{ color: '#71717a', fontSize: 13, marginBottom: 16, textAlign: 'center', lineHeight: 20 }}>
+                    <Text style={{ color: '#71717a', fontSize: 14, marginBottom: 20, textAlign: 'center', lineHeight: 24, letterSpacing: 0.5 }}>
                         紀錄下你的交易想法，累積長期交易紀律
                     </Text>
+
+                    {/* Professional Button */}
                     <TouchableOpacity
                         style={{
                             flexDirection: 'row',
                             alignItems: 'center',
-                            gap: 8,
-                            paddingHorizontal: 16,
-                            paddingVertical: 10,
-                            backgroundColor: '#27272a',
-                            borderRadius: 8,
+                            paddingHorizontal: 24,
+                            paddingVertical: 14,
+                            backgroundColor: '#18181B',
+                            borderRadius: 12,
                             borderWidth: 1,
-                            borderColor: '#3f3f46'
+                            borderColor: '#3F3F46',
+                            gap: 12,
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.2,
+                            shadowRadius: 4,
                         }}
                         onPress={() => {
                             if (typeof window !== 'undefined') {
@@ -531,9 +561,48 @@ export default function DashboardScreen() {
                             }
                         }}
                     >
-                        <Text style={{ color: '#e4e4e7', fontSize: 14, fontWeight: '600' }}>BetalphaX</Text>
-                        <Ionicons name="arrow-forward" size={14} color="#a1a1aa" />
+                        <Image
+                            source={require('@/assets/images/betalphax_logo.jpg')}
+                            style={{ width: 20, height: 20, borderRadius: 4 }}
+                        />
+                        <Text style={{ color: '#F4F4F5', fontSize: 16, fontWeight: '600' }}>BetalphaX</Text>
+                        <Ionicons name="arrow-forward" size={16} color="#71717A" />
                     </TouchableOpacity>
+
+                    {/* Social Links */}
+                    <View style={{ flexDirection: 'row', gap: 16, marginTop: 32 }}>
+                        <TouchableOpacity
+                            style={{
+                                width: 44, height: 44, borderRadius: 22,
+                                backgroundColor: '#18181B',
+                                alignItems: 'center', justifyContent: 'center',
+                                borderWidth: 1, borderColor: '#27272A'
+                            }}
+                            onPress={() => {
+                                if (typeof window !== 'undefined') {
+                                    window.open('https://www.instagram.com/betalpha_news/', '_blank');
+                                }
+                            }}
+                        >
+                            <Ionicons name="logo-instagram" size={20} color="#A1A1AA" />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={{
+                                width: 44, height: 44, borderRadius: 22,
+                                backgroundColor: '#18181B',
+                                alignItems: 'center', justifyContent: 'center',
+                                borderWidth: 1, borderColor: '#27272A'
+                            }}
+                            onPress={() => {
+                                if (typeof window !== 'undefined') {
+                                    window.open('https://t.me/+BKg09wTOVGZhYzBl', '_blank');
+                                }
+                            }}
+                        >
+                            <FontAwesome name="telegram" size={18} color="#A1A1AA" />
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
             </ScrollView>
