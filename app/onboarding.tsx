@@ -22,15 +22,12 @@ const EXPERIENCE_OPTIONS: { id: ExperienceLevel; label: string; desc: string }[]
 ];
 
 // 8 Prediction Market Topics (唯一敘事層選項)
+// 8 Prediction Market Topics (唯一敘事層選項) -> V2: Strict 4 Topics
 const PREDICTION_TOPIC_OPTIONS: { id: PredictionTopic; label: string; desc: string }[] = [
-    { id: 'fed_rate', label: '聯準會降息預期', desc: 'Fed 利率決策、降息時機與次數' },
-    { id: 'yield_curve', label: '殖利率曲線轉向預期', desc: '倒掛解除、曲線正常化' },
-    { id: 'crypto_regulation', label: '美國加密監管與法案進展', desc: '國會法案、SEC 訴訟結果' },
-    { id: 'btc_reserve', label: '美國比特幣戰略儲備', desc: '國家級 BTC 儲備政策' },
-    { id: 'pro_crypto_pol', label: '親加密政治結果', desc: '選舉、政權更替對加密的影響' },
-    { id: 'eth_etf', label: 'ETH 現貨 ETF 預期', desc: 'SEC 批准 ETH 現貨 ETF' },
-    { id: 'institutional', label: '機構級加密採用', desc: '銀行託管、機構產品擴展' },
-    { id: 'systemic_risk', label: '系統性金融風險事件', desc: '銀行倒閉、政府停擺、金融危機' },
+    { id: 'fed_rate', label: 'Fed Policy (降息預期)', desc: '聯準會利率決策、降息路徑' },
+    { id: 'yield_curve', label: 'US Recession (衰退風險)', desc: '經濟衰退機率 (1 - P)' },
+    { id: 'pro_crypto_pol', label: 'Gov Shutdown (財政風險)', desc: '政府停擺與債務上限風險' },
+    { id: 'btc_reserve', label: 'BTC Reserve (戰略儲備)', desc: '美國將比特幣列為戰略儲備' },
 ];
 
 const ALERT_STYLE_OPTIONS: { id: AlertStyle; label: string; desc: string }[] = [
