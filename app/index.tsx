@@ -736,6 +736,8 @@ export default function DashboardScreen() {
 
                         <View style={{ height: 1, backgroundColor: '#27272a', marginVertical: 8 }} />
 
+                        <Text style={{ color: '#71717a', fontSize: 10, paddingHorizontal: 16, marginTop: 8, marginBottom: 4 }}>ACCOUNT</Text>
+
                         <TouchableOpacity style={styles.settingsItem} onPress={resetProfile}>
                             <Ionicons name="refresh" size={16} color="#E4E4E7" />
                             <Text style={styles.settingsItemText}>重置偏好設定</Text>
@@ -807,14 +809,16 @@ export default function DashboardScreen() {
                     </View>
                 )}
 
-                {/* Merit Modal */}
-                <MeritModal
-                    visible={showMeritModal}
-                    onClose={() => setShowMeritModal(false)}
-                    myMerit={faithClicks}
-                />
+
+
 
             </TouchableOpacity>
+
+            <MeritModal
+                visible={showMeritModal}
+                onClose={() => setShowMeritModal(false)}
+                myMerit={faithClicks}
+            />
         </SafeAreaView >
     );
 }
