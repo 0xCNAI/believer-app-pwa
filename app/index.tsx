@@ -692,17 +692,15 @@ export default function DashboardScreen() {
                         </View>
 
                         {/* 2. Notification Settings */}
-                        <Text style={{ color: '#71717a', fontSize: 10, paddingHorizontal: 16, marginTop: 8, marginBottom: 4 }}>NOTIFICATIONS</Text>
-
                         <TouchableOpacity
                             style={styles.settingsItem}
-                            onPress={() => setNotificationSetting('phaseTransitions', !notificationSettings.phaseTransitions)}
+                            onPress={() => setNotificationSetting('phaseTransitions', !notificationSettings?.phaseTransitions)}
                         >
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.settingsItemText}>階段轉換通知</Text>
                             </View>
                             <Switch
-                                value={notificationSettings.phaseTransitions}
+                                value={notificationSettings?.phaseTransitions ?? true}
                                 onValueChange={(v) => setNotificationSetting('phaseTransitions', v)}
                                 trackColor={{ false: '#27272a', true: '#fb923c' }}
                             />
@@ -710,13 +708,13 @@ export default function DashboardScreen() {
 
                         <TouchableOpacity
                             style={styles.settingsItem}
-                            onPress={() => setNotificationSetting('newIndicators', !notificationSettings.newIndicators)}
+                            onPress={() => setNotificationSetting('newIndicators', !notificationSettings?.newIndicators)}
                         >
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.settingsItemText}>新增追蹤指標</Text>
                             </View>
                             <Switch
-                                value={notificationSettings.newIndicators}
+                                value={notificationSettings?.newIndicators ?? true}
                                 onValueChange={(v) => setNotificationSetting('newIndicators', v)}
                                 trackColor={{ false: '#27272a', true: '#fb923c' }}
                             />
@@ -724,13 +722,13 @@ export default function DashboardScreen() {
 
                         <TouchableOpacity
                             style={styles.settingsItem}
-                            onPress={() => setNotificationSetting('extremeDynamics', !notificationSettings.extremeDynamics)}
+                            onPress={() => setNotificationSetting('extremeDynamics', !notificationSettings?.extremeDynamics)}
                         >
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.settingsItemText}>指標極端動態</Text>
                             </View>
                             <Switch
-                                value={notificationSettings.extremeDynamics}
+                                value={notificationSettings?.extremeDynamics ?? true}
                                 onValueChange={(v) => setNotificationSetting('extremeDynamics', v)}
                                 trackColor={{ false: '#27272a', true: '#fb923c' }}
                             />
@@ -1680,28 +1678,30 @@ const styles = StyleSheet.create({
     modalOverlay: {
         position: 'absolute',
         top: 0, left: 0, right: 0, bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.7)',
+        backgroundColor: '#09090b', // Full screen dark background
         zIndex: 1000,
-        justifyContent: 'center',
-        alignItems: 'center',
+        paddingTop: Platform.OS === 'ios' ? 50 : 20, // SafeArea
     },
     modalContent: {
-        width: '85%',
-        backgroundColor: '#18181b',
-        borderRadius: 24,
-        borderWidth: 1,
-        borderColor: '#27272a',
-        overflow: 'hidden',
+        flex: 1,
+        width: '100%',
+        backgroundColor: 'transparent',
+        borderRadius: 0,
+        borderWidth: 0,
     },
     modalHeader: {
         flexDirection: 'row',
         borderBottomWidth: 1,
         borderBottomColor: '#27272a',
+        paddingHorizontal: 16,
+        paddingBottom: 8,
+        alignItems: 'center',
     },
     tabBtn: {
-        flex: 1,
-        paddingVertical: 16,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
         alignItems: 'center',
+        marginRight: 16,
     },
     tabBtnActive: {
         borderBottomWidth: 2,
@@ -1709,17 +1709,17 @@ const styles = StyleSheet.create({
     },
     tabText: {
         color: '#71717a',
-        fontSize: 14,
+        fontSize: 18, // Larger text for full screen
         fontWeight: '600',
     },
     tabTextActive: {
         color: '#fb923c',
     },
     closeBtn: {
-        padding: 16,
-        position: 'absolute',
-        right: 0,
-        top: 0,
+        marginLeft: 'auto',
+        padding: 8,
+        backgroundColor: '#27272a',
+        borderRadius: 20,
     },
     modalBody: {
         padding: 24,
