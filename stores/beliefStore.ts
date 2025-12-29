@@ -15,6 +15,7 @@ interface BeliefState {
     beliefs: Belief[];
     discardedIds: string[];
     faithClicks: number;
+    pendingMerit?: number; // Internal buffer for sync
     btcPrice: number;
 
     // Actions
@@ -24,6 +25,7 @@ interface BeliefState {
     incrementFaith: () => void;
     updateBeliefs: (freshEvents: MarketEvent[]) => void;
     refreshBeliefs: () => Promise<void>;
+    cleanupStaleBeliefs: () => void;
     setBtcPrice: (price: number) => void;
     seedFromFocusAreas: (focusAreas: string[]) => void;
     seedFromPredictionTopics: (topics: PredictionTopic[]) => void;
@@ -57,9 +59,34 @@ export const useBeliefStore = create<BeliefState>()(
             beliefs: [],
             discardedIds: [],
             faithClicks: 0,
+            pendingMerit: 0,
             btcPrice: 94500, // Initial Mock Price for Anchor
 
-            incrementFaith: () => set((state) => ({ faithClicks: state.faithClicks + 1 })),
+            incrementFaith: () => {
+                set((state) => ({
+                    faithClicks: state.faithClicks + 1,
+                    pendingMerit: (state.pendingMerit || 0) + 1
+                }));
+
+                // Debounced Sync
+                if ((get() as any)._flushTimeout) clearTimeout((get() as any)._flushTimeout);
+
+                const timeout = setTimeout(() => {
+                    const { pendingMerit } = get();
+                    if (pendingMerit && pendingMerit > 0) {
+                        const { useAuthStore } = require('./authStore');
+                        const { user } = useAuthStore.getState();
+                        if (user?.id) {
+                            import('@/services/meritService').then(({ incrementUserMerit }) => {
+                                incrementUserMerit(user.id, user.name, pendingMerit);
+                            });
+                            set({ pendingMerit: 0 });
+                        }
+                    }
+                }, 3000); // 3s debounce
+
+                set({ _flushTimeout: timeout } as any);
+            },
             setBtcPrice: (price) => set({ btcPrice: price }),
 
             seedFromFocusAreas: (focusAreas) => {
@@ -229,6 +256,9 @@ export const useBeliefStore = create<BeliefState>()(
 
             refreshBeliefs: async () => {
                 try {
+                    // Clean up any stale beliefs first
+                    get().cleanupStaleBeliefs();
+
                     // Get current user prefs for optimal fetching
                     // const { experience } = require('./userStore').useUserStore.getState();
                     // Just fetch default for now to get fresh prices
@@ -238,6 +268,19 @@ export const useBeliefStore = create<BeliefState>()(
                 } catch (e) {
                     console.error('[BeliefStore] Failed to refresh beliefs:', e);
                 }
+            },
+
+            cleanupStaleBeliefs: () => {
+                // Remove any beliefs that are not in current BELIEVER_SIGNALS
+                const validIds = new Set(BELIEVER_SIGNALS.map(s => s.id));
+                set((state) => {
+                    const cleanedBeliefs = state.beliefs.filter(b => validIds.has(b.id));
+                    const removed = state.beliefs.length - cleanedBeliefs.length;
+                    if (removed > 0) {
+                        console.log(`[BeliefStore] Cleaned up ${removed} stale beliefs`);
+                    }
+                    return { beliefs: cleanedBeliefs };
+                });
             },
 
             syncBeliefs: (userId: string) => {

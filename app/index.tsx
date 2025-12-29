@@ -1,5 +1,5 @@
 import { resolveReversalCopy } from '@/services/copyService';
-import { EventCategory } from '@/services/marketData';
+import { BELIEVER_SIGNALS } from '@/services/marketData';
 import { useBeliefStore } from '@/stores/beliefStore';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -14,13 +14,19 @@ export default function DashboardScreen() {
     const reversalIndex = getReversalIndex();
     const interpretation = getInterpretation();
     const [refreshing, setRefreshing] = useState(false);
-    const [expandedCat, setExpandedCat] = useState<string | null>(null);
     const [showNotifications, setShowNotifications] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
     const [btc24hChange, setBtc24hChange] = useState<number | null>(null);
+    const [expandedTopic, setExpandedTopic] = useState<string | null>(null);
 
     // Wooden Fish Animation State
     const [showMerit, setShowMerit] = useState(false);
+    const [showMeritModal, setShowMeritModal] = useState(false);
     const scaleAnim = useRef(new Animated.Value(1)).current;
+
+    // ...
+
+    // ADD NEW STYLES HERE
     const stickAnim = useRef(new Animated.Value(0)).current; // 0 = resting, 1 = hit
 
     const handleFishClick = () => {
@@ -133,11 +139,18 @@ export default function DashboardScreen() {
 
     const roundedPrice = btcPrice.toLocaleString(undefined, { maximumFractionDigits: 0 });
 
-    const categories: EventCategory[] = ['Macro', 'Liquidity', 'Risk', 'Supply', 'Political', 'Narrative'];
+    const handleLogout = async () => {
+        setShowSettings(false);
+        await require('@/stores/authStore').useAuthStore.getState().logout();
+        router.replace('/login');
+    };
 
-    const toggleExpand = (cat: string) => {
-        setExpandedCat(expandedCat === cat ? null : cat);
-    }
+    const handleResetData = async () => {
+        setShowSettings(false);
+        require('@/stores/userStore').useUserStore.getState().resetProfile();
+        require('@/stores/onboardingStore').useOnboardingStore.getState().resetOnboarding();
+        router.replace('/onboarding');
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -159,13 +172,10 @@ export default function DashboardScreen() {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    onPress={async () => {
-                        await require('@/stores/authStore').useAuthStore.getState().logout();
-                        router.replace('/login');
-                    }}
+                    onPress={() => setShowSettings(!showSettings)}
                     style={[styles.notificationBtn, { marginLeft: 8, borderColor: '#3f3f46' }]}
                 >
-                    <Ionicons name="log-out-outline" size={18} color="#71717a" />
+                    <Ionicons name="settings-outline" size={18} color="#71717a" />
                 </TouchableOpacity>
             </View >
 
@@ -197,11 +207,22 @@ export default function DashboardScreen() {
 
                     {/* V2: Just the number, bright color */}
                     <View style={styles.indexMeter}>
-                        <Text style={[styles.indexValue, { color: '#22c55e' }]}>
-                            {reversalIndex.toFixed(0)}
-                        </Text>
+                        {(() => {
+                            let color = '#71717a';
+                            if (reversalIndex < 40) color = '#ef4444'; // Red
+                            else if (reversalIndex < 60) color = '#f97316'; // Orange
+                            else if (reversalIndex < 75) color = '#eab308'; // Yellow
+                            else color = '#22c55e'; // Green
 
-                        {/* Dual-Track Sub-scores */}
+                            return (
+                                <Text style={[styles.indexValue, { color }]}>
+                                    {reversalIndex.toFixed(0)}
+                                </Text>
+                            );
+                        })()}
+
+                        {/* Dual-Track Sub-scores - Hidden but data preserved for internal logic */}
+                        {/* Viewing these scores now happens in Tech Config only
                         {(() => {
                             try {
                                 const { reversalState } = require('@/stores/techStore').useTechStore();
@@ -221,6 +242,7 @@ export default function DashboardScreen() {
                                 );
                             } catch (e) { return null; }
                         })()}
+                        */}
                     </View>
 
                     {/* V2: Reversal Stage Display */}
@@ -360,91 +382,159 @@ export default function DashboardScreen() {
                     </View>
                 </View>
 
-                {/* Categories List */}
+                {/* Market Expectations - User's Selected Topics */}
                 <View>
-                    <Text style={styles.sectionTitle}>信號分類</Text>
+                    <Text style={styles.sectionTitle}>市場預期</Text>
 
-                    {/* Technical Special Category */}
-                    <TouchableOpacity
-                        onPress={openTechConfig}
-                        style={styles.categoryCard}
-                    >
-                        <View style={styles.categoryHeader}>
-                            <View style={styles.techIconBg}>
-                                <Ionicons name="analytics" size={14} color="#3b82f6" />
-                            </View>
-                            <View>
-                                <Text style={styles.categoryTitle}>技術趨勢</Text>
-                                <Text style={styles.categorySubtitle}>BTC 價格結構與動能監測</Text>
-                            </View>
-                        </View>
-                        <Ionicons name="chevron-forward" size={20} color="#52525b" />
-                    </TouchableOpacity>
 
-                    {/* Standard Categories */}
-                    {categories.map((cat) => {
-                        const catBeliefs = beliefs.filter(b => b.marketEvent.category === cat);
-                        const isExpanded = expandedCat === cat;
 
-                        // Category Name Translation
-                        const catNameMap: Record<string, string> = {
-                            'Macro': '宏觀趨勢',
-                            'Liquidity': '流動性',
-                            'Risk': '市場風險',
-                            'Supply': '籌碼結構',
-                            'Political': '政治與監管',
-                            'Narrative': '敘事轉向'
-                        };
+                    {/* User's Selected Prediction Topics */}
+                    {/* User's Selected Prediction Topics - STRICT FILTER */}
+                    {beliefs.filter(b => BELIEVER_SIGNALS.some(s => s.id === b.id)).length > 0 ? (
+                        beliefs
+                            .filter(b => BELIEVER_SIGNALS.some(s => s.id === b.id))
+                            .map((belief) => {
+                                const prob = belief.currentProbability;
+                                const probText = `${prob.toFixed(0)}%`;
+                                const isPositive = prob >= 50;
+                                const isExpanded = expandedTopic === belief.id;
 
-                        return (
-                            <View key={cat} style={styles.accordionContainer}>
-                                <TouchableOpacity
-                                    onPress={() => toggleExpand(cat)}
-                                    style={styles.accordionHeader}
-                                    activeOpacity={0.7}
-                                >
-                                    <View style={styles.accordionLeft}>
-                                        {/* Visual Dot */}
-                                        <View style={[styles.dot, catBeliefs.length > 0 ? styles.dotActive : styles.dotInactive]} />
-                                        <Text style={styles.accordionTitle}>{catNameMap[cat] || cat}</Text>
-                                    </View>
-                                    <View style={styles.accordionRight}>
-                                        <Text style={styles.accordionCount}>{catBeliefs.length} 活躍</Text>
-                                        <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={16} color="#52525b" />
-                                    </View>
-                                </TouchableOpacity>
-
-                                {/* Expanded Content */}
-                                {isExpanded && (
-                                    <View style={styles.accordionBody}>
-                                        {/* List of Active Beliefs in Cat */}
-                                        {catBeliefs.map(b => (
-                                            <View key={b.id} style={styles.beliefItem}>
-                                                <Text style={styles.beliefTitle}>{b.marketEvent.title}</Text>
-                                                <View style={styles.probabilityTrack}>
-                                                    <View style={[styles.probabilityFill, { width: `${b.currentProbability}%` }]} />
+                                return (
+                                    <TouchableOpacity
+                                        key={belief.id}
+                                        style={[styles.topicCard, isExpanded && styles.topicCardExpanded]}
+                                        onPress={() => setExpandedTopic(isExpanded ? null : belief.id)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <View style={styles.topicHeader}>
+                                            <View style={styles.topicLeft}>
+                                                <View style={[
+                                                    styles.topicDot,
+                                                    { backgroundColor: isPositive ? '#22c55e' : '#ef4444' }
+                                                ]} />
+                                                <View style={styles.topicInfo}>
+                                                    <Text style={styles.topicTitle}>{belief.marketEvent.title}</Text>
+                                                    <Text style={styles.topicDesc} numberOfLines={isExpanded ? 0 : 1}>
+                                                        {belief.marketEvent.description}
+                                                    </Text>
                                                 </View>
                                             </View>
-                                        ))}
+                                            <View style={styles.topicRight}>
+                                                <Text style={[
+                                                    styles.topicProb,
+                                                    { color: isPositive ? '#22c55e' : '#ef4444' }
+                                                ]}>
+                                                    {probText}
+                                                </Text>
+                                                <Text style={styles.topicSource}>
+                                                    {belief.marketEvent.source}
+                                                </Text>
+                                            </View>
+                                        </View>
 
-                                        {/* Add Button */}
-                                        <TouchableOpacity
-                                            onPress={() => openSignals(cat)}
-                                            style={styles.addSignalBtn}
-                                        >
-                                            <Ionicons name="add" size={16} color="#a1a1aa" />
-                                            <Text style={styles.addSignalText}>新增 {catNameMap[cat] || cat} 信號</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                )}
-                            </View>
-                        );
-                    })}
+                                        {isExpanded && (
+                                            <View style={styles.topicDetails}>
+                                                <View style={styles.detailRow}>
+                                                    <View style={styles.detailItem}>
+                                                        <Text style={styles.detailLabel}>交易量 (Volume)</Text>
+                                                        <Text style={styles.detailValue}>
+                                                            {(() => {
+                                                                const vol = belief.marketEvent.markets[0]?.volume;
+                                                                if (!vol || vol === 'Active' || vol === 'High') return vol || 'N/A';
+                                                                const volNum = parseFloat(vol);
+                                                                return isNaN(volNum)
+                                                                    ? vol
+                                                                    : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(volNum);
+                                                            })()}
+                                                        </Text>
+                                                    </View>
+                                                    <View style={styles.detailItem}>
+                                                        <Text style={styles.detailLabel}>到期日 (End Date)</Text>
+                                                        <Text style={styles.detailValue}>
+                                                            {belief.marketEvent.endDate || '2025-12-31'}
+                                                        </Text>
+                                                    </View>
+                                                </View>
+
+                                                <View style={{ marginBottom: 16 }}>
+                                                    <Text style={styles.detailLabel}>預測問題 (Topic)</Text>
+                                                    <Text style={[styles.detailValue, { fontSize: 13, lineHeight: 18 }]} numberOfLines={3}>
+                                                        {belief.marketEvent.markets[0]?.question || belief.marketEvent.title}
+                                                    </Text>
+                                                </View>
+
+                                                <View style={styles.outcomesContainer}>
+                                                    <Text style={styles.detailLabel}>潛在結果 (Outcomes)</Text>
+                                                    {belief.marketEvent.markets[0]?.outcomes?.map((outcome, idx) => {
+                                                        const rawPrices = belief.marketEvent.markets[0].outcomePrices;
+                                                        const prices = typeof rawPrices === 'string'
+                                                            ? JSON.parse(rawPrices)
+                                                            : rawPrices;
+                                                        const outcomeProb = (parseFloat(prices[idx]) * 100).toFixed(0);
+                                                        return (
+                                                            <View key={idx} style={styles.outcomeRow}>
+                                                                <Text style={styles.outcomeText}>{outcome}</Text>
+                                                                <Text style={styles.outcomeProb}>{outcomeProb}%</Text>
+                                                            </View>
+                                                        );
+                                                    })}
+                                                </View>
+
+                                                <TouchableOpacity
+                                                    style={styles.viewMarketBtn}
+                                                    onPress={() => {
+                                                        if (typeof window !== 'undefined' && belief.marketEvent.sourceUrl) {
+                                                            window.open(belief.marketEvent.sourceUrl, '_blank');
+                                                        }
+                                                    }}
+                                                >
+                                                    <Text style={styles.viewMarketText}>前往 {belief.marketEvent.source} 查看詳細</Text>
+                                                    <Ionicons name="open-outline" size={14} color="#a1a1aa" />
+                                                </TouchableOpacity>
+                                            </View>
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })
+                    ) : (
+                        <View style={styles.emptyTopics}>
+                            <Text style={styles.emptyTopicsText}>尚未追蹤任何預測市場主題</Text>
+                            <Text style={styles.emptyTopicsHint}>請在設定中選擇你關注的主題</Text>
+                        </View>
+                    )}
                 </View>
 
                 <Text style={styles.footerVersion}>
                     Believer System V1.5 · Perception Only
                 </Text>
+
+                {/* BetalphaX Footer */}
+                <View style={{ padding: 24, paddingBottom: 60, alignItems: 'center' }}>
+                    <Text style={{ color: '#71717a', fontSize: 13, marginBottom: 16, textAlign: 'center', lineHeight: 20 }}>
+                        紀錄下你的交易想法，累積長期交易紀律
+                    </Text>
+                    <TouchableOpacity
+                        style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 8,
+                            paddingHorizontal: 16,
+                            paddingVertical: 10,
+                            backgroundColor: '#27272a',
+                            borderRadius: 8,
+                            borderWidth: 1,
+                            borderColor: '#3f3f46'
+                        }}
+                        onPress={() => {
+                            if (typeof window !== 'undefined') {
+                                window.open('https://betalphax.vercel.app/', '_blank');
+                            }
+                        }}
+                    >
+                        <Text style={{ color: '#e4e4e7', fontSize: 14, fontWeight: '600' }}>BetalphaX</Text>
+                        <Ionicons name="arrow-forward" size={14} color="#a1a1aa" />
+                    </TouchableOpacity>
+                </View>
 
             </ScrollView>
 
@@ -482,6 +572,117 @@ export default function DashboardScreen() {
                 )
             }
 
+            {/* Settings Dropdown */}
+            {showSettings && (
+                <>
+                    {/* Backdrop to close */}
+                    <TouchableOpacity
+                        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 }}
+                        activeOpacity={1}
+                        onPress={() => setShowSettings(false)}
+                    />
+                    <View style={styles.settingsOverlay}>
+
+                        {/* 1. Profile Section */}
+                        <View style={[styles.settingsItem, { borderBottomWidth: 1, borderBottomColor: '#27272a', paddingBottom: 16, marginBottom: 8 }]}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ color: '#71717a', fontSize: 10, marginBottom: 4 }}>DISPLAY NAME</Text>
+                                {editingName ? (
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                        <TextInput
+                                            value={tempName}
+                                            onChangeText={setTempName}
+                                            style={{
+                                                flex: 1,
+                                                backgroundColor: '#27272a',
+                                                color: 'white',
+                                                padding: 4,
+                                                borderRadius: 4,
+                                                fontSize: 14
+                                            }}
+                                            autoFocus
+                                        />
+                                        <TouchableOpacity onPress={handleUpdateName}>
+                                            <Ionicons name="checkmark-circle" size={20} color="#22c55e" />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity onPress={() => setEditingName(false)}>
+                                            <Ionicons name="close-circle" size={20} color="#71717a" />
+                                        </TouchableOpacity>
+                                    </View>
+                                ) : (
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <Text style={{ color: 'white', fontWeight: '600', fontSize: 14 }}>
+                                            {user?.name || 'Believer'}
+                                        </Text>
+                                        <TouchableOpacity onPress={() => { setTempName(user?.name || ''); setEditingName(true); }}>
+                                            <Ionicons name="pencil" size={14} color="#71717a" />
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                            </View>
+                        </View>
+
+                        {/* 2. Notification Settings */}
+                        <Text style={{ color: '#71717a', fontSize: 10, paddingHorizontal: 16, marginTop: 8, marginBottom: 4 }}>NOTIFICATIONS</Text>
+
+                        <TouchableOpacity
+                            style={styles.settingsItem}
+                            onPress={() => setNotificationSetting('phaseTransitions', !notificationSettings.phaseTransitions)}
+                        >
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.settingsItemText}>階段轉換通知</Text>
+                            </View>
+                            <Switch
+                                value={notificationSettings.phaseTransitions}
+                                onValueChange={(v) => setNotificationSetting('phaseTransitions', v)}
+                                trackColor={{ false: '#27272a', true: '#fb923c' }}
+                            />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.settingsItem}
+                            onPress={() => setNotificationSetting('newIndicators', !notificationSettings.newIndicators)}
+                        >
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.settingsItemText}>新增追蹤指標</Text>
+                            </View>
+                            <Switch
+                                value={notificationSettings.newIndicators}
+                                onValueChange={(v) => setNotificationSetting('newIndicators', v)}
+                                trackColor={{ false: '#27272a', true: '#fb923c' }}
+                            />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.settingsItem}
+                            onPress={() => setNotificationSetting('extremeDynamics', !notificationSettings.extremeDynamics)}
+                        >
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.settingsItemText}>指標極端動態</Text>
+                            </View>
+                            <Switch
+                                value={notificationSettings.extremeDynamics}
+                                onValueChange={(v) => setNotificationSetting('extremeDynamics', v)}
+                                trackColor={{ false: '#27272a', true: '#fb923c' }}
+                            />
+                        </TouchableOpacity>
+
+                        <View style={{ height: 1, backgroundColor: '#27272a', marginVertical: 8 }} />
+
+                        <TouchableOpacity style={styles.settingsItem} onPress={resetProfile}>
+                            <Ionicons name="refresh" size={16} color="#E4E4E7" />
+                            <Text style={styles.settingsItemText}>重置偏好設定</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.settingsItem} onPress={logout}>
+                            <Ionicons name="log-out" size={16} color="#ef4444" />
+                            <Text style={[styles.settingsItemText, styles.settingsItemDanger]}>登出帳號</Text>
+                        </TouchableOpacity>
+
+                    </View>
+                </>
+            )}
+
             {/* Cyber Wooden Fish FAB */}
             <TouchableOpacity
                 onPress={handleFishClick}
@@ -514,7 +715,7 @@ export default function DashboardScreen() {
                 <Animated.View style={[styles.fishFab, { transform: [{ scale: scaleAnim }] }]}>
                     <View style={styles.fishCounter}>
                         <Text style={styles.fishCountText}>{faithClicks}</Text>
-                        <Text style={styles.fishLabelText}>MERIT</Text>
+                        <Text style={styles.fishLabelText}>功德</Text>
                     </View>
                     <View style={styles.fishIconBg}>
                         {/* Use Image instead of Icon */}
@@ -524,14 +725,102 @@ export default function DashboardScreen() {
                             resizeMode="contain"
                         />
                     </View>
+                    {/* Settings Button */}
+                    <TouchableOpacity
+                        style={styles.meritSettingsBtn}
+                        onPress={() => setShowMeritModal(true)}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                        <Ionicons name="settings-sharp" size={12} color="#71717a" />
+                    </TouchableOpacity>
                 </Animated.View>
                 {showMerit && (
                     <View style={styles.meritPopup}>
                         <Text style={styles.meritText}>功德 +1</Text>
                     </View>
                 )}
+
+                {/* Merit Modal */}
+                <MeritModal
+                    visible={showMeritModal}
+                    onClose={() => setShowMeritModal(false)}
+                    myMerit={faithClicks}
+                />
+
             </TouchableOpacity>
         </SafeAreaView >
+    );
+}
+
+// Merit Modal Component
+function MeritModal({ visible, onClose, myMerit }: { visible: boolean, onClose: () => void, myMerit: number }) {
+    const [tab, setTab] = useState<'personal' | 'rank'>('personal');
+    const [stats, setStats] = useState({ total: 0 });
+    const [leaderboard, setLeaderboard] = useState<{ id: string, displayName: string, merit: number }[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (visible) {
+            setLoading(true);
+            Promise.all([
+                import('@/services/meritService').then(m => m.getGlobalMerit()),
+                import('@/services/meritService').then(m => m.getLeaderboard())
+            ]).then(([total, ranks]) => {
+                setStats({ total });
+                setLeaderboard(ranks);
+                setLoading(false);
+            });
+        }
+    }, [visible]);
+
+    if (!visible) return null;
+
+    const contribution = stats.total > 0 ? ((myMerit / stats.total) * 100).toFixed(4) : '0';
+
+    return (
+        <View style={styles.modalOverlay} onStartShouldSetResponder={() => true} onResponderRelease={onClose}>
+            <TouchableOpacity activeOpacity={1} onPress={e => e.stopPropagation()} style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                    <TouchableOpacity onPress={() => setTab('personal')} style={[styles.tabBtn, tab === 'personal' && styles.tabBtnActive]}>
+                        <Text style={[styles.tabText, tab === 'personal' && styles.tabTextActive]}>我的功德</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setTab('rank')} style={[styles.tabBtn, tab === 'rank' && styles.tabBtnActive]}>
+                        <Text style={[styles.tabText, tab === 'rank' && styles.tabTextActive]}>功德榜</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                        <Ionicons name="close" size={20} color="#71717a" />
+                    </TouchableOpacity>
+                </View>
+
+                <View style={styles.modalBody}>
+                    {loading ? (
+                        <Text style={{ color: '#71717a', textAlign: 'center', marginTop: 20 }}>載入中...</Text>
+                    ) : tab === 'personal' ? (
+                        <View style={{ alignItems: 'center', paddingVertical: 20 }}>
+                            <Text style={{ color: '#a1a1aa', fontSize: 14, marginBottom: 8 }}>你已經為牛市回歸貢獻了</Text>
+                            <Text style={{ color: '#fb923c', fontSize: 32, fontWeight: 'bold', marginBottom: 4 }}>{myMerit}</Text>
+                            <Text style={{ color: '#71717a', fontSize: 12, marginBottom: 24 }}>({contribution}%) 的念力</Text>
+
+                            <View style={{ height: 1, width: '100%', backgroundColor: '#27272a', marginBottom: 24 }} />
+
+                            <Text style={{ color: '#a1a1aa', fontSize: 14, marginBottom: 8 }}>目前所有用戶共捐獻了</Text>
+                            <Text style={{ color: '#e4e4e7', fontSize: 24, fontWeight: '700' }}>{stats.total.toLocaleString()}</Text>
+                            <Text style={{ color: '#71717a', fontSize: 12, marginTop: 4 }}>功德</Text>
+                        </View>
+                    ) : (
+                        <ScrollView style={{ maxHeight: 300 }}>
+                            {leaderboard.map((user, idx) => (
+                                <View key={user.id} style={styles.rankRow}>
+                                    <Text style={[styles.rankNum, idx < 3 && styles.rankTop]}>{idx + 1}</Text>
+                                    <Text style={styles.rankName} numberOfLines={1}>{user.displayName}</Text>
+                                    <Text style={styles.rankScore}>{user.merit.toLocaleString()}</Text>
+                                </View>
+                            ))}
+                        </ScrollView>
+                    )}
+                </View>
+            </TouchableOpacity>
+        </View>
     );
 }
 
@@ -1033,17 +1322,18 @@ const styles = StyleSheet.create({
     },
     meritPopup: {
         position: 'absolute',
-        top: -30,
-        right: 0,
-        backgroundColor: '#F59E0B',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 4,
+        bottom: 150,
+        right: 40,
+        backgroundColor: 'rgba(34, 197, 94, 0.9)',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        zIndex: 110,
     },
     meritText: {
-        color: '#000',
-        fontSize: 10,
-        fontWeight: '900',
+        color: '#ffffff',
+        fontWeight: 'bold',
+        fontSize: 14,
     },
     progressSection: {
         marginTop: 24,
@@ -1136,5 +1426,259 @@ const styles = StyleSheet.create({
         fontSize: 13,
         marginLeft: 12,
         fontStyle: 'italic',
+    },
+    // Topic Cards for Market Expectations
+    topicCard: {
+        backgroundColor: '#18181B',
+        borderWidth: 1,
+        borderColor: '#27272A',
+        borderRadius: 12,
+        marginBottom: 8,
+        overflow: 'hidden',
+    },
+    topicCardExpanded: {
+        backgroundColor: '#27272A',
+        borderColor: '#3F3F46',
+    },
+    topicHeader: {
+        padding: 16,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    topicDetails: {
+        padding: 16,
+        paddingTop: 0,
+        borderTopWidth: 1,
+        borderTopColor: '#3F3F46',
+        marginTop: 0,
+    },
+    detailRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 16,
+        marginTop: 16,
+    },
+    detailItem: {
+        flex: 1,
+    },
+    detailLabel: {
+        color: '#71717a',
+        fontSize: 12,
+        marginBottom: 4,
+    },
+    detailValue: {
+        color: '#E4E4E7',
+        fontSize: 14,
+        fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    },
+    outcomesContainer: {
+        marginBottom: 16,
+    },
+    outcomeRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 4,
+    },
+    outcomeText: {
+        color: '#D4D4D8',
+        fontSize: 14,
+    },
+    outcomeProb: {
+        color: '#E4E4E7',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    viewMarketBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 8,
+        backgroundColor: '#3F3F46',
+        borderRadius: 8,
+    },
+    viewMarketText: {
+        color: '#D4D4D8',
+        fontSize: 12,
+        fontWeight: '500',
+    },
+    topicLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        flex: 1,
+    },
+    topicDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 999,
+    },
+    topicInfo: {
+        flex: 1,
+    },
+    topicTitle: {
+        color: '#FFFFFF',
+        fontWeight: '600',
+        fontSize: 14,
+        marginBottom: 2,
+    },
+    topicDesc: {
+        color: '#71717A',
+        fontSize: 12,
+    },
+    topicRight: {
+        alignItems: 'flex-end',
+    },
+    topicProb: {
+        fontSize: 18,
+        fontWeight: '700',
+    },
+    topicSource: {
+        color: '#52525b',
+        fontSize: 10,
+        fontWeight: '600',
+        textTransform: 'uppercase',
+    },
+    emptyTopics: {
+        backgroundColor: '#18181B',
+        borderWidth: 1,
+        borderColor: '#27272A',
+        borderStyle: 'dashed',
+        padding: 24,
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+    emptyTopicsText: {
+        color: '#71717A',
+        fontSize: 14,
+        fontWeight: '600',
+        marginBottom: 4,
+    },
+    emptyTopicsHint: {
+        color: '#52525b',
+        fontSize: 12,
+    },
+    // Settings Menu Styles
+    settingsOverlay: {
+        position: 'absolute',
+        top: 60,
+        right: 24,
+        zIndex: 100,
+        backgroundColor: '#18181B',
+        borderWidth: 1,
+        borderColor: '#27272A',
+        borderRadius: 12,
+        padding: 8,
+        minWidth: 180,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+    },
+    settingsItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+    },
+    settingsItemText: {
+        color: '#E4E4E7',
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    settingsItemDanger: {
+        color: '#ef4444',
+    },
+    // Merit Modal Styles
+    meritSettingsBtn: {
+        position: 'absolute',
+        bottom: -6,
+        right: -6,
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: '#27272a',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#3f3f46',
+        zIndex: 101,
+    },
+
+    modalOverlay: {
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.7)',
+        zIndex: 1000,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalContent: {
+        width: '85%',
+        backgroundColor: '#18181b',
+        borderRadius: 24,
+        borderWidth: 1,
+        borderColor: '#27272a',
+        overflow: 'hidden',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        borderBottomWidth: 1,
+        borderBottomColor: '#27272a',
+    },
+    tabBtn: {
+        flex: 1,
+        paddingVertical: 16,
+        alignItems: 'center',
+    },
+    tabBtnActive: {
+        borderBottomWidth: 2,
+        borderBottomColor: '#fb923c',
+    },
+    tabText: {
+        color: '#71717a',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    tabTextActive: {
+        color: '#fb923c',
+    },
+    closeBtn: {
+        padding: 16,
+        position: 'absolute',
+        right: 0,
+        top: 0,
+    },
+    modalBody: {
+        padding: 24,
+    },
+    rankRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#27272a',
+    },
+    rankNum: {
+        width: 30,
+        color: '#71717a',
+        fontWeight: 'bold',
+        fontSize: 14,
+    },
+    rankTop: {
+        color: '#fb923c',
+    },
+    rankName: {
+        flex: 1,
+        color: '#e4e4e7',
+        fontSize: 14,
+    },
+    rankScore: {
+        color: '#fb923c',
+        fontWeight: '600',
+        fontSize: 14,
     },
 });

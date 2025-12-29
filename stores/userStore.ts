@@ -41,6 +41,14 @@ interface UserState {
 
     setAlertStyle: (style: AlertStyle) => void;
 
+    notificationSettings: {
+        phaseTransitions: boolean;
+        newIndicators: boolean;
+        extremeDynamics: boolean;
+    };
+
+    setNotificationSetting: (key: keyof UserState['notificationSettings'], value: boolean) => void;
+
     resetProfile: () => void;
 }
 
@@ -51,6 +59,11 @@ export const useUserStore = create<UserState>()(
             predictionTopics: [],
             focusAreas: [],
             alertStyle: null,
+            notificationSettings: {
+                phaseTransitions: true,
+                newIndicators: true,
+                extremeDynamics: true,
+            },
 
             setExperience: (level) => set({ experience: level }),
 
@@ -77,11 +90,23 @@ export const useUserStore = create<UserState>()(
 
             setAlertStyle: (style) => set({ alertStyle: style }),
 
+            setNotificationSetting: (key, value) => set((state) => ({
+                notificationSettings: {
+                    ...state.notificationSettings,
+                    [key]: value
+                }
+            })),
+
             resetProfile: () => set({
                 experience: null,
                 predictionTopics: [],
                 focusAreas: [],
-                alertStyle: null
+                alertStyle: null,
+                notificationSettings: {
+                    phaseTransitions: true,
+                    newIndicators: true,
+                    extremeDynamics: true,
+                }
             }),
         }),
         {

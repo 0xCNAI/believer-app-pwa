@@ -197,7 +197,7 @@ export function calculateReversalState(
     // Watch Analysis
     else {
         // Check Watch Conditions
-        const scoreQualifies = finalScore >= 45;
+        const scoreQualifies = finalScore >= 40;
         const zoneQualifies = cycleBaseForWatch >= 35; // Triggered by STRONG (40)
 
         if (scoreQualifies || zoneQualifies) {

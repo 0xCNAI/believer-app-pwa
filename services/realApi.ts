@@ -66,26 +66,30 @@ export const fetchRealPolymarketData = async (): Promise<Map<string, MarketEvent
         // Find relevant markets by title keywords
         for (const market of allMarkets) {
             const title = (market.title || '').toLowerCase();
+            const enhancedMarket = {
+                ...market,
+                endDate: market.endDate || market.end_date_iso // Map API field to our interface
+            };
 
             // Bitcoin price targets
             if (title.includes('bitcoin') && (title.includes('100k') || title.includes('$100'))) {
-                results.set('btc_price', market);
+                results.set('btc_price', enhancedMarket);
             }
             // Fed rate decisions
             if (title.includes('fed') && (title.includes('rate') || title.includes('cut'))) {
-                results.set('fed_rate', market);
+                results.set('fed_rate', enhancedMarket);
             }
             // Crypto regulation
             if (title.includes('crypto') && (title.includes('bill') || title.includes('legislation'))) {
-                results.set('crypto_bill', market);
+                results.set('crypto_bill', enhancedMarket);
             }
             // Strategic reserve
             if (title.includes('bitcoin') && title.includes('reserve')) {
-                results.set('btc_reserve', market);
+                results.set('btc_reserve', enhancedMarket);
             }
             // ETH ETF
             if (title.includes('ethereum') && title.includes('etf')) {
-                results.set('eth_etf', market);
+                results.set('eth_etf', enhancedMarket);
             }
         }
 

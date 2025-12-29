@@ -21,6 +21,7 @@ export const BELIEVER_SIGNALS: MarketEvent[] = [
         sourceUrl: 'https://polymarket.com/event/fed-rate-decision',
         category: 'Macro',
         slug: 'fed-rate',
+        endDate: '2025-12-18',
         markets: [{
             id: 'm1',
             question: 'Will the Federal Reserve cut interest rates in 2025?',
@@ -41,6 +42,7 @@ export const BELIEVER_SIGNALS: MarketEvent[] = [
         sourceUrl: 'https://kalshi.com/markets/yield-curve',
         category: 'Macro',
         slug: 'yield-curve',
+        endDate: '2025-12-31',
         markets: [{
             id: 'm2',
             question: 'Will the U.S. yield curve uninvert by end of 2025?',
@@ -61,6 +63,7 @@ export const BELIEVER_SIGNALS: MarketEvent[] = [
         sourceUrl: 'https://polymarket.com/event/crypto-legislation',
         category: 'Political',
         slug: 'crypto-regulation',
+        endDate: '2025-12-31',
         markets: [{
             id: 'p1',
             question: 'Will major U.S. crypto legislation pass in 2025?',
@@ -81,6 +84,7 @@ export const BELIEVER_SIGNALS: MarketEvent[] = [
         sourceUrl: 'https://polymarket.com/event/us-bitcoin-reserve',
         category: 'Political',
         slug: 'btc-reserve',
+        endDate: '2025-12-31',
         markets: [{
             id: 'p2',
             question: 'Will the U.S. establish a Bitcoin strategic reserve?',
@@ -101,6 +105,7 @@ export const BELIEVER_SIGNALS: MarketEvent[] = [
         sourceUrl: 'https://polymarket.com/event/pro-crypto-politics',
         category: 'Political',
         slug: 'pro-crypto-pol',
+        endDate: '2025-01-20',
         markets: [{
             id: 'p3',
             question: 'Will the next U.S. administration be pro-crypto?',
@@ -121,6 +126,7 @@ export const BELIEVER_SIGNALS: MarketEvent[] = [
         sourceUrl: 'https://polymarket.com/event/eth-spot-etf',
         category: 'Narrative',
         slug: 'eth-etf',
+        endDate: '2025-05-30',
         markets: [{
             id: 'n1',
             question: 'Will an ETH spot ETF be approved in 2025?',
@@ -141,6 +147,7 @@ export const BELIEVER_SIGNALS: MarketEvent[] = [
         sourceUrl: 'https://polymarket.com/event/institutional-crypto',
         category: 'Narrative',
         slug: 'institutional',
+        endDate: '2025-12-31',
         markets: [{
             id: 'n2',
             question: 'Will major U.S. banks offer crypto custody services?',
@@ -161,6 +168,7 @@ export const BELIEVER_SIGNALS: MarketEvent[] = [
         sourceUrl: 'https://kalshi.com/markets/financial-crisis',
         category: 'Narrative',
         slug: 'systemic-risk',
+        endDate: '2025-12-31',
         markets: [{
             id: 'n3',
             question: 'Will a major U.S. bank fail in 2025?',
@@ -217,7 +225,8 @@ export const fetchUnifiedMarkets = async (
                     title: realData.title || event.title,
                     markets: [{
                         ...event.markets[0],
-                        question: realData.markets?.[0]?.question || event.markets[0]?.question,
+                        question: (realData as any).question || realData.markets?.[0]?.question || event.markets[0]?.question,
+                        volume: (realData as any).volume || realData.markets?.[0]?.volume || "Active",
                         outcomePrices: JSON.stringify([prob.toString(), (1 - prob).toString()]) as any,
                     }]
                 };
@@ -232,7 +241,8 @@ export const fetchUnifiedMarkets = async (
                     title: realData.title || event.title,
                     markets: [{
                         ...event.markets[0],
-                        question: realData.markets?.[0]?.question || event.markets[0]?.question,
+                        question: (realData as any).question || realData.markets?.[0]?.question || event.markets[0]?.question,
+                        volume: (realData as any).volume || realData.markets?.[0]?.volume || "Active",
                         outcomePrices: JSON.stringify([prob.toString(), (1 - prob).toString()]) as any,
                     }]
                 };
@@ -247,7 +257,8 @@ export const fetchUnifiedMarkets = async (
                     title: realData.title || event.title,
                     markets: [{
                         ...event.markets[0],
-                        question: realData.markets?.[0]?.question || event.markets[0]?.question,
+                        question: (realData as any).question || realData.markets?.[0]?.question || event.markets[0]?.question,
+                        volume: (realData as any).volume || realData.markets?.[0]?.volume || "Active",
                         outcomePrices: JSON.stringify([prob.toString(), (1 - prob).toString()]) as any,
                     }]
                 };
@@ -262,7 +273,8 @@ export const fetchUnifiedMarkets = async (
                     title: realData.title || event.title,
                     markets: [{
                         ...event.markets[0],
-                        question: realData.markets?.[0]?.question || event.markets[0]?.question,
+                        question: (realData as any).question || realData.markets?.[0]?.question || event.markets[0]?.question,
+                        volume: (realData as any).volume || realData.markets?.[0]?.volume || "Active",
                         outcomePrices: JSON.stringify([prob.toString(), (1 - prob).toString()]) as any,
                     }]
                 };

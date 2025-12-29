@@ -6,6 +6,8 @@ export interface MarketEvent {
     source?: string;
     sourceUrl?: string;
     slug: string;
+    endDate?: string;
+    volume?: string; // Top level volume from specific endpoints
     markets: Market[];
 }
 

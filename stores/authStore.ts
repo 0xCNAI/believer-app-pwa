@@ -58,6 +58,26 @@ export const useAuthStore = create<AuthState>()(
                         throw error;
                     }
                 },
+                updateProfile: async (name: string) => {
+                    const { user } = get();
+                    if (!user) return;
+
+                    try {
+                        // 1. Update Firebase Auth Profile (Optional, if we want sync)
+                        // await updateProfile(auth.currentUser!, { displayName: name });
+
+                        // 2. Update Firestore User Doc
+                        const { db } = require('@/services/firebase');
+                        const { doc, updateDoc } = require('firebase/firestore');
+                        await updateDoc(doc(db, 'users', user.id), { displayName: name });
+
+                        // 3. Update Local State
+                        set({ user: { ...user, name } });
+                    } catch (e) {
+                        console.error("Profile Update Failed:", e);
+                        throw e;
+                    }
+                },
                 logout: async () => {
                     try {
                         await signOut(auth);
