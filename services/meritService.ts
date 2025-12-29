@@ -30,6 +30,7 @@ export const syncUserMerit = async (userId: string, displayName: string, totalLo
 
     try {
         await runTransaction(db, async (transaction) => {
+            console.log(`[MeritService] Transaction Start for User: ${userId}`);
             // 1. Get Current Persistence State
             const userDoc = await transaction.get(userRef);
             let previousMerit = 0;
@@ -73,22 +74,28 @@ export const syncUserMerit = async (userId: string, displayName: string, totalLo
                 }
             }
         });
+        console.log(`[MeritService] Merit sync complete for user ${userId}`);
     } catch (e) {
-        console.error("Merit Sync Failed:", e);
+        console.error("[MeritService] Merit Sync Failed:", e);
     }
 };
 
 export const getGlobalMerit = async (): Promise<number> => {
     try {
+        console.log('[MeritService] Fetching Global Stats...');
         const snap = await getDoc(doc(db, MERIT_STATS_DOC));
-        return snap.exists() ? snap.data().total : 0;
+        const val = snap.exists() ? snap.data().total : 0;
+        console.log('[MeritService] Global Stats:', val);
+        return val;
     } catch (e) {
+        console.error('[MeritService] Global Fetch Error:', e);
         return 0;
     }
 };
 
-export const getLeaderboard = async (limitCount = 10): Promise<MeritUser[]> => {
+export const getLeaderboard = async (limitCount = 100): Promise<MeritUser[]> => {
     try {
+        console.log('[MeritService] Fetching Leaderboard...');
         const q = query(
             collection(db, 'users'),
             orderBy('merit', 'desc'),
