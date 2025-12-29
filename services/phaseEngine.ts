@@ -168,6 +168,18 @@ export function calculateReversalState(
     // Determine Driver
     const driver = trendScoreRaw >= cycleScoreRaw ? 'TREND' : 'CYCLE';
 
+    // [DEBUG LOGS]
+    console.log(`[PhaseEngine] === Cycle Analysis ===`);
+    console.log(`[PhaseEngine] Cycle Zone: ${cycleZone} (Trigger: Puell=${puell.toFixed(2)}, MVRV=${mvrvZScore.toFixed(2)})`);
+    console.log(`[PhaseEngine] Derivatives Veto: ${vetoResult.active} (Reason: ${vetoResult.active ? vetoResult.reason : 'None'})`);
+    console.log(`[PhaseEngine]   -> Funding=${funding24hWeighted.toFixed(4)}% (Threshold > 0.015%)`);
+    console.log(`[PhaseEngine]   -> OI 3D Change=${oi3dChangePct.toFixed(2)}% (Threshold > 15%)`);
+
+    console.log(`[PhaseEngine] === Score Composition ===`);
+    console.log(`[PhaseEngine] Trend Score: ${trendScoreRaw} (Gates: ${gateCount})`);
+    console.log(`[PhaseEngine] Cycle Score: ${cycleScoreRaw} (Base: ${cycleBase}, User: ${cycleUser})`);
+    console.log(`[PhaseEngine] Final Score: ${finalScore} (Driver: ${driver}, Cap: ${phaseCap})`);
+
     // --- E. Stage Determination ---
     let stage: ReversalStage = 'Bottom Break';
     let watchReason: 'ZONE_GUARANTEE' | 'SCORE_THRESHOLD' | undefined;

@@ -200,6 +200,8 @@ function evaluateMASlope(data: KlineData[], period: number): ConditionResult {
     const passed = normalizedSlope > -0.0005;
     const score = Math.max(0, Math.min(1, (normalizedSlope + 0.002) / 0.003));
 
+    console.log(`[TechEngine] Gate 2 (MA Slope): Slope=${normalizedSlope.toFixed(6)}, Threshold=-0.0005, Passed=${passed}`);
+
     return {
         id: 'ma_slope_flat',
         group: 'Gate',
@@ -217,6 +219,8 @@ function evaluateMASlope(data: KlineData[], period: number): ConditionResult {
  */
 function evaluateHigherLow(data: KlineData[], windowWeeks: number): ConditionResult {
     const hasHL = checkHigherLow(data, windowWeeks);
+
+    console.log(`[TechEngine] Gate 3 (Higher Low): Detected=${hasHL}, Window=${windowWeeks}w, Passed=${hasHL}`);
 
     return {
         id: 'higher_low',
@@ -255,6 +259,8 @@ function evaluateVolCompression(data: KlineData[], threshold: number): Condition
     const pct = percentileRank(currentVol, history);
     const passed = pct < threshold;
     const score = Math.max(0, Math.min(1, (threshold - pct) / threshold));
+
+    console.log(`[TechEngine] Gate 4 (Vol Compression): CurrentVol=${currentVol.toFixed(4)}, Percentile=${pct.toFixed(1)}%, Threshold=${threshold}%, Passed=${passed}`);
 
     return {
         id: 'vol_compression',

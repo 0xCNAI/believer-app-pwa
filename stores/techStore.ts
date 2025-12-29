@@ -114,10 +114,11 @@ export const useTechStore = create<TechState>()(
                     });
 
                     // 1. Fetch ALL Real Data
-                    const [techResults, realData] = await Promise.all([
+                    const [techResults, rawRealData] = await Promise.all([
                         evaluateTechConditions(enabledIds, personalParams),
                         fetchAllRealData()
                     ]);
+                    const realData = rawRealData as any;
 
                     // 2. Prepare Inputs
                     // Get 'gateCount' and 'higherLow' from techResults
@@ -154,6 +155,16 @@ export const useTechStore = create<TechState>()(
                         oi3dChangePct: realData.derivatives?.oi3dChangePct ?? 0,
                         beliefPoints
                     };
+
+                    // [DEBUG LOGS]
+                    const dataAgeMinutes = (Date.now() - (realData.updatedAt || 0)) / 60000;
+                    console.log(`[TechStore] === Data Freshness ===`);
+                    console.log(`[TechStore] Data Age: ${dataAgeMinutes.toFixed(1)} minutes`);
+
+                    console.log(`[TechStore] === Belief Breakdown ===`);
+                    console.log(`[TechStore] User Belief Points: ${beliefPoints.toFixed(2)} (AvgProb * 0.25)`);
+                    console.log(`[TechStore] Macro Context (Ref Only): FearGreed=${realData.fearGreed?.value}, Dominance=${realData.btcDominance}`);
+                    console.log(`[TechStore] Polymarket Points: Integrated into User Beliefs`);
 
                     console.log('[TechStore] Calculating Reversal with:', inputs);
 
