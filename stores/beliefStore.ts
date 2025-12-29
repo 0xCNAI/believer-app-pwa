@@ -30,6 +30,8 @@ interface BeliefState {
     seedFromFocusAreas: (focusAreas: string[]) => void;
     seedFromPredictionTopics: (topics: PredictionTopic[]) => void;
     syncBeliefs: (userId: string) => () => void; // Returns unsubscribe function
+    resetStore: () => void;
+    fetchUserMerit: (userId: string) => Promise<void>;
 
     // Getters
     hasInteracted: (id: string) => boolean;
@@ -305,6 +307,30 @@ export const useBeliefStore = create<BeliefState>()(
                     set({ beliefs: remoteBeliefs });
                 });
                 return unsubscribe;
+            },
+
+            resetStore: () => {
+                set({
+                    beliefs: [],
+                    faithClicks: 0,
+                    pendingMerit: 0,
+                    discardedIds: []
+                });
+            },
+
+            fetchUserMerit: async (userId: string) => {
+                const { db } = require('@/services/firebase');
+                const { doc, getDoc } = require('firebase/firestore');
+                try {
+                    const snap = await getDoc(doc(db, 'users', userId));
+                    if (snap.exists()) {
+                        const data = snap.data();
+                        console.log('[BeliefStore] Synced merit from DB:', data.merit || 0);
+                        set({ faithClicks: data.merit || 0 });
+                    }
+                } catch (e) {
+                    console.error('[BeliefStore] Failed to fetch user merit:', e);
+                }
             },
 
             hasInteracted: (id) => {

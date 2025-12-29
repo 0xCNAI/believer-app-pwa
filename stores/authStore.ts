@@ -82,6 +82,15 @@ export const useAuthStore = create<AuthState>()(
                     try {
                         await signOut(auth);
                         set({ isAuthenticated: false, user: null });
+
+                        // Reset other stores
+                        try {
+                            // Use try-catch for external store resets to avoid crashes if stores not init
+                            require('./beliefStore').useBeliefStore.getState().resetStore();
+                            require('./userStore').useUserStore.getState().resetProfile();
+                        } catch (e) {
+                            console.warn("Store reset failed:", e);
+                        }
                     } catch (error) {
                         console.error("Logout Failed:", error);
                     }

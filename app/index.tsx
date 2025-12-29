@@ -30,8 +30,15 @@ export default function DashboardScreen() {
 
     // Auth & Profile
     const { user, logout, updateProfile } = useAuthStore();
+    const { fetchUserMerit } = useBeliefStore();
     const [editingName, setEditingName] = useState(false);
     const [tempName, setTempName] = useState('');
+
+    useEffect(() => {
+        if (user?.id) {
+            fetchUserMerit(user.id);
+        }
+    }, [user?.id]);
 
     const handleUpdateName = async () => {
         if (!tempName.trim()) return;
