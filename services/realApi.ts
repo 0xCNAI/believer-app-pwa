@@ -50,50 +50,36 @@ export const POLYMARKET_SLUGS = {
     crypto_bill: 'will-congress-pass-crypto-bill-2025',
 };
 
-// Fetch real Polymarket data for our prediction market signals
-export const fetchRealPolymarketData = async (): Promise<Map<string, MarketEvent>> => {
-    const results = new Map<string, MarketEvent>();
+// Search uses the 'q' parameter for text search if tag_slug is not specific enough
+// But for now we stick to tag_slug or keywords
+export const fetchRealPolymarketData = async (): Promise<Map<string, MarketEvent[]>> => {
+    const results = new Map<string, MarketEvent[]>();
 
     try {
-        // Fetch top crypto/economics markets
-        const [cryptoMarkets, politicsMarkets] = await Promise.all([
-            fetch(getPolymarketUrl(`limit=20&active=true&closed=false&tag_slug=crypto`)).then(r => r.json()).catch(() => []),
-            fetch(getPolymarketUrl(`limit=20&active=true&closed=false&tag_slug=politics`)).then(r => r.json()).catch(() => []),
+        // Fetch 4 distinct Categories
+        const [fedData, recessionData, shutdownData, reserveData] = await Promise.all([
+            // Fed - Tag "Fed" or "Interest Rates"
+            searchPolymarkets("fed").then(res => res.filter(m => m.title.toLowerCase().includes('fed'))),
+            // Recession - Tag "Recession"
+            searchPolymarkets("recession").then(res => res.filter(m => m.title.toLowerCase().includes('recession'))),
+            // Shutdown - Tag "Government" or search
+            searchPolymarkets("government").then(res => res.filter(m => m.title.toLowerCase().includes('shutdown'))),
+            // BTC Reserve - Tag "Bitcoin"
+            searchPolymarkets("bitcoin").then(res => res.filter(m => m.title.toLowerCase().includes('reserve')))
         ]);
 
-        const allMarkets = [...cryptoMarkets, ...politicsMarkets];
+        console.log('[API] Found Markets:', {
+            fed: fedData.length,
+            recession: recessionData.length,
+            shutdown: shutdownData.length,
+            reserve: reserveData.length
+        });
 
-        // Find relevant markets by title keywords
-        for (const market of allMarkets) {
-            const title = (market.title || '').toLowerCase();
-            const enhancedMarket = {
-                ...market,
-                endDate: market.endDate || market.end_date_iso // Map API field to our interface
-            };
+        results.set('fed_policy', fedData);
+        results.set('us_recession', recessionData);
+        results.set('gov_shutdown', shutdownData);
+        results.set('btc_reserve', reserveData);
 
-            // Bitcoin price targets
-            if (title.includes('bitcoin') && (title.includes('100k') || title.includes('$100'))) {
-                results.set('btc_price', enhancedMarket);
-            }
-            // Fed rate decisions
-            if (title.includes('fed') && (title.includes('rate') || title.includes('cut'))) {
-                results.set('fed_rate', enhancedMarket);
-            }
-            // Crypto regulation
-            if (title.includes('crypto') && (title.includes('bill') || title.includes('legislation'))) {
-                results.set('crypto_bill', enhancedMarket);
-            }
-            // Strategic reserve
-            if (title.includes('bitcoin') && title.includes('reserve')) {
-                results.set('btc_reserve', enhancedMarket);
-            }
-            // ETH ETF
-            if (title.includes('ethereum') && title.includes('etf')) {
-                results.set('eth_etf', enhancedMarket);
-            }
-        }
-
-        console.log('[API] Found Polymarket data:', results.size, 'markets');
     } catch (error) {
         console.error('[API] Polymarket batch fetch error:', error);
     }

@@ -14,9 +14,9 @@ export interface MarketEvent {
 export interface Market {
     id: string;
     question: string;
-    outcomePrices: string[]; // JSON string of prices e.g. "[\"0.3\", \"0.7\"]"
+    outcomePrices: string | string[] | any; // JSON string or array
     volume: string;
-    outcomes: string[]; // ["Yes", "No"]
+    outcomes: string[] | any; // ["Yes", "No"]
 }
 
 const BASE_URL = 'https://gamma-api.polymarket.com';

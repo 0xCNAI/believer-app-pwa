@@ -138,16 +138,17 @@ export const useBeliefStore = create<BeliefState>()(
                 const existingIds = new Set(state.beliefs.map(b => b.id));
                 const newBeliefs: Belief[] = [];
 
-                // Map topics to signal IDs
+                // Map topics to signal IDs (V2.0 Mapping - Strict 4 Topics)
+                // Topics: fed_policy, us_recession, gov_shutdown, btc_reserve
                 const topicToSignalIds: Record<PredictionTopic, string[]> = {
-                    'fed_rate': ['macro_rate_cut'],
-                    'yield_curve': ['macro_yield_curve'],
-                    'crypto_regulation': ['pol_regulation'],
-                    'btc_reserve': ['pol_btc_reserve'],
-                    'pro_crypto_pol': ['pol_pro_crypto'],
-                    'eth_etf': ['narrative_eth_etf'],
-                    'institutional': ['narrative_institutional'],
-                    'systemic_risk': ['narrative_systemic_risk'],
+                    'fed_rate': ['fed_policy'],                    // Direct map
+                    'yield_curve': ['us_recession'],               // Yield Curve -> Recession Risk
+                    'crypto_regulation': ['btc_reserve'],          // Regulation -> Strategic Reserve (Political)
+                    'btc_reserve': ['btc_reserve'],                // Direct map
+                    'pro_crypto_pol': ['gov_shutdown'],             // Politics -> Fiscal Stability
+                    'eth_etf': [],                                 // Removed
+                    'institutional': [],                           // Removed
+                    'systemic_risk': ['us_recession', 'gov_shutdown'], // Systemic Risk -> Recession & Shutdown
                 };
 
                 topics.forEach(topic => {

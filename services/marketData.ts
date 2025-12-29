@@ -1,330 +1,153 @@
 import { MarketEvent } from './polymarket';
+import { fetchRealPolymarketData } from './realApi';
+import { PredictionTopic } from '@/stores/userStore';
+
 export { MarketEvent };
 
-export type EventCategory = 'Macro' | 'Political' | 'Narrative';
+export type EventCategory = 'Macro' | 'Structural' | 'Political' | 'Narrative';
 
 /**
- * BELIEVER SIGNALS - 8 Prediction Market Topics Only
+ * BELIEVER SIGNALS - STRICT 4 TOPICS ONLY (V2.0)
  * 
- * 敘事層唯一接受「市場化預期」，不接受數據、指標、價格或主觀判斷。
- * Source: Polymarket / Kalshi only
+ * 1. Fed Monetary Policy (P(Cut))
+ * 2. US Recession Risk (1 - P(Recession))
+ * 3. US Gov Shutdown Risk (1 - P(Shutdown))
+ * 4. BTC Strategic Reserve (P(Yes))
  */
 export const BELIEVER_SIGNALS: MarketEvent[] = [
-    // ============================================
-    // Topic 1: Fed Rate Cuts Expectation (聯準會降息預期)
-    // ============================================
     {
-        id: 'macro_rate_cut',
-        title: '聯準會降息預期',
-        description: 'Fed 利率決策、降息時機與次數',
+        id: 'fed_policy',
+        title: 'Fed Monetary Policy',
+        description: 'Market expectation for rate cuts (25bps+)',
         source: 'Polymarket',
-        sourceUrl: 'https://polymarket.com/event/fed-rate-decision',
+        sourceUrl: 'https://polymarket.com/event/fed-decision-in-january',
         category: 'Macro',
-        slug: 'fed-rate',
-        endDate: '2025-12-18',
-        markets: [{
-            id: 'm1',
-            question: 'Will the Federal Reserve cut interest rates in 2025?',
-            outcomePrices: JSON.stringify(["0.65", "0.35"]) as any,
-            volume: "High",
-            outcomes: ["Yes", "No"]
-        }]
+        slug: 'fed',
+        endDate: '2025-12-31',
+        markets: []
     },
-
-    // ============================================
-    // Topic 2: Yield Curve Outlook (殖利率曲線轉向預期)
-    // ============================================
     {
-        id: 'macro_yield_curve',
-        title: '殖利率曲線轉向預期',
-        description: '倒掛解除、曲線正常化',
-        source: 'Kalshi',
-        sourceUrl: 'https://kalshi.com/markets/yield-curve',
+        id: 'us_recession',
+        title: 'US Recession Risk',
+        description: 'Probability of NO recession in medium term',
+        source: 'Polymarket',
+        sourceUrl: 'https://polymarket.com/search?_q=recession',
         category: 'Macro',
-        slug: 'yield-curve',
+        slug: 'recession',
         endDate: '2025-12-31',
-        markets: [{
-            id: 'm2',
-            question: 'Will the U.S. yield curve uninvert by end of 2025?',
-            outcomePrices: JSON.stringify(["0.55", "0.45"]) as any,
-            volume: "Active",
-            outcomes: ["Yes", "No"]
-        }]
+        markets: []
     },
-
-    // ============================================
-    // Topic 3: U.S. Crypto Regulation (美國加密監管與法案進展)
-    // ============================================
     {
-        id: 'pol_regulation',
-        title: '美國加密監管與法案進展',
-        description: '國會法案、SEC 訴訟結果',
+        id: 'gov_shutdown',
+        title: 'US Gov Fiscal Stability',
+        description: 'Probability of NO government shutdown',
         source: 'Polymarket',
-        sourceUrl: 'https://polymarket.com/event/crypto-legislation',
+        sourceUrl: 'https://polymarket.com/search?_q=shutdown',
         category: 'Political',
-        slug: 'crypto-regulation',
+        slug: 'shutdown',
         endDate: '2025-12-31',
-        markets: [{
-            id: 'p1',
-            question: 'Will major U.S. crypto legislation pass in 2025?',
-            outcomePrices: JSON.stringify(["0.40", "0.60"]) as any,
-            volume: "Active",
-            outcomes: ["Yes", "No"]
-        }]
+        markets: []
     },
-
-    // ============================================
-    // Topic 4: U.S. Bitcoin Strategic Reserve (美國比特幣戰略儲備)
-    // ============================================
     {
-        id: 'pol_btc_reserve',
-        title: '美國比特幣戰略儲備',
-        description: '國家級 BTC 儲備政策',
+        id: 'btc_reserve',
+        title: 'Bitcoin Strategic Reserve',
+        description: 'US Government adoption of BTC Reserve',
         source: 'Polymarket',
-        sourceUrl: 'https://polymarket.com/event/us-bitcoin-reserve',
-        category: 'Political',
-        slug: 'btc-reserve',
-        endDate: '2025-12-31',
-        markets: [{
-            id: 'p2',
-            question: 'Will the U.S. establish a Bitcoin strategic reserve?',
-            outcomePrices: JSON.stringify(["0.35", "0.65"]) as any,
-            volume: "High",
-            outcomes: ["Yes", "No"]
-        }]
-    },
-
-    // ============================================
-    // Topic 5: Pro-Crypto Political Outcome (親加密政治結果)
-    // ============================================
-    {
-        id: 'pol_pro_crypto',
-        title: '親加密政治結果',
-        description: '選舉、政權更替對加密的影響',
-        source: 'Polymarket',
-        sourceUrl: 'https://polymarket.com/event/pro-crypto-politics',
-        category: 'Political',
-        slug: 'pro-crypto-pol',
-        endDate: '2025-01-20',
-        markets: [{
-            id: 'p3',
-            question: 'Will the next U.S. administration be pro-crypto?',
-            outcomePrices: JSON.stringify(["0.70", "0.30"]) as any,
-            volume: "Very High",
-            outcomes: ["Yes", "No"]
-        }]
-    },
-
-    // ============================================
-    // Topic 6: ETH Spot ETF Approval (ETH 現貨 ETF 預期)
-    // ============================================
-    {
-        id: 'narrative_eth_etf',
-        title: 'ETH 現貨 ETF 預期',
-        description: 'SEC 批准 ETH 現貨 ETF',
-        source: 'Polymarket',
-        sourceUrl: 'https://polymarket.com/event/eth-spot-etf',
-        category: 'Narrative',
-        slug: 'eth-etf',
-        endDate: '2025-05-30',
-        markets: [{
-            id: 'n1',
-            question: 'Will an ETH spot ETF be approved in 2025?',
-            outcomePrices: JSON.stringify(["0.85", "0.15"]) as any,
-            volume: "High",
-            outcomes: ["Yes", "No"]
-        }]
-    },
-
-    // ============================================
-    // Topic 7: Institutional Crypto Adoption (機構級加密採用)
-    // ============================================
-    {
-        id: 'narrative_institutional',
-        title: '機構級加密採用',
-        description: '銀行託管、機構產品擴展',
-        source: 'Polymarket',
-        sourceUrl: 'https://polymarket.com/event/institutional-crypto',
-        category: 'Narrative',
-        slug: 'institutional',
-        endDate: '2025-12-31',
-        markets: [{
-            id: 'n2',
-            question: 'Will major U.S. banks offer crypto custody services?',
-            outcomePrices: JSON.stringify(["0.50", "0.50"]) as any,
-            volume: "Active",
-            outcomes: ["Yes", "No"]
-        }]
-    },
-
-    // ============================================
-    // Topic 8: Systemic Financial Risk (系統性金融風險事件)
-    // ============================================
-    {
-        id: 'narrative_systemic_risk',
-        title: '系統性金融風險事件',
-        description: '銀行倒閉、政府停擺、金融危機',
-        source: 'Kalshi',
-        sourceUrl: 'https://kalshi.com/markets/financial-crisis',
-        category: 'Narrative',
-        slug: 'systemic-risk',
-        endDate: '2025-12-31',
-        markets: [{
-            id: 'n3',
-            question: 'Will a major U.S. bank fail in 2025?',
-            outcomePrices: JSON.stringify(["0.15", "0.85"]) as any,
-            volume: "Active",
-            outcomes: ["Yes", "No"]
-        }]
-    },
+        sourceUrl: 'https://polymarket.com/event/us-national-bitcoin-reserve-before-2027',
+        category: 'Structural',
+        slug: 'reserve',
+        endDate: '2026-12-31',
+        markets: []
+    }
 ];
 
-import { ExperienceLevel, PredictionTopic } from '@/stores/userStore';
-import { fetchRealPolymarketData, fetchBtcDominance, fetchFearGreedIndex } from './realApi';
-
-// Helper to extract probability from Polymarket market
-const extractProbability = (market: any): number => {
-    try {
-        if (market.markets && market.markets.length > 0) {
-            const prices = market.markets[0].outcomePrices;
-            if (typeof prices === 'string') {
-                const parsed = JSON.parse(prices);
-                return parseFloat(parsed[0]) || 0.5;
-            }
-            if (Array.isArray(prices)) {
-                return parseFloat(prices[0]) || 0.5;
-            }
-        }
-    } catch (e) { }
-    return 0.5;
-};
-
-export const fetchUnifiedMarkets = async (
-    experience?: ExperienceLevel | null,
-    topics?: PredictionTopic[]
-): Promise<MarketEvent[]> => {
-    console.log('[MarketData] Fetching with prefs:', { experience, topics });
-
-    // Start with all 8 signals
-    let events = [...BELIEVER_SIGNALS];
-
-    try {
-        // Fetch real Polymarket data
-        const realPolymarkets = await fetchRealPolymarketData();
-
-        console.log('[MarketData] Got real Polymarket data:', realPolymarkets.size, 'markets');
-
-        // Update events with real data where available
-        events = events.map(event => {
-            // Fed rate market
-            if (event.id === 'macro_rate_cut' && realPolymarkets.has('fed_rate')) {
-                const realData = realPolymarkets.get('fed_rate')!;
-                const prob = extractProbability(realData);
-                return {
-                    ...event,
-                    title: realData.title || event.title,
-                    markets: [{
-                        ...event.markets[0],
-                        question: (realData as any).question || realData.markets?.[0]?.question || event.markets[0]?.question,
-                        volume: (realData as any).volume || realData.markets?.[0]?.volume || "Active",
-                        outcomePrices: JSON.stringify([prob.toString(), (1 - prob).toString()]) as any,
-                    }]
-                };
-            }
-
-            // BTC strategic reserve
-            if (event.id === 'pol_btc_reserve' && realPolymarkets.has('btc_reserve')) {
-                const realData = realPolymarkets.get('btc_reserve')!;
-                const prob = extractProbability(realData);
-                return {
-                    ...event,
-                    title: realData.title || event.title,
-                    markets: [{
-                        ...event.markets[0],
-                        question: (realData as any).question || realData.markets?.[0]?.question || event.markets[0]?.question,
-                        volume: (realData as any).volume || realData.markets?.[0]?.volume || "Active",
-                        outcomePrices: JSON.stringify([prob.toString(), (1 - prob).toString()]) as any,
-                    }]
-                };
-            }
-
-            // Crypto legislation
-            if (event.id === 'pol_regulation' && realPolymarkets.has('crypto_bill')) {
-                const realData = realPolymarkets.get('crypto_bill')!;
-                const prob = extractProbability(realData);
-                return {
-                    ...event,
-                    title: realData.title || event.title,
-                    markets: [{
-                        ...event.markets[0],
-                        question: (realData as any).question || realData.markets?.[0]?.question || event.markets[0]?.question,
-                        volume: (realData as any).volume || realData.markets?.[0]?.volume || "Active",
-                        outcomePrices: JSON.stringify([prob.toString(), (1 - prob).toString()]) as any,
-                    }]
-                };
-            }
-
-            // ETH ETF
-            if (event.id === 'narrative_eth_etf' && realPolymarkets.has('eth_etf')) {
-                const realData = realPolymarkets.get('eth_etf')!;
-                const prob = extractProbability(realData);
-                return {
-                    ...event,
-                    title: realData.title || event.title,
-                    markets: [{
-                        ...event.markets[0],
-                        question: (realData as any).question || realData.markets?.[0]?.question || event.markets[0]?.question,
-                        volume: (realData as any).volume || realData.markets?.[0]?.volume || "Active",
-                        outcomePrices: JSON.stringify([prob.toString(), (1 - prob).toString()]) as any,
-                    }]
-                };
-            }
-
-            return event;
-        });
-
-    } catch (error) {
-        console.error('[MarketData] Error fetching real data:', error);
-    }
-
-    // Filter by selected topics if provided
-    if (topics && topics.length > 0) {
-        const topicToIds: Record<PredictionTopic, string[]> = {
-            'fed_rate': ['macro_rate_cut'],
-            'yield_curve': ['macro_yield_curve'],
-            'crypto_regulation': ['pol_regulation'],
-            'btc_reserve': ['pol_btc_reserve'],
-            'pro_crypto_pol': ['pol_pro_crypto'],
-            'eth_etf': ['narrative_eth_etf'],
-            'institutional': ['narrative_institutional'],
-            'systemic_risk': ['narrative_systemic_risk'],
-        };
-
-        const selectedIds = new Set(topics.flatMap(t => topicToIds[t] || []));
-
-        // Sort: selected topics first
-        events = events.sort((a, b) => {
-            const aMatch = selectedIds.has(a.id);
-            const bMatch = selectedIds.has(b.id);
-            if (aMatch && !bMatch) return -1;
-            if (!aMatch && bMatch) return 1;
-            return 0;
-        });
-    }
-
-    return events;
-};
-
-// Helper function to get event probability
-export const getEventProbability = (event: MarketEvent): number => {
-    if (!event.markets || event.markets.length === 0) return 0.5;
-    const market = event.markets[0];
+// Helper to extract "YES" probability
+const extractYesProbability = (market: any): number => {
     try {
         const prices = typeof market.outcomePrices === 'string'
             ? JSON.parse(market.outcomePrices)
             : market.outcomePrices;
-        return parseFloat(prices[0]) || 0.5;
+
+        // Polymarket usually [Yes, No] or [Outcome1, Outcome2...]
+        // If 2 outcomes, usually Yes is index 0. 
+        // Verification needed: Default to index 0.
+        if (Array.isArray(prices) && prices.length > 0) {
+            return parseFloat(prices[0]) || 0;
+        }
+    } catch (e) { }
+    return 0;
+};
+
+export const fetchUnifiedMarkets = async (
+    experience?: any,
+    topics?: any[]
+): Promise<MarketEvent[]> => {
+    console.log('[MarketData] Fetching V2 Signals...');
+
+    const baseEvents = [...BELIEVER_SIGNALS];
+    const realDataMap = await fetchRealPolymarketData(); // Returns Map<string, MarketEvent[]>
+
+    const updatedEvents = baseEvents.map(event => {
+        const relevantMarkets = realDataMap.get(event.id);
+
+        if (!relevantMarkets || relevantMarkets.length === 0) {
+            // No live data found => return null or placeholder?
+            // User Rule: "Topic 若當下沒有任何 still active 交易對 → 設為 null" (In output format, likely implies filter out or return null)
+            // But we need to return valid MarketEvent objects.
+            // We'll mark probability as null/0 for now, or filter later.
+            return { ...event, markets: [] };
+        }
+
+        // AGGREGATION LOGIC:
+        // Topic_Probability = MAX(Positive Prob of all markets)
+
+        let maxProb = 0;
+        let bestMarket = relevantMarkets[0];
+
+        for (const market of relevantMarkets) {
+            let prob = extractYesProbability(market);
+
+            // SPECIAL RULES for Inverse Topics (Recession, Shutdown)
+            // User Def: Recession_Topic_Probability = 1 - P(Recession)
+            // User Def: Shutdown_Topic_Probability = 1 - P(Shutdown)
+            if (event.id === 'us_recession' || event.id === 'gov_shutdown') {
+                prob = 1 - prob;
+            }
+
+            // Fed Rule: P(25bps) + P(50bps). 
+            // In Polymarket "Will Fed Cut?", Yes covers both. 
+            // If the market is "Outcome", we'd sum. 
+            // For now assuming "Yes" covers it.
+
+            if (prob > maxProb) {
+                maxProb = prob;
+                bestMarket = market;
+            }
+        }
+
+        // Construct the Aggregated Market Object
+        // We use the "Best Market" (highest prob) as the representative for details
+        return {
+            ...event,
+            markets: [{
+                id: bestMarket.id || 'agg',
+                question: bestMarket.title, // Use title as question
+                volume: (bestMarket as any).volume || 'Active',
+                outcomePrices: JSON.stringify([maxProb.toFixed(2), (1 - maxProb).toFixed(2)]),
+                outcomes: ["Positive", "Negative"]
+            }]
+        };
+    });
+
+    return updatedEvents.filter(e => e.markets && e.markets.length > 0);
+};
+
+export const getEventProbability = (event: MarketEvent): number => {
+    if (!event.markets || event.markets.length === 0) return 0;
+    try {
+        const prices = JSON.parse(event.markets[0].outcomePrices as string);
+        return parseFloat(prices[0]) || 0;
     } catch {
-        return 0.5;
+        return 0;
     }
 };
