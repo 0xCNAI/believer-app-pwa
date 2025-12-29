@@ -77,8 +77,12 @@ export const useBeliefStore = create<BeliefState>()(
                         const { useAuthStore } = require('./authStore');
                         const { user } = useAuthStore.getState();
                         if (user?.id) {
-                            import('@/services/meritService').then(({ incrementUserMerit }) => {
-                                incrementUserMerit(user.id, user.name, pendingMerit);
+                            const { faithClicks } = get();
+                            // Use syncUserMerit instead of incrementUserMerit
+                            import('@/services/meritService').then(({ syncUserMerit }) => {
+                                // Default display name if missing
+                                const displayName = user.name || `User ${user.id.slice(0, 4)}`;
+                                syncUserMerit(user.id, displayName, faithClicks);
                             });
                             set({ pendingMerit: 0 });
                         }
