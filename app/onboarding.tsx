@@ -6,7 +6,7 @@ import { useOnboardingStore } from '@/stores/onboardingStore';
 import { useUserStore, ExperienceLevel, PredictionTopic, AlertStyle } from '@/stores/userStore';
 import { useBeliefStore } from '@/stores/beliefStore';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { styled } from 'nativewind';
 
 const StyledView = styled(View);
@@ -37,6 +37,9 @@ const ALERT_STYLE_OPTIONS: { id: AlertStyle; label: string; desc: string }[] = [
     { id: 'late', label: '較晚提醒 (狀態較明確)', desc: '側重「狀態轉換」，提醒門檻較高' },
 ];
 
+// Valid topic IDs for cleanup
+const VALID_TOPIC_IDS = PREDICTION_TOPIC_OPTIONS.map(opt => opt.id);
+
 export default function OnboardingScreen() {
     const router = useRouter();
     const { completeOnboarding } = useOnboardingStore();
@@ -48,6 +51,15 @@ export default function OnboardingScreen() {
     } = useUserStore();
 
     const [currentStep, setCurrentStep] = useState(0);
+
+    // Cleanup: Remove stale topic IDs from previous versions
+    useEffect(() => {
+        const invalidTopics = predictionTopics.filter(t => !VALID_TOPIC_IDS.includes(t));
+        if (invalidTopics.length > 0) {
+            console.log('[Onboarding] Removing stale topic IDs:', invalidTopics);
+            invalidTopics.forEach(t => togglePredictionTopic(t as any));
+        }
+    }, []);
 
     const handleNext = () => {
         // Validation per step
