@@ -39,46 +39,42 @@ export const syncUserMerit = async (userId: string, displayName: string, totalLo
         await runTransaction(db, async (transaction) => {
             console.log(`[MeritService] Transaction Start for User: ${userId}`);
 
-            // 1. Get Current User State
+            // 1. Perform ALL Reads First (Critical for Firestore Transactions)
             const userDoc = await transaction.get(userRef);
-            let previousMerit = 0;
+            const statsDoc = await transaction.get(statsRef);
 
+            let previousMerit = 0;
             if (userDoc.exists()) {
                 previousMerit = userDoc.data().merit || 0;
             }
 
-            // 2. Calculate Difference (New - Old)
-            // We only care if the new local total is higher (accumulation)
+            // 2. Calculate Difference
             const diff = totalLocalMerit - previousMerit;
 
             if (diff <= 0) {
-                // No new merit (or potentially a reset device). 
-                // We do NOT decrement global merit even if local is lower (user might have multiple devices).
-                // But we DO update the user doc to the highest seen value? 
-                // Or if local is lower, maybe we should fetch remote first? 
-                // For this simple implementation: Source of Truth is strictly "Highest Value Wins" or "Local overwrites if higher".
+                // No new merit (or reset device). No global update.
+                // We might still want to ensure the user doc exists? 
+                // For now, respect "Accumulation Only".
                 return;
             }
 
-            // 3. Update User Doc
+            // 3. Perform Writes
+            // Update User Doc
             if (!userDoc.exists()) {
                 transaction.set(userRef, {
                     merit: totalLocalMerit,
-                    displayName: displayName, // Store name for leaderboard
+                    displayName: displayName,
                     updatedAt: Date.now()
                 }, { merge: true });
             } else {
                 transaction.update(userRef, {
                     merit: totalLocalMerit,
-                    // Only update name if provided and valid, otherwise keep existing
                     ...(displayName ? { displayName } : {}),
                     updatedAt: Date.now()
                 });
             }
 
-            // 4. Update Global Stats
-            // We add the *difference* to the global total
-            const statsDoc = await transaction.get(statsRef);
+            // Update Global Stats
             if (!statsDoc.exists()) {
                 transaction.set(statsRef, { total: diff });
             } else {

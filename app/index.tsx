@@ -56,6 +56,7 @@ export default function DashboardScreen() {
     // Wooden Fish Animation State
     const [showMerit, setShowMerit] = useState(false);
     const [showMeritModal, setShowMeritModal] = useState(false);
+    const [showEmailDev, setShowEmailDev] = useState(false);
     const scaleAnim = useRef(new Animated.Value(1)).current;
 
     // ...
@@ -860,12 +861,115 @@ export default function DashboardScreen() {
 
             </TouchableOpacity>
 
+
+            {/* Dev Tools for Jonathan Chang */}
+            {user?.name === 'Jonathan Chang' && (
+                <View style={{ position: 'absolute', bottom: 100, left: 20 }}>
+                    <TouchableOpacity
+                        style={{ backgroundColor: '#4f46e5', padding: 10, borderRadius: 8 }}
+                        onPress={() => setShowEmailDev(true)}
+                    >
+                        <Text style={{ color: 'white', fontWeight: 'bold' }}>📧 Test Email</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+
+            {/* Existing Modals */}
             <MeritModal
                 visible={showMeritModal}
                 onClose={() => setShowMeritModal(false)}
                 myMerit={faithClicks}
             />
+
+            {/* Email Dev Modal */}
+            <EmailDevModal
+                visible={showEmailDev}
+                onClose={() => setShowEmailDev(false)}
+                userName={user?.name || 'Jonathan Chang'}
+            />
         </SafeAreaView >
+    );
+}
+
+// Email Dev Modal Component
+function EmailDevModal({ visible, onClose, userName }: { visible: boolean, onClose: () => void, userName: string }) {
+    const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+    const [subject, setSubject] = useState('');
+
+    if (!visible) return null;
+
+    const handleTrigger = (type: any) => {
+        // Mock Data based on Scenario
+        let mockData: any = { recipientName: userName };
+
+        if (type === 'STAGE_UPGRADE') {
+            mockData = { ...mockData, stage: 'PREPARE', score: 65, gatesPassed: 3, cycleZone: 'STRONG' };
+        } else if (type === 'GATE_CONFIRMATION') {
+            mockData = { ...mockData, gateName: 'Higher Low', newCap: 100 };
+        } else if (type === 'WEEKLY_REPORT') {
+            mockData = { ...mockData, weeklyMerit: 324, rank: 14, contributionPct: '0.0042' };
+        }
+
+        // Dynamic Import to avoid breaking if service missing (though we just made it)
+        try {
+            const { generateEmailHtml } = require('@/services/mockEmailService');
+            const result = generateEmailHtml(type, mockData);
+            setSubject(result.subject);
+            setPreviewHtml(result.html);
+        } catch (e) {
+            alert('Error generating email: ' + e);
+        }
+    };
+
+    return (
+        <View style={styles.modalOverlay} onStartShouldSetResponder={() => true} onResponderRelease={onClose}>
+            <TouchableOpacity activeOpacity={1} onPress={e => e.stopPropagation()} style={[styles.modalContent, { height: '80%' }]}>
+                <View style={styles.modalHeader}>
+                    <Text style={styles.modalTitle}>Email Notification Tests</Text>
+                    <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                        <Ionicons name="close" size={20} color="#71717a" />
+                    </TouchableOpacity>
+                </View>
+
+                {previewHtml ? (
+                    <View style={{ flex: 1 }}>
+                        <View style={{ padding: 10, borderBottomWidth: 1, borderColor: '#27272a' }}>
+                            <Text style={{ color: '#a1a1aa', fontSize: 12 }}>Subject:</Text>
+                            <Text style={{ color: '#e4e4e7', fontWeight: 'bold' }}>{subject}</Text>
+                            <TouchableOpacity onPress={() => setPreviewHtml(null)} style={{ marginTop: 8 }}>
+                                <Text style={{ color: '#4f46e5' }}>← Back to Scenarios</Text>
+                            </TouchableOpacity>
+                        </View>
+                        {Platform.OS === 'web' ? (
+                            <iframe
+                                srcDoc={previewHtml}
+                                style={{ width: '100%', height: '100%', border: 'none', background: 'white' }}
+                            />
+                        ) : (
+                            <ScrollView style={{ flex: 1, padding: 10, backgroundColor: 'white' }}>
+                                <Text style={{ color: 'black' }}>{previewHtml}</Text>
+                            </ScrollView>
+                        )}
+                    </View>
+                ) : (
+                    <View style={{ padding: 20, gap: 15 }}>
+                        <Text style={{ color: '#a1a1aa', marginBottom: 10 }}>Select a Scenario to Trigger:</Text>
+
+                        <TouchableOpacity style={styles.actionBtn} onPress={() => handleTrigger('STAGE_UPGRADE')}>
+                            <Text style={styles.actionBtnText}>🔔 Stage Upgrade (Watch → Prepare)</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.actionBtn} onPress={() => handleTrigger('GATE_CONFIRMATION')}>
+                            <Text style={styles.actionBtnText}>✅ Gate Confirmation (Higher Low)</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.actionBtn} onPress={() => handleTrigger('WEEKLY_REPORT')}>
+                            <Text style={styles.actionBtnText}>🕯️ Weekly Merit Report</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+            </TouchableOpacity>
+        </View>
     );
 }
 
@@ -1826,6 +1930,26 @@ const styles = StyleSheet.create({
     },
     rankScore: {
         color: '#fb923c',
+        fontWeight: '600',
+        fontSize: 14,
+    },
+    // Email Dev Modal Styles
+    modalTitle: {
+        color: '#e4e4e7',
+        fontSize: 18,
+        fontWeight: '700',
+    },
+    actionBtn: {
+        backgroundColor: '#27272a',
+        padding: 16,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#3f3f46',
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    actionBtnText: {
+        color: '#e4e4e7',
         fontWeight: '600',
         fontSize: 14,
     },

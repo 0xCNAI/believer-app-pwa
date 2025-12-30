@@ -306,33 +306,21 @@ export const fetchAllRealData = async () => {
     const CACHE_DOC = 'latest';
     const CACHE_DURATION = 12 * 60 * 60 * 1000; // 12 Hours
 
+    let cachedData: any = null;
+
     try {
         console.log('[API] Checking firebase cache...');
         const docRef = doc(db, CACHE_Collection, CACHE_DOC);
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
-            const data = docSnap.data();
+            cachedData = docSnap.data();
             const now = Date.now();
-            const elapsed = now - (data.updatedAt || 0);
+            const elapsed = now - (cachedData.updatedAt || 0);
 
             if (elapsed < CACHE_DURATION) {
                 console.log(`[API] Returning cached data (${(elapsed / 1000 / 60).toFixed(1)} min old)`);
-
-                // Rehydrate Maps if needed (Polymarkets is a Map)
-                // Firestore stores Maps as Objects. We need to convert back if downstream expects Map.
-                // In generic usage we often just need the object. 
-                // BUT fetchRealPolymarketData returns Map<string, MarketEvent>.
-                // We should reconstruct the Map.
-                let polyMap = new Map<string, MarketEvent>();
-                if (data.polymarkets) {
-                    Object.entries(data.polymarkets).forEach(([k, v]) => polyMap.set(k, v as MarketEvent));
-                }
-
-                return {
-                    ...data,
-                    polymarkets: polyMap
-                };
+                return reconstituteMap(cachedData);
             }
             console.log('[API] Cache stale, fetching new data...');
         } else {
@@ -345,25 +333,47 @@ export const fetchAllRealData = async () => {
     // fallback or fresh fetch
     const freshData = await _fetchFromExternalApis();
 
+    // Strategy: Merge-Update
+    // If we have cachedData (stale), use it to fill in any gaps where freshData is null
+    const mergedData = {
+        ...(cachedData || {}), // Start with old data
+        ...Object.fromEntries(
+            Object.entries(freshData).filter(([_, v]) => v !== null) // Overwrite with NEW non-null data
+        ),
+        updatedAt: Date.now() // Always bump timestamp if we attempted a fetch? 
+        // Or only if we got *some* data? 
+        // Let's bump it so we don't spam API loop if APIs are permanently down.
+    };
+
+    // Explicitly handle Polymarkets merging since it's the most critical
+    // freshData.polymarkets is Map<string, MarketEvent[]>
+    // We should convert to Object for storage
+    if (freshData.polymarkets && freshData.polymarkets.size > 0) {
+        mergedData.polymarkets = Object.fromEntries(freshData.polymarkets);
+    }
+
     // Save to Cache
     try {
-        // Convert Map to Object for Firestore
-        const polyObj = Object.fromEntries(freshData.polymarkets);
-
-        const cachePayload = {
-            ...freshData,
-            polymarkets: polyObj,
-            updatedAt: Date.now()
-        };
-
         const docRef = doc(db, CACHE_Collection, CACHE_DOC);
-        await setDoc(docRef, cachePayload);
-        console.log('[API] System metrics cached to Firestore.');
+        await setDoc(docRef, mergedData);
+        console.log('[API] System metrics cached to Firestore (Merged).');
     } catch (e) {
         console.error('[API] Failed to cache system metrics:', e);
     }
 
-    return freshData;
+    return reconstituteMap(mergedData);
+};
+
+// Helper: Reconstruct Map(s) from Object for App Consumption
+const reconstituteMap = (data: any) => {
+    const polyMap = new Map<string, MarketEvent[]>();
+    if (data.polymarkets) {
+        Object.entries(data.polymarkets).forEach(([k, v]) => polyMap.set(k, v as MarketEvent[]));
+    }
+    return {
+        ...data,
+        polymarkets: polyMap
+    };
 };
 
 // ==========================================
