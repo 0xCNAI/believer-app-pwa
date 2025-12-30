@@ -875,17 +875,35 @@ function MeritModal({ visible, onClose, myMerit }: { visible: boolean, onClose: 
     const [stats, setStats] = useState({ total: 0 });
     const [leaderboard, setLeaderboard] = useState<{ id: string, displayName: string, merit: number }[]>([]);
     const [loading, setLoading] = useState(false);
+    const { user } = useAuthStore(); // Access User for Sync
 
     useEffect(() => {
         if (visible) {
             setLoading(true);
-            Promise.all([
-                getGlobalMerit(),
-                getLeaderboard()
-            ]).then(([total, ranks]) => {
-                setStats({ total });
-                setLeaderboard(ranks);
-                setLoading(false);
+
+            // Sync latest merit before fetching leaderboard (if logged in)
+            const preSync = async () => {
+                if (user?.id) {
+                    const displayName = user.name || `User ${user.id.slice(0, 4)}`;
+                    // Use require to avoid circular dependency issues if any, or just import at top. 
+                    // syncUserMerit is safe.
+                    try {
+                        await require('@/services/meritService').syncUserMerit(user.id, displayName, myMerit);
+                    } catch (e) {
+                        console.error("Sync failed", e);
+                    }
+                }
+            };
+
+            preSync().then(() => {
+                Promise.all([
+                    getGlobalMerit(),
+                    getLeaderboard()
+                ]).then(([total, ranks]) => {
+                    setStats({ total });
+                    setLeaderboard(ranks);
+                    setLoading(false);
+                });
             });
         }
     }, [visible]);
@@ -929,7 +947,12 @@ function MeritModal({ visible, onClose, myMerit }: { visible: boolean, onClose: 
                             {leaderboard.map((user, idx) => (
                                 <View key={user.id} style={styles.rankRow}>
                                     <Text style={[styles.rankNum, idx < 3 && styles.rankTop]}>{idx + 1}</Text>
-                                    <Text style={styles.rankName} numberOfLines={1}>{user.displayName}</Text>
+                                    <View style={{ flex: 1, marginRight: 8 }}>
+                                        <Text style={styles.rankName} numberOfLines={1}>{user.displayName}</Text>
+                                        <Text style={{ color: '#52525b', fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}>
+                                            {user.id}
+                                        </Text>
+                                    </View>
                                     <Text style={styles.rankScore}>{user.merit.toLocaleString()}</Text>
                                 </View>
                             ))}

@@ -143,7 +143,15 @@ export const useTechStore = create<TechState>()(
                         if (beliefs.length > 0) {
                             // Probabilities are 0..1.
                             // Convert to 0..25 points: avgProb * 25
-                            const avgProb = beliefs.reduce((sum: number, b: any) => sum + b.currentProbability, 0) / beliefs.length;
+                            // V4.1: Respect positiveOutcome configuration
+                            const avgProb = beliefs.reduce((sum: number, b: any) => {
+                                let prob = b.currentProbability;
+                                // Invert if Positive Outcome is "No" (e.g. Recession = No is good)
+                                if (b.marketEvent?.positiveOutcome === 'No') {
+                                    prob = 1 - prob;
+                                }
+                                return sum + prob;
+                            }, 0) / beliefs.length;
                             beliefPoints = avgProb * 25;
                         }
                     } catch (e) {

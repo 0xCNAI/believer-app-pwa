@@ -9,6 +9,9 @@ export interface MarketEvent {
     endDate?: string;
     volume?: string; // Top level volume from specific endpoints
     markets: Market[];
+    positiveOutcome?: 'Yes' | 'No'; // Which outcome represents the "Bullish/Positive" scenario?
+    active?: boolean;
+    closed?: boolean;
 }
 
 export interface Market {

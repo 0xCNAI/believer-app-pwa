@@ -34,7 +34,8 @@ export const BELIEVER_SIGNALS: MarketEvent[] = [
         category: 'Macro',
         slug: 'recession',
         endDate: '2026-12-31',
-        markets: []
+        markets: [],
+        positiveOutcome: 'No'
     },
     {
         id: 'negative_gdp_2026',
@@ -45,7 +46,8 @@ export const BELIEVER_SIGNALS: MarketEvent[] = [
         category: 'Macro',
         slug: 'gdp',
         endDate: '2026-12-31',
-        markets: []
+        markets: [],
+        positiveOutcome: 'No'
     },
     {
         id: 'gov_funding_lapse_jan31_2026',
@@ -56,7 +58,8 @@ export const BELIEVER_SIGNALS: MarketEvent[] = [
         category: 'Political',
         slug: 'shutdown',
         endDate: '2026-01-31',
-        markets: []
+        markets: [],
+        positiveOutcome: 'No'
     },
     {
         id: 'us_default_by_2027',
@@ -67,7 +70,8 @@ export const BELIEVER_SIGNALS: MarketEvent[] = [
         category: 'Political',
         slug: 'default',
         endDate: '2026-12-31',
-        markets: []
+        markets: [],
+        positiveOutcome: 'No'
     },
     {
         id: 'us_btc_reserve_before_2027',
@@ -78,7 +82,8 @@ export const BELIEVER_SIGNALS: MarketEvent[] = [
         category: 'Structural',
         slug: 'reserve',
         endDate: '2026-12-31',
-        markets: []
+        markets: [],
+        positiveOutcome: 'Yes'
     },
     {
         id: 'us_bank_failure_by_mar31_2026',
@@ -89,7 +94,8 @@ export const BELIEVER_SIGNALS: MarketEvent[] = [
         category: 'Macro',
         slug: 'bank',
         endDate: '2026-03-31',
-        markets: []
+        markets: [],
+        positiveOutcome: 'No'
     }
 ];
 
