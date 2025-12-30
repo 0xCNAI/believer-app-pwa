@@ -4,16 +4,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type ExperienceLevel = 'none' | '1-3_years' | '5_plus_years';
 
-// 8 Prediction Market Topics (敘事層唯一選項)
+// 5 Prediction Topics (V3.0 - Consolidated)
 export type PredictionTopic =
-    | 'fed_rate'          // 聯準會降息預期
-    | 'yield_curve'       // 殖利率曲線轉向預期
-    | 'crypto_regulation' // 美國加密監管與法案進展
-    | 'btc_reserve'       // 美國比特幣戰略儲備
-    | 'pro_crypto_pol'    // 親加密政治結果
-    | 'eth_etf'           // ETH 現貨 ETF 預期
-    | 'institutional'     // 機構級加密採用
-    | 'systemic_risk';    // 系統性金融風險事件
+    | 'monetary_policy'      // Fed 路徑
+    | 'macro_downturn'       // Recession / GDP
+    | 'fiscal_credit'        // Shutdown / Default
+    | 'sovereign_btc'        // BTC Reserve
+    | 'financial_stability'; // Bank failure (optional)
 
 export type AlertStyle = 'early' | 'balanced' | 'late';
 
@@ -72,7 +69,7 @@ export const useUserStore = create<UserState>()(
                 if (isSelected) {
                     return { predictionTopics: state.predictionTopics.filter(t => t !== topic) };
                 } else {
-                    if (state.predictionTopics.length >= 5) return state;
+                    if (state.predictionTopics.length >= 3) return state;
                     return { predictionTopics: [...state.predictionTopics, topic] };
                 }
             }),

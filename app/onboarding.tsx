@@ -22,12 +22,13 @@ const EXPERIENCE_OPTIONS: { id: ExperienceLevel; label: string; desc: string }[]
 ];
 
 // 8 Prediction Market Topics (唯一敘事層選項)
-// 8 Prediction Market Topics (唯一敘事層選項) -> V2: Strict 4 Topics
+// 8 Prediction Market Topics (唯一敘事層選項) -> V3: Consolidated 5 Topics
 const PREDICTION_TOPIC_OPTIONS: { id: PredictionTopic; label: string; desc: string }[] = [
-    { id: 'fed_rate', label: 'Fed Policy (降息預期)', desc: '聯準會利率決策、降息路徑' },
-    { id: 'yield_curve', label: 'US Recession (衰退風險)', desc: '經濟衰退機率 (1 - P)' },
-    { id: 'pro_crypto_pol', label: 'Gov Shutdown (財政風險)', desc: '政府停擺與債務上限風險' },
-    { id: 'btc_reserve', label: 'BTC Reserve (戰略儲備)', desc: '美國將比特幣列為戰略儲備' },
+    { id: 'monetary_policy', label: 'Monetary Policy（Fed 路徑）', desc: '每次 FOMC 利率決策與寬鬆路徑' },
+    { id: 'macro_downturn', label: 'Macro Downturn（衰退 / GDP）', desc: '衰退或負成長風險，影響風險資產估值' },
+    { id: 'fiscal_credit', label: 'Fiscal / Credit（停擺 / 違約）', desc: '政府停擺與美債信用風險，影響流動性與避險' },
+    { id: 'sovereign_btc', label: 'Sovereign BTC Adoption（BTC 儲備）', desc: '主權國家級採用，屬於結構性利多' },
+    { id: 'financial_stability', label: 'Financial Stability（金融壓力）', desc: '銀行/金融系統壓力事件（選配）' },
 ];
 
 const ALERT_STYLE_OPTIONS: { id: AlertStyle; label: string; desc: string }[] = [
@@ -95,7 +96,7 @@ export default function OnboardingScreen() {
                 return (
                     <StyledView className="flex-1">
                         <StyledText className="text-white text-2xl font-bold mb-2 leading-8">你想追蹤哪些{'\n'}預測市場主題？</StyledText>
-                        <StyledText className="text-zinc-400 text-sm mb-6">選擇你關注的市場預期（最多 5 項，目前 {predictionTopics.length}/5）</StyledText>
+                        <StyledText className="text-zinc-400 text-sm mb-6">選擇你關注的市場預期（最多 3 項，目前 {predictionTopics.length}/3）</StyledText>
                         <StyledView className="gap-2 mb-6">
                             {PREDICTION_TOPIC_OPTIONS.map((opt) => {
                                 const isSelected = predictionTopics.includes(opt.id);

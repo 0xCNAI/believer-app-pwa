@@ -55,30 +55,46 @@ export const POLYMARKET_SLUGS = {
 export const fetchRealPolymarketData = async (): Promise<Map<string, MarketEvent[]>> => {
     const results = new Map<string, MarketEvent[]>();
 
+    // Signal ID -> Search Config (V3.0 - 7 Signals)
+    const searchConfigs: Record<string, { tags: string[]; titleMatch: string[] }> = {
+        'fed_decision_series': { tags: ['fed'], titleMatch: ['fed', 'fomc', 'decision'] },
+        'us_recession_end_2026': { tags: ['recession'], titleMatch: ['recession', '2026'] },
+        'negative_gdp_2026': { tags: ['gdp', 'economy'], titleMatch: ['gdp', 'negative', 'growth'] },
+        'gov_funding_lapse_jan31_2026': { tags: ['government'], titleMatch: ['funding', 'lapse', 'shutdown'] },
+        'us_default_by_2027': { tags: ['government', 'debt'], titleMatch: ['default', 'debt'] },
+        'us_btc_reserve_before_2027': { tags: ['bitcoin'], titleMatch: ['reserve', 'strategic', 'national'] },
+        'us_bank_failure_by_mar31_2026': { tags: ['banking', 'finance'], titleMatch: ['bank', 'fail'] },
+    };
+
     try {
-        // Fetch 4 distinct Categories
-        const [fedData, recessionData, shutdownData, reserveData] = await Promise.all([
-            // Fed - Tag "Fed" or "Interest Rates"
-            searchPolymarkets("fed").then(res => res.filter(m => m.title.toLowerCase().includes('fed'))),
-            // Recession - Tag "Recession"
-            searchPolymarkets("recession").then(res => res.filter(m => m.title.toLowerCase().includes('recession'))),
-            // Shutdown - Tag "Government" or search
-            searchPolymarkets("government").then(res => res.filter(m => m.title.toLowerCase().includes('shutdown'))),
-            // BTC Reserve - Tag "Bitcoin"
-            searchPolymarkets("bitcoin").then(res => res.filter(m => m.title.toLowerCase().includes('reserve')))
-        ]);
+        for (const [signalId, config] of Object.entries(searchConfigs)) {
+            // Try each tag until we get results
+            let filtered: MarketEvent[] = [];
+            for (const tag of config.tags) {
+                const data = await searchPolymarkets(tag);
 
-        console.log('[API] Found Markets:', {
-            fed: fedData.length,
-            recession: recessionData.length,
-            shutdown: shutdownData.length,
-            reserve: reserveData.length
-        });
+                // Filter by title keywords
+                filtered = data.filter(m => {
+                    const title = m.title.toLowerCase();
+                    return config.titleMatch.some(kw => title.includes(kw));
+                });
 
-        results.set('fed_policy', fedData);
-        results.set('us_recession', recessionData);
-        results.set('gov_shutdown', shutdownData);
-        results.set('btc_reserve', reserveData);
+                if (filtered.length > 0) break;
+            }
+
+            // Sort by volume (descending)
+            const sorted = filtered.sort((a, b) => {
+                const volA = parseFloat((a as any).volume) || 0;
+                const volB = parseFloat((b as any).volume) || 0;
+                return volB - volA;
+            });
+
+            results.set(signalId, sorted);
+        }
+
+        console.log('[API] Found Markets:', Object.fromEntries(
+            Array.from(results.entries()).map(([k, v]) => [k, v.length])
+        ));
 
     } catch (error) {
         console.error('[API] Polymarket batch fetch error:', error);

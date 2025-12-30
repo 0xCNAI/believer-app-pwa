@@ -49,7 +49,8 @@ const parsePrice = (prices: string[] | string): number => {
             const p = JSON.parse(prices);
             priceStr = p[0];
         }
-        return parseFloat(priceStr) * 100;
+        // Return 0-1 scale, NOT multiplied by 100
+        return Math.max(0, Math.min(1, parseFloat(priceStr)));
     } catch (e) {
         return 0;
     }
@@ -134,23 +135,19 @@ export const useBeliefStore = create<BeliefState>()(
                 }
             },
 
-            // New: Seed from 8 Prediction Topics
+            // New: Seed from 5 Prediction Topics (V3.0)
             seedFromPredictionTopics: (topics) => {
                 const state = get();
                 const existingIds = new Set(state.beliefs.map(b => b.id));
                 const newBeliefs: Belief[] = [];
 
-                // Map topics to signal IDs (V2.0 Mapping - Strict 4 Topics)
-                // Topics: fed_policy, us_recession, gov_shutdown, btc_reserve
+                // Map topics to signal IDs (V3.0 Mapping - 5 Topics)
                 const topicToSignalIds: Record<PredictionTopic, string[]> = {
-                    'fed_rate': ['fed_policy'],                    // Direct map
-                    'yield_curve': ['us_recession'],               // Yield Curve -> Recession Risk
-                    'crypto_regulation': ['btc_reserve'],          // Regulation -> Strategic Reserve (Political)
-                    'btc_reserve': ['btc_reserve'],                // Direct map
-                    'pro_crypto_pol': ['gov_shutdown'],             // Politics -> Fiscal Stability
-                    'eth_etf': [],                                 // Removed
-                    'institutional': [],                           // Removed
-                    'systemic_risk': ['us_recession', 'gov_shutdown'], // Systemic Risk -> Recession & Shutdown
+                    'monetary_policy': ['fed_decision_series'],
+                    'macro_downturn': ['us_recession_end_2026', 'negative_gdp_2026'],
+                    'fiscal_credit': ['gov_funding_lapse_jan31_2026', 'us_default_by_2027'],
+                    'sovereign_btc': ['us_btc_reserve_before_2027'],
+                    'financial_stability': ['us_bank_failure_by_mar31_2026'],
                 };
 
                 topics.forEach(topic => {

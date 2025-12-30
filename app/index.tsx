@@ -381,9 +381,10 @@ export default function DashboardScreen() {
                         ) : (
                             beliefs.filter(b => !b.id.startsWith('custom')).slice(0, 3).map((belief) => {
                                 // Dynamic Interpretation Logic
-                                const prob = belief.currentProbability;
+                                const probRaw = belief.currentProbability;
+                                const prob = Math.round(probRaw * 100); // Convert 0-1 to 0-100
                                 const isPositive = prob > 50;
-                                const probText = `${prob.toFixed(0)}%`;
+                                const probText = `${prob}%`;
 
                                 let interpret = '→ 市場共識未形成';
                                 let impact = '→ 影響中性';
@@ -426,8 +427,9 @@ export default function DashboardScreen() {
                         beliefs
                             .filter(b => BELIEVER_SIGNALS.some(s => s.id === b.id))
                             .map((belief) => {
-                                const prob = belief.currentProbability;
-                                const probText = `${prob.toFixed(0)}%`;
+                                const probRaw = belief.currentProbability;
+                                const prob = Math.round(probRaw * 100); // Convert 0-1 to 0-100
+                                const probText = `${prob}%`;
                                 const isPositive = prob >= 50;
                                 const isExpanded = expandedTopic === belief.id;
 
@@ -502,7 +504,7 @@ export default function DashboardScreen() {
                                                         const prices = typeof rawPrices === 'string'
                                                             ? JSON.parse(rawPrices)
                                                             : rawPrices;
-                                                        const outcomeProb = (parseFloat(prices[idx]) * 100).toFixed(0);
+                                                        const outcomeProb = Math.round(parseFloat(prices[idx]) * 100);
                                                         return (
                                                             <View key={idx} style={styles.outcomeRow}>
                                                                 <Text style={styles.outcomeText}>{outcome}</Text>
