@@ -862,9 +862,9 @@ export default function DashboardScreen() {
             </TouchableOpacity>
 
 
-            {/* Dev Tools for Jonathan Chang */}
-            {user?.name === 'Jonathan Chang' && (
-                <View style={{ position: 'absolute', bottom: 100, left: 20 }}>
+            {/* Dev Tools for Jonathan Chang or specific email */}
+            {(user?.name === 'Jonathan Chang' || user?.email === 'jochang4053@gmail.com') && (
+                <View style={{ position: 'absolute', bottom: 100, left: 20, zIndex: 999 }}>
                     <TouchableOpacity
                         style={{ backgroundColor: '#4f46e5', padding: 10, borderRadius: 8 }}
                         onPress={() => setShowEmailDev(true)}
@@ -879,13 +879,14 @@ export default function DashboardScreen() {
                 visible={showMeritModal}
                 onClose={() => setShowMeritModal(false)}
                 myMerit={faithClicks}
+                userEmail={user?.email}
             />
 
             {/* Email Dev Modal */}
             <EmailDevModal
                 visible={showEmailDev}
                 onClose={() => setShowEmailDev(false)}
-                userName={user?.name || 'Jonathan Chang'}
+                userName={user?.name || 'User'}
             />
         </SafeAreaView >
     );
@@ -974,41 +975,48 @@ function EmailDevModal({ visible, onClose, userName }: { visible: boolean, onClo
 }
 
 // Merit Modal Component
-function MeritModal({ visible, onClose, myMerit }: { visible: boolean, onClose: () => void, myMerit: number }) {
+function MeritModal({ visible, onClose, myMerit, userEmail }: { visible: boolean, onClose: () => void, myMerit: number, userEmail?: string }) {
     const [tab, setTab] = useState<'personal' | 'rank'>('personal');
     const [stats, setStats] = useState({ total: 0 });
     const [leaderboard, setLeaderboard] = useState<{ id: string, displayName: string, merit: number }[]>([]);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const { user } = useAuthStore(); // Access User for Sync
+
+    const loadData = async () => {
+        setLoading(true);
+        setError(null);
+
+        // 1. Sync
+        try {
+            if (user?.id) {
+                const displayName = user.name || `User ${user.id.slice(0, 4)}`;
+                await require('@/services/meritService').syncUserMerit(user.id, displayName, myMerit);
+            }
+        } catch (e) {
+            console.warn("Sync warning:", e);
+            // Don't block loading
+        }
+
+        // 2. Fetch
+        try {
+            const [total, ranks] = await Promise.all([
+                getGlobalMerit(),
+                getLeaderboard()
+            ]);
+            setStats({ total });
+            setLeaderboard(ranks);
+        } catch (err) {
+            console.error("Fetch Error:", err);
+            setError("無法讀取數據，請檢查權限或網絡");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
         if (visible) {
-            setLoading(true);
-
-            // Sync latest merit before fetching leaderboard (if logged in)
-            const preSync = async () => {
-                if (user?.id) {
-                    const displayName = user.name || `User ${user.id.slice(0, 4)}`;
-                    // Use require to avoid circular dependency issues if any, or just import at top. 
-                    // syncUserMerit is safe.
-                    try {
-                        await require('@/services/meritService').syncUserMerit(user.id, displayName, myMerit);
-                    } catch (e) {
-                        console.error("Sync failed", e);
-                    }
-                }
-            };
-
-            preSync().then(() => {
-                Promise.all([
-                    getGlobalMerit(),
-                    getLeaderboard()
-                ]).then(([total, ranks]) => {
-                    setStats({ total });
-                    setLeaderboard(ranks);
-                    setLoading(false);
-                });
-            });
+            loadData();
         }
     }, [visible]);
 
@@ -1034,6 +1042,13 @@ function MeritModal({ visible, onClose, myMerit }: { visible: boolean, onClose: 
                 <View style={styles.modalBody}>
                     {loading ? (
                         <Text style={{ color: '#71717a', textAlign: 'center', marginTop: 20 }}>載入中...</Text>
+                    ) : error ? (
+                        <View style={{ alignItems: 'center', padding: 20 }}>
+                            <Text style={{ color: '#ef4444', marginBottom: 12 }}>{error}</Text>
+                            <TouchableOpacity onPress={loadData} style={{ padding: 8, backgroundColor: '#27272a', borderRadius: 8 }}>
+                                <Text style={{ color: 'white' }}>重試</Text>
+                            </TouchableOpacity>
+                        </View>
                     ) : tab === 'personal' ? (
                         <View style={{ alignItems: 'center', paddingVertical: 20 }}>
                             <Text style={{ color: '#a1a1aa', fontSize: 14, marginBottom: 8 }}>你已經為牛市回歸貢獻了</Text>
@@ -1045,22 +1060,37 @@ function MeritModal({ visible, onClose, myMerit }: { visible: boolean, onClose: 
                             <Text style={{ color: '#a1a1aa', fontSize: 14, marginBottom: 8 }}>目前所有用戶共捐獻了</Text>
                             <Text style={{ color: '#e4e4e7', fontSize: 24, fontWeight: '700' }}>{stats.total.toLocaleString()}</Text>
                             <Text style={{ color: '#71717a', fontSize: 12, marginTop: 4 }}>功德</Text>
+                            <Text style={{ color: '#52525b', fontSize: 10, marginTop: 24 }}>ID: {user?.id}</Text>
                         </View>
                     ) : (
-                        <ScrollView style={{ maxHeight: 300 }}>
-                            {leaderboard.map((user, idx) => (
-                                <View key={user.id} style={styles.rankRow}>
-                                    <Text style={[styles.rankNum, idx < 3 && styles.rankTop]}>{idx + 1}</Text>
-                                    <View style={{ flex: 1, marginRight: 8 }}>
-                                        <Text style={styles.rankName} numberOfLines={1}>{user.displayName}</Text>
-                                        <Text style={{ color: '#52525b', fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}>
-                                            {user.id}
-                                        </Text>
-                                    </View>
-                                    <Text style={styles.rankScore}>{user.merit.toLocaleString()}</Text>
+                        <View>
+                            {leaderboard.length === 0 ? (
+                                <View style={{ alignItems: 'center', padding: 20 }}>
+                                    <Text style={{ color: '#a1a1aa', marginBottom: 12 }}>暫無排行數據</Text>
+                                    <Text style={{ color: '#52525b', fontSize: 10, textAlign: 'center' }}>
+                                        如果這是第一次使用，請先敲擊木魚並同步數據。{'\n'}確保網路正常。
+                                    </Text>
+                                    <TouchableOpacity onPress={loadData} style={{ marginTop: 16, padding: 8, backgroundColor: '#27272a', borderRadius: 8 }}>
+                                        <Text style={{ color: '#fb923c' }}>刷新榜單</Text>
+                                    </TouchableOpacity>
                                 </View>
-                            ))}
-                        </ScrollView>
+                            ) : (
+                                <ScrollView style={{ maxHeight: 300 }}>
+                                    {leaderboard.map((user, idx) => (
+                                        <View key={user.id} style={styles.rankRow}>
+                                            <Text style={[styles.rankNum, idx < 3 && styles.rankTop]}>{idx + 1}</Text>
+                                            <View style={{ flex: 1, marginRight: 8 }}>
+                                                <Text style={styles.rankName} numberOfLines={1}>{user.displayName}</Text>
+                                                <Text style={{ color: '#52525b', fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}>
+                                                    {user.id.slice(0, 6)}...
+                                                </Text>
+                                            </View>
+                                            <Text style={styles.rankScore}>{user.merit.toLocaleString()}</Text>
+                                        </View>
+                                    ))}
+                                </ScrollView>
+                            )}
+                        </View>
                     )}
                 </View>
             </TouchableOpacity>
