@@ -55,8 +55,8 @@ export const POLYMARKET_SLUGS = {
 export const fetchRealPolymarketData = async (): Promise<Map<string, MarketEvent[]>> => {
     const results = new Map<string, MarketEvent[]>();
 
-    // Signal ID -> Search Config (V3.2 - Balanced Matching)
-    // Relaxed filters to catch more markets while excluding clearly irrelevant ones
+    // Signal ID -> Search Config (V3.3 - Polymarket Aligned)
+    // Simplified to 5 signals matching actual Polymarket markets
     const searchConfigs: Record<string, {
         tags: string[];
         mustInclude?: string[];
@@ -66,22 +66,12 @@ export const fetchRealPolymarketData = async (): Promise<Map<string, MarketEvent
         'fed_decision_series': {
             tags: ['fed', 'fomc', 'interest rate'],
             anyMatch: ['decision', 'rate', 'fomc', 'interest', 'january', 'february', 'march'],
-            mustExclude: ['chair', 'nominate', 'powell', 'trump', 'senate']
+            mustExclude: ['chair', 'nominate', 'powell', 'senate', 'emergency']
         },
-        'us_recession_end_2026': {
+        'us_recession_2025': {
             tags: ['recession'],
-            anyMatch: ['recession', 'us recession', 'economic'],
-            mustExclude: ['mexico', 'china', 'europe', 'uk', 'japan']
-        },
-        'negative_gdp_2026': {
-            tags: ['gdp', 'growth'],
-            anyMatch: ['gdp', 'growth', 'negative'],
-            mustExclude: ['mexico', 'china', 'europe', 'uk', 'india', 'japan', 'brazil']
-        },
-        'gov_funding_lapse_jan31_2026': {
-            tags: ['government', 'shutdown', 'funding'],
-            anyMatch: ['funding', 'lapse', 'shutdown', 'government'],
-            mustExclude: ['mexico', 'china', 'ukraine']
+            anyMatch: ['recession', '2025'],
+            mustExclude: ['mexico', 'china', 'europe', 'uk', 'japan', '2024', '2026']
         },
         'us_default_by_2027': {
             tags: ['debt', 'default'],
@@ -93,10 +83,10 @@ export const fetchRealPolymarketData = async (): Promise<Map<string, MarketEvent
             anyMatch: ['reserve', 'strategic', 'national', 'government'],
             mustExclude: ['price', 'etf', 'spot']
         },
-        'us_bank_failure_by_mar31_2026': {
-            tags: ['bank', 'banking'],
-            anyMatch: ['bank', 'fail', 'failure', 'collapse'],
-            mustExclude: ['mexico', 'china', 'europe', 'central bank']
+        'fed_emergency_cut_2025': {
+            tags: ['fed', 'emergency'],
+            anyMatch: ['emergency', 'cut'],
+            mustInclude: ['emergency']
         },
     };
 

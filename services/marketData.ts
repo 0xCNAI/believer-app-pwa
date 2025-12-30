@@ -7,14 +7,14 @@ export { MarketEvent };
 export type EventCategory = 'Macro' | 'Structural' | 'Political' | 'Narrative';
 
 /**
- * BELIEVER SIGNALS - V3.0 Expanded Pool
+ * BELIEVER SIGNALS - V3.3 (Polymarket Aligned)
  * 
- * 7 signals covering:
- * - Monetary Policy (Fed)
- * - Macro Downturn (Recession, GDP)
- * - Fiscal/Credit (Shutdown, Default)
- * - Sovereign BTC
- * - Financial Stability (Bank failure)
+ * 5 core signals matching actual Polymarket markets:
+ * - Fed rate decisions (series)
+ * - US recession 2025
+ * - US default/debt
+ * - BTC reserve
+ * - Fed emergency cut (bonus)
  */
 export const BELIEVER_SIGNALS: MarketEvent[] = [
     // Monetary Policy (Fed)
@@ -29,41 +29,19 @@ export const BELIEVER_SIGNALS: MarketEvent[] = [
         endDate: '2025-12-31',
         markets: []
     },
-    // Macro Downturn
+    // Macro Downturn - Use 2025 version
     {
-        id: 'us_recession_end_2026',
-        title: '美國衰退風險 (2026)',
+        id: 'us_recession_2025',
+        title: '美國衰退風險 (2025)',
         description: '經濟衰退導致風險資產拋售，對加密市場負面影響',
         source: 'Polymarket',
-        sourceUrl: 'https://polymarket.com/event/us-recession-by-end-of-2026',
+        sourceUrl: 'https://polymarket.com/event/us-recession-in-2025',
         category: 'Macro',
         slug: 'recession',
-        endDate: '2026-12-31',
-        markets: []
-    },
-    {
-        id: 'negative_gdp_2026',
-        title: '負 GDP 成長風險',
-        description: 'GDP 負成長預示經濟衰退，影響市場信心',
-        source: 'Polymarket',
-        sourceUrl: 'https://polymarket.com/event/negative-gdp-growth-in-2026',
-        category: 'Macro',
-        slug: 'gdp',
-        endDate: '2026-12-31',
+        endDate: '2025-12-31',
         markets: []
     },
     // Fiscal / Credit
-    {
-        id: 'gov_funding_lapse_jan31_2026',
-        title: '政府停擺風險',
-        description: '政府停擺增加市場不確定性，可能影響短期波動',
-        source: 'Polymarket',
-        sourceUrl: 'https://polymarket.com/event/us-government-funding-lapse-on-jan-31-2026',
-        category: 'Political',
-        slug: 'shutdown',
-        endDate: '2026-01-31',
-        markets: []
-    },
     {
         id: 'us_default_by_2027',
         title: '美債違約風險',
@@ -87,16 +65,16 @@ export const BELIEVER_SIGNALS: MarketEvent[] = [
         endDate: '2026-12-31',
         markets: []
     },
-    // Financial Stability (Optional)
+    // Bonus: Fed Emergency Cut
     {
-        id: 'us_bank_failure_by_mar31_2026',
-        title: '銀行倒閉風險',
-        description: '金融系統壓力事件可能導致流動性收緊',
+        id: 'fed_emergency_cut_2025',
+        title: 'Fed 緊急降息',
+        description: '緊急降息表示經濟放緩，短期利好風險資產',
         source: 'Polymarket',
-        sourceUrl: 'https://polymarket.com/event/us-based-bank-to-fail-by-mar-31-2026',
+        sourceUrl: 'https://polymarket.com/event/fed-emergency-rate-cut-in-2025',
         category: 'Macro',
-        slug: 'bank',
-        endDate: '2026-03-31',
+        slug: 'emergency',
+        endDate: '2025-12-31',
         markets: []
     }
 ];
@@ -104,12 +82,10 @@ export const BELIEVER_SIGNALS: MarketEvent[] = [
 // Impact weights for score calculation
 export const IMPACT_WEIGHTS: Record<string, number> = {
     'fed_decision_series': 0.7,
-    'us_recession_end_2026': 1.0,
-    'negative_gdp_2026': 0.8,
-    'gov_funding_lapse_jan31_2026': 0.5,
+    'us_recession_2025': 1.0,
     'us_default_by_2027': 1.0,
     'us_btc_reserve_before_2027': 1.0,
-    'us_bank_failure_by_mar31_2026': 0.7,
+    'fed_emergency_cut_2025': 0.6,
 };
 
 // Parse all outcome prices from API response
@@ -186,11 +162,8 @@ export const getImpactScore = (eventId: string, probability: number): number => 
     const weight = IMPACT_WEIGHTS[eventId] || 0.5;
     // For inverse events, higher prob = negative impact
     const inverseEvents = [
-        'us_recession_end_2026',
-        'negative_gdp_2026',
-        'gov_funding_lapse_jan31_2026',
-        'us_default_by_2027',
-        'us_bank_failure_by_mar31_2026'
+        'us_recession_2025',
+        'us_default_by_2027'
     ];
     if (inverseEvents.includes(eventId)) {
         return (1 - probability) * weight * 100;
@@ -229,11 +202,8 @@ export const getPositiveProbability = (signalId: string, market: any): number =>
 
     // Inverse signals: 1 - P(Yes)
     const inverseSignals = [
-        'us_recession_end_2026',
-        'negative_gdp_2026',
-        'gov_funding_lapse_jan31_2026',
-        'us_default_by_2027',
-        'us_bank_failure_by_mar31_2026'
+        'us_recession_2025',
+        'us_default_by_2027'
     ];
     if (inverseSignals.includes(signalId)) {
         // Find "Yes" outcome
