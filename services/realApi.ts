@@ -73,8 +73,9 @@ export const fetchRealPolymarketData = async (): Promise<Map<string, MarketEvent
             mustExclude: ['mexico', 'china', 'europe', 'uk', 'japan']
         },
         'negative_gdp_2026': {
-            tags: ['gdp', 'recession'],
-            anyMatch: ['gdp', 'negative', 'growth', '2026'],
+            tags: ['recession'],
+            mustInclude: ['US Recession', '2026'],
+            anyMatch: [],
             mustExclude: ['mexico', 'china', 'europe', 'uk', 'japan']
         },
         'gov_funding_lapse_jan31_2026': {

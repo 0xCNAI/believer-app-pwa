@@ -41,7 +41,7 @@ export const BELIEVER_SIGNALS: MarketEvent[] = [
         title: '美國負成長風險（2026）',
         description: '風險事件：分數使用 (1 - P(Yes)) 代表「避免負成長」的正向敘事',
         source: 'Polymarket',
-        sourceUrl: 'https://polymarket.com/search?_q=gdp',
+        sourceUrl: 'https://polymarket.com/event/us-recession-by-end-of-2026?tid=1767092556971',
         category: 'Macro',
         slug: 'gdp',
         endDate: '2026-12-31',
