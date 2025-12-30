@@ -55,32 +55,46 @@ export const POLYMARKET_SLUGS = {
 export const fetchRealPolymarketData = async (): Promise<Map<string, MarketEvent[]>> => {
     const results = new Map<string, MarketEvent[]>();
 
-    // Signal ID -> Search Config (V3.4 - Aggregated Search)
-    // Configured to catch markets across multiple timeframes (2025, 2026)
+    // Signal ID -> Search Config (V4.0 - 7 IDs)
     const searchConfigs: Record<string, {
         tags: string[];
         mustInclude?: string[];
         anyMatch?: string[];
         mustExclude?: string[]
     }> = {
-        'fed_policy_risk': {
+        'fed_decision_series': {
             tags: ['fed', 'fomc', 'interest rate'],
-            anyMatch: ['decision', 'rate', 'fomc', 'interest', 'emergency', 'cut'],
+            anyMatch: ['fed', 'decision', 'fomc', 'rate', 'bps', 'decrease', 'cut'],
             mustExclude: ['chair', 'nominate', 'powell', 'senate']
         },
-        'us_recession_risk': {
+        'us_recession_end_2026': {
             tags: ['recession', 'gdp'],
-            anyMatch: ['recession', 'gdp', '2025', '2026', 'growth'], // Catch both years
+            anyMatch: ['recession', '2026', 'end of 2026', 'by 2026'],
             mustExclude: ['mexico', 'china', 'europe', 'uk', 'japan']
         },
-        'us_debt_risk': {
-            tags: ['debt', 'default', 'government'],
-            anyMatch: ['default', 'debt', 'ceiling', 'shutdown', 'funding'],
+        'negative_gdp_2026': {
+            tags: ['gdp', 'recession'],
+            anyMatch: ['gdp', 'negative', 'growth', '2026'],
+            mustExclude: ['mexico', 'china', 'europe', 'uk', 'japan']
+        },
+        'gov_funding_lapse_jan31_2026': {
+            tags: ['shutdown', 'government', 'debt'],
+            anyMatch: ['funding', 'lapse', 'shutdown', 'jan', '2026'],
             mustExclude: ['mexico', 'china', 'ukraine']
         },
-        'sovereign_btc_adoption': {
+        'us_default_by_2027': {
+            tags: ['debt', 'default'],
+            anyMatch: ['default', 'debt', 'by 2027', '2027'],
+            mustExclude: ['mexico', 'china', 'ukraine']
+        },
+        'us_btc_reserve_before_2027': {
             tags: ['bitcoin', 'btc'],
-            anyMatch: ['reserve', 'strategic', 'national', 'government'],
+            anyMatch: ['reserve', 'strategic', 'national', 'before 2027', 'bitcoin reserve'],
+            mustExclude: ['price', 'etf', 'spot']
+        },
+        'us_bank_failure_by_mar31_2026': {
+            tags: ['bank', 'banking'],
+            anyMatch: ['bank', 'failure', 'fails', '2026', 'march', 'mar'],
             mustExclude: ['price', 'etf', 'spot']
         },
     };

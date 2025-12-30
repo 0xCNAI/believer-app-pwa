@@ -141,36 +141,35 @@ export const useBeliefStore = create<BeliefState>()(
                 const existingIds = new Set(state.beliefs.map(b => b.id));
                 const newBeliefs: Belief[] = [];
 
-                // Map topics to signal IDs (V3.4 - Aggregated/Time-Weighted)
+                // Map topics to 7 signal IDs (V4.0)
                 const topicToSignalIds: Record<PredictionTopic, string[]> = {
-                    'monetary_policy': ['fed_policy_risk'],
-                    'macro_downturn': ['us_recession_risk'],
-                    'fiscal_credit': ['us_debt_risk'],
-                    'sovereign_btc': ['sovereign_btc_adoption'],
-                    'financial_stability': [], // No matching markets currently
+                    'monetary_policy': ['fed_decision_series'],
+                    'macro_downturn': ['us_recession_end_2026', 'negative_gdp_2026'],
+                    'fiscal_credit': ['gov_funding_lapse_jan31_2026', 'us_default_by_2027'],
+                    'sovereign_btc': ['us_btc_reserve_before_2027'],
+                    'financial_stability': ['us_bank_failure_by_mar31_2026'],
                 };
 
                 topics.forEach(topic => {
-                    const signalIds = topicToSignalIds[topic] || [];
-                    signalIds.forEach(signalId => {
-                        if (existingIds.has(signalId)) return;
-
-                        const candidate = BELIEVER_SIGNALS.find(e => e.id === signalId);
-                        if (candidate) {
-                            // Create belief even if markets is empty - will be populated by refreshBeliefs
-                            const initialProb = candidate.markets?.[0]
-                                ? parsePrice(candidate.markets[0].outcomePrices)
-                                : 50; // Default 50% if no market data yet
-                            newBeliefs.push({
-                                id: candidate.id,
-                                marketEvent: candidate,
-                                initialProbability: initialProb,
-                                currentProbability: initialProb,
-                                addedAt: Date.now(),
-                            });
-                            existingIds.add(candidate.id);
-                        }
-                    });
+                    topicToSignalIds[topic]?.forEach(signalId => {
+                        if (!existingIds.has(signalId)) {
+                            // Find metadata
+                            const candidate = BELIEVER_SIGNALS.find(s => s.id === signalId);
+                            if (candidate) {
+                                // Default Prob should be 50% (0.5), not 50
+                                const initialProb = candidate.markets?.[0]
+                                    ? parsePrice(candidate.markets[0].outcomePrices)
+                                    : 0.5; // Default 50% (0..1) if no market data yet
+                                newBeliefs.push({
+                                    id: candidate.id,
+                                    marketEvent: candidate,
+                                    initialProbability: initialProb,
+                                    currentProbability: initialProb,
+                                    addedAt: Date.now(),
+                                });
+                                existingIds.add(candidate.id);
+                            }
+                        });
                 });
 
                 if (newBeliefs.length > 0) {

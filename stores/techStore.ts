@@ -138,9 +138,10 @@ export const useTechStore = create<TechState>()(
                         const beliefState = require('./beliefStore').useBeliefStore.getState();
                         const beliefs = beliefState.beliefs || [];
                         if (beliefs.length > 0) {
-                            // Current Logic: avg prob * 0.25 (25 pts max)
+                            // Probabilities are 0..1.
+                            // Convert to 0..25 points: avgProb * 25
                             const avgProb = beliefs.reduce((sum: number, b: any) => sum + b.currentProbability, 0) / beliefs.length;
-                            beliefPoints = avgProb * 0.25;
+                            beliefPoints = avgProb * 25;
                         }
                     } catch (e) {
                         console.warn('[TechStore] Could not access beliefStore:', e);
@@ -162,7 +163,7 @@ export const useTechStore = create<TechState>()(
                     console.log(`[TechStore] Data Age: ${dataAgeMinutes.toFixed(1)} minutes`);
 
                     console.log(`[TechStore] === Belief Breakdown ===`);
-                    console.log(`[TechStore] User Belief Points: ${beliefPoints.toFixed(2)} (AvgProb * 0.25)`);
+                    console.log(`[TechStore] User Belief Points: ${beliefPoints.toFixed(2)} (AvgProb * 25)`);
                     console.log(`[TechStore] Macro Context (Ref Only): FearGreed=${realData.fearGreed?.value}, Dominance=${realData.btcDominance}`);
                     console.log(`[TechStore] Polymarket Points: Integrated into User Beliefs`);
 
