@@ -7,21 +7,17 @@ export { MarketEvent };
 export type EventCategory = 'Macro' | 'Structural' | 'Political' | 'Narrative';
 
 /**
- * BELIEVER SIGNALS - V3.3 (Polymarket Aligned)
+ * BELIEVER SIGNALS - V3.4 (Aggregated Timeframes)
  * 
- * 5 core signals matching actual Polymarket markets:
- * - Fed rate decisions (series)
- * - US recession 2025
- * - US default/debt
- * - BTC reserve
- * - Fed emergency cut (bonus)
+ * Generic signals that aggregate markets across timeframes (2025, 2026).
+ * Weighted by time-to-expiration.
  */
 export const BELIEVER_SIGNALS: MarketEvent[] = [
     // Monetary Policy (Fed)
     {
-        id: 'fed_decision_series',
-        title: 'Fed 利率決策路徑',
-        description: '聯準會降息路徑影響流動性，利好風險資產',
+        id: 'fed_policy_risk', // Aggregates Rate Path + Emergency Cut
+        title: 'Fed 政策風險路徑',
+        description: '綜合考量利率決策與緊急降息風險，反映流動性預期',
         source: 'Polymarket',
         sourceUrl: 'https://polymarket.com/event/fed-decision-in-january',
         category: 'Macro',
@@ -29,63 +25,50 @@ export const BELIEVER_SIGNALS: MarketEvent[] = [
         endDate: '2025-12-31',
         markets: []
     },
-    // Macro Downturn - Use 2025 version
+    // Macro Downturn (Recession)
     {
-        id: 'us_recession_2025',
-        title: '美國衰退風險 (2025)',
-        description: '經濟衰退導致風險資產拋售，對加密市場負面影響',
+        id: 'us_recession_risk', // Aggregates 2025 + 2026
+        title: '美國衰退風險 (綜合)',
+        description: '綜合 2025 與 2026 衰退機率，權重偏向近期風險',
         source: 'Polymarket',
         sourceUrl: 'https://polymarket.com/event/us-recession-in-2025',
         category: 'Macro',
         slug: 'recession',
-        endDate: '2025-12-31',
+        endDate: '2026-12-31',
         markets: []
     },
     // Fiscal / Credit
     {
-        id: 'us_default_by_2027',
-        title: '美債違約風險',
-        description: '美國債務違約將引發系統性風險，影響避險資產配置',
+        id: 'us_debt_risk', // Aggregates Default + Shutdown?
+        title: '美債/財政信用風險',
+        description: '綜合美債違約與財政壓力，反映系統性信用風險',
         source: 'Polymarket',
         sourceUrl: 'https://polymarket.com/event/us-defaults-on-debt-by-2027',
         category: 'Political',
-        slug: 'default',
+        slug: 'debt',
         endDate: '2026-12-31',
         markets: []
     },
     // Sovereign BTC
     {
-        id: 'us_btc_reserve_before_2027',
-        title: '美國比特幣戰略儲備',
-        description: '主權國家採納 BTC 為戰略資產，結構性利多',
+        id: 'sovereign_btc_adoption',
+        title: '主權級 BTC 採用',
+        description: '美國戰略儲備與主權採用預期',
         source: 'Polymarket',
         sourceUrl: 'https://polymarket.com/event/us-national-bitcoin-reserve-before-2027',
         category: 'Structural',
         slug: 'reserve',
         endDate: '2026-12-31',
         markets: []
-    },
-    // Bonus: Fed Emergency Cut
-    {
-        id: 'fed_emergency_cut_2025',
-        title: 'Fed 緊急降息',
-        description: '緊急降息表示經濟放緩，短期利好風險資產',
-        source: 'Polymarket',
-        sourceUrl: 'https://polymarket.com/event/fed-emergency-rate-cut-in-2025',
-        category: 'Macro',
-        slug: 'emergency',
-        endDate: '2025-12-31',
-        markets: []
     }
 ];
 
 // Impact weights for score calculation
 export const IMPACT_WEIGHTS: Record<string, number> = {
-    'fed_decision_series': 0.7,
-    'us_recession_2025': 1.0,
-    'us_default_by_2027': 1.0,
-    'us_btc_reserve_before_2027': 1.0,
-    'fed_emergency_cut_2025': 0.6,
+    'fed_policy_risk': 0.8,
+    'us_recession_risk': 1.0,
+    'us_debt_risk': 1.0,
+    'sovereign_btc_adoption': 1.0,
 };
 
 // Parse all outcome prices from API response
@@ -119,27 +102,65 @@ export const fetchUnifiedMarkets = async (
     const realDataMap = await fetchRealPolymarketData();
 
     const updatedEvents = baseEvents.map(event => {
-        const relevantMarkets = realDataMap.get(event.id);
+        const markets = realDataMap.get(event.id);
+        if (!markets || markets.length === 0) return { ...event, markets: [] };
 
-        if (!relevantMarkets || relevantMarkets.length === 0) {
-            return { ...event, markets: [] };
+        // 1. Fed Policy: Best ID Only (Don't aggregate across different meetings)
+        if (event.id === 'fed_policy_risk') {
+            const bestMarket = markets[0];
+            return {
+                ...event,
+                markets: [{
+                    id: bestMarket.id || 'fed_best',
+                    question: bestMarket.title,
+                    volume: (bestMarket as any).volume || 'N/A',
+                    outcomePrices: bestMarket.outcomePrices, // Keep original JSON string
+                    outcomes: bestMarket.outcomes // Keep original JSON string
+                }]
+            };
         }
 
-        // Find the most relevant market (highest volume or first)
-        const bestMarket = relevantMarkets[0];
+        // 2. Risk Signals: Time-Weighted Aggregation (2025 + 2026)
+        // W = 1 / DaysToEnd (Nearer term = Higher weight)
+        let totalWeightedProb = 0;
+        let totalWeight = 0;
+        const validMarkets = [];
 
-        // Parse outcomes from API (keep original outcomes/prices)
-        const { outcomes, prices } = parseOutcomePrices(bestMarket);
+        // Pre-calculate probability for each market
+        for (const market of markets) {
+            if (!market.endDate) continue;
 
-        // Construct the Market Object with ORIGINAL outcomes
+            // Calculate raw P(Yes) or P(Risk)
+            const prob = getPositiveProbability(event.id, market);
+
+            // Calculate Weight
+            const end = new Date(market.endDate);
+            const now = new Date();
+            const daysToEnd = Math.max(1, (end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+            const weight = 1000 / daysToEnd; // Scale up for readability
+
+            totalWeightedProb += prob * weight;
+            totalWeight += weight;
+
+            validMarkets.push({
+                ...market,
+                derivedProb: prob,
+                weight
+            });
+        }
+
+        const aggregatedProb = totalWeight > 0 ? totalWeightedProb / totalWeight : 0;
+        const bestMarket = markets[0]; // Use best market for title/metadata
+
+        // Store aggregated probability as a "Yes" outcome for display
         return {
             ...event,
             markets: [{
-                id: bestMarket.id || 'agg',
-                question: (bestMarket as any).title || (bestMarket as any).question || event.title,
-                volume: (bestMarket as any).volume || (bestMarket as any).volumeNum || 'N/A',
-                outcomePrices: JSON.stringify(prices.map(p => Number(p.toFixed(4)))),
-                outcomes: outcomes
+                id: 'aggregated_' + event.id,
+                question: `${event.title} (Aggregated)`,
+                volume: 'Aggregated',
+                outcomePrices: JSON.stringify([aggregatedProb.toFixed(4), (1 - aggregatedProb).toFixed(4)]),
+                outcomes: JSON.stringify(['Yes', 'No']) // Standardized Binary
             }]
         };
     });
@@ -150,6 +171,7 @@ export const fetchUnifiedMarkets = async (
 export const getEventProbability = (event: MarketEvent): number => {
     if (!event.markets || event.markets.length === 0) return 0;
     try {
+        // For aggregated markets, price[0] is the P(Event)
         const prices = JSON.parse(event.markets[0].outcomePrices as string);
         return parseFloat(prices[0]) || 0;
     } catch {
@@ -160,23 +182,31 @@ export const getEventProbability = (event: MarketEvent): number => {
 // Calculate weighted impact score for a belief
 export const getImpactScore = (eventId: string, probability: number): number => {
     const weight = IMPACT_WEIGHTS[eventId] || 0.5;
-    // For inverse events, higher prob = negative impact
-    const inverseEvents = [
-        'us_recession_2025',
-        'us_default_by_2027'
-    ];
-    if (inverseEvents.includes(eventId)) {
-        return (1 - probability) * weight * 100;
-    }
+    // Note: In V3.5, PROBABILITY IS ALREADY "RISK PROBABILITY" for risk events
+    // because fetchUnifiedMarkets uses getPositiveProbability/aggregation which handles the inverse logic.
+    // However, beliefStore usually stores the RAW P(Yes).
+    // Let's ensure standard behavior:
+    // If we stored Aggregated P(Yes) -> Score = P * Weight.
+    // BUT for "Recession", P(Yes) is Bad.
+
+    // Check if the probability passed in is "Positive for Crypto" or "Risk Event Probability"
+    // Our aggregation logic returns P(Risk). 
+    // Impact Score should differ based on "Good" (BTC) vs "Bad" (Recession).
+
+    // Risk Events (Higher Prob = Higher Impact Score? No, Higher Prob = Bad Impact?)
+    // This function usually returns "Impact Magnitude" or "Belief Score"?
+    // "Belief Score" usually means "Strength of Belief".
+    // If Belief is "Recession Risk", score 100 = High Recession Risk.
+
     return probability * weight * 100;
 };
 
 /**
- * Calculate "positive probability" based on signal type.
- * Rules (locked):
- * - Fed decisions: Sum of all "decrease/cut" outcomes
- * - Recession/GDP/Lapse/Default/Bank: 1 - P(Yes)
- * - BTC Reserve: P(Yes)
+ * Calculate "positive probability" (or Target Probability) based on signal type.
+ * STRICT RULES (V3.5):
+ * - Fed: Sum of 'cut'/'decrease'
+ * - Recession/Debt: P(Yes) (This represents P(Risk))
+ * - BTC: P(Yes)
  */
 export const getPositiveProbability = (signalId: string, market: any): number => {
     if (!market?.outcomePrices || !market?.outcomes) return 0;
@@ -188,38 +218,32 @@ export const getPositiveProbability = (signalId: string, market: any): number =>
         ? JSON.parse(market.outcomes)
         : market.outcomes;
 
-    // Fed decisions: Sum decrease/cut outcomes
-    if (signalId.startsWith('fed_')) {
-        let decreaseSum = 0;
+    // 1. Fed Policy Risk (Multi-Outcome)
+    // STRICT RULE: Sum of Cut/Decrease outcomes only
+    if (signalId === 'fed_policy_risk' || signalId === 'fed_decision_series') {
+        let cutSum = 0;
         outcomes.forEach((outcome, idx) => {
             const lower = outcome.toLowerCase();
+            // Cut keywords: decrease, cut
             if (lower.includes('decrease') || lower.includes('cut') || lower.includes('bps decrease')) {
-                decreaseSum += parseFloat(prices[idx]) || 0;
+                cutSum += parseFloat(prices[idx]) || 0;
             }
         });
-        return Math.min(1, decreaseSum);
+        return Math.min(1, cutSum);
     }
 
-    // Inverse signals: 1 - P(Yes)
-    const inverseSignals = [
-        'us_recession_2025',
-        'us_default_by_2027'
-    ];
-    if (inverseSignals.includes(signalId)) {
-        // Find "Yes" outcome
+    // 2. Risk Signals (Recession, Debt)
+    // Return P(Yes) = P(Risk)
+    // Note: getImpactScore will handle if this is "Bad", but here we just return the probability of the event happening.
+    if (['us_recession_risk', 'us_debt_risk', 'us_recession_2025', 'us_default_by_2027'].includes(signalId)) {
+        // Find "Yes"
         const yesIdx = outcomes.findIndex(o => o.toLowerCase() === 'yes');
-        if (yesIdx >= 0) {
-            return 1 - (parseFloat(prices[yesIdx]) || 0);
-        }
-        return 1 - (parseFloat(prices[0]) || 0);
-    }
-
-    // Positive signals: P(Yes) = first outcome or Yes outcome
-    if (signalId === 'us_btc_reserve_before_2027') {
-        const yesIdx = outcomes.findIndex(o => o.toLowerCase() === 'yes');
+        // If Yes exists, return it. If not, default to first (Polymarket standard)
         return yesIdx >= 0 ? parseFloat(prices[yesIdx]) || 0 : parseFloat(prices[0]) || 0;
     }
 
-    // Default: first outcome
-    return parseFloat(prices[0]) || 0;
+    // 3. Positive Signals (BTC)
+    // Return P(Yes)
+    const yesIdx = outcomes.findIndex(o => o.toLowerCase() === 'yes');
+    return yesIdx >= 0 ? parseFloat(prices[yesIdx]) || 0 : parseFloat(prices[0]) || 0;
 };

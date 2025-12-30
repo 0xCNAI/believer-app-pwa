@@ -383,18 +383,47 @@ export default function DashboardScreen() {
                                 // Use getPositiveProbability for accurate calculation
                                 const market = belief.marketEvent.markets?.[0];
                                 let probRaw = belief.currentProbability;
+                                let fedStats = null;
 
                                 // If market exists, use smart probability calculation
                                 if (market && market.outcomePrices) {
                                     try {
                                         const { getPositiveProbability } = require('@/services/marketData');
                                         probRaw = getPositiveProbability(belief.id, market);
+
+                                        // Special calculations for Fed Policy to show Cut/Hold/Hike
+                                        if (belief.id === 'fed_policy_risk' || belief.id === 'fed_decision_series') {
+                                            const prices = typeof market.outcomePrices === 'string' ? JSON.parse(market.outcomePrices) : market.outcomePrices;
+                                            const outcomes = typeof market.outcomes === 'string' ? JSON.parse(market.outcomes) : market.outcomes;
+
+                                            // Helper to sum outcome probabilities by keyword
+                                            const sumByKeyword = (kw: string[]) => {
+                                                let sum = 0;
+                                                outcomes.forEach((o: string, idx: number) => {
+                                                    const lower = o.toLowerCase();
+                                                    if (kw.some(k => lower.includes(k))) sum += parseFloat(prices[idx]) || 0;
+                                                });
+                                                return Math.round(Math.min(1, sum) * 100);
+                                            };
+
+                                            fedStats = {
+                                                cut: sumByKeyword(['decrease', 'cut']),
+                                                hold: sumByKeyword(['no change', 'unchanged', 'maintain']),
+                                                hike: sumByKeyword(['increase', 'hike'])
+                                            };
+                                        }
                                     } catch (e) { /* fallback to stored value */ }
                                 }
 
                                 const prob = Math.round(probRaw * 100);
-                                const isPositive = prob > 50;
-                                const probText = prob > 0 ? `${prob}%` : '載入中...';
+
+                                // Display Logic
+                                let probText = prob > 0 ? `${prob}%` : '載入中...';
+                                if (fedStats) {
+                                    probText = `Cut ${fedStats.cut}%`; // Primary Display
+                                    // Secondary display handled in interpretation line? 
+                                    // User asked for "Secondary: Hold XX% · Hike XX%" - usually implies second line or small text
+                                }
 
                                 let interpret = '→ 市場共識未形成';
                                 let impact = '→ 影響中性';
@@ -414,6 +443,12 @@ export default function DashboardScreen() {
                                 } else if (prob <= 45) {
                                     interpret = '→ 市場信心不足';
                                     impact = '→ 動能稍微轉弱';
+                                }
+
+                                // Override interpretation for Fed to show breakdown
+                                if (fedStats) {
+                                    interpret = `Hold ${fedStats.hold}% · Hike ${fedStats.hike}%`;
+                                    impact = ''; // Hide standard impact text to save space/reduce noise
                                 }
 
                                 return (

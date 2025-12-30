@@ -141,13 +141,13 @@ export const useBeliefStore = create<BeliefState>()(
                 const existingIds = new Set(state.beliefs.map(b => b.id));
                 const newBeliefs: Belief[] = [];
 
-                // Map topics to signal IDs (V3.3 - Polymarket Aligned)
+                // Map topics to signal IDs (V3.4 - Aggregated/Time-Weighted)
                 const topicToSignalIds: Record<PredictionTopic, string[]> = {
-                    'monetary_policy': ['fed_decision_series', 'fed_emergency_cut_2025'],
-                    'macro_downturn': ['us_recession_2025'],
-                    'fiscal_credit': ['us_default_by_2027'],
-                    'sovereign_btc': ['us_btc_reserve_before_2027'],
-                    'financial_stability': [], // No matching Polymarket markets currently
+                    'monetary_policy': ['fed_policy_risk'],
+                    'macro_downturn': ['us_recession_risk'],
+                    'fiscal_credit': ['us_debt_risk'],
+                    'sovereign_btc': ['sovereign_btc_adoption'],
+                    'financial_stability': [], // No matching markets currently
                 };
 
                 topics.forEach(topic => {

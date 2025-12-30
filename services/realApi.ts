@@ -55,38 +55,33 @@ export const POLYMARKET_SLUGS = {
 export const fetchRealPolymarketData = async (): Promise<Map<string, MarketEvent[]>> => {
     const results = new Map<string, MarketEvent[]>();
 
-    // Signal ID -> Search Config (V3.3 - Polymarket Aligned)
-    // Simplified to 5 signals matching actual Polymarket markets
+    // Signal ID -> Search Config (V3.4 - Aggregated Search)
+    // Configured to catch markets across multiple timeframes (2025, 2026)
     const searchConfigs: Record<string, {
         tags: string[];
         mustInclude?: string[];
         anyMatch?: string[];
         mustExclude?: string[]
     }> = {
-        'fed_decision_series': {
+        'fed_policy_risk': {
             tags: ['fed', 'fomc', 'interest rate'],
-            anyMatch: ['decision', 'rate', 'fomc', 'interest', 'january', 'february', 'march'],
-            mustExclude: ['chair', 'nominate', 'powell', 'senate', 'emergency']
+            anyMatch: ['decision', 'rate', 'fomc', 'interest', 'emergency', 'cut'],
+            mustExclude: ['chair', 'nominate', 'powell', 'senate']
         },
-        'us_recession_2025': {
-            tags: ['recession'],
-            anyMatch: ['recession', '2025'],
-            mustExclude: ['mexico', 'china', 'europe', 'uk', 'japan', '2024', '2026']
+        'us_recession_risk': {
+            tags: ['recession', 'gdp'],
+            anyMatch: ['recession', 'gdp', '2025', '2026', 'growth'], // Catch both years
+            mustExclude: ['mexico', 'china', 'europe', 'uk', 'japan']
         },
-        'us_default_by_2027': {
-            tags: ['debt', 'default'],
-            anyMatch: ['default', 'debt', 'ceiling'],
+        'us_debt_risk': {
+            tags: ['debt', 'default', 'government'],
+            anyMatch: ['default', 'debt', 'ceiling', 'shutdown', 'funding'],
             mustExclude: ['mexico', 'china', 'ukraine']
         },
-        'us_btc_reserve_before_2027': {
+        'sovereign_btc_adoption': {
             tags: ['bitcoin', 'btc'],
             anyMatch: ['reserve', 'strategic', 'national', 'government'],
             mustExclude: ['price', 'etf', 'spot']
-        },
-        'fed_emergency_cut_2025': {
-            tags: ['fed', 'emergency'],
-            anyMatch: ['emergency', 'cut'],
-            mustInclude: ['emergency']
         },
     };
 
