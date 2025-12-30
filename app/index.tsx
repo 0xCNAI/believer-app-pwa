@@ -380,16 +380,29 @@ export default function DashboardScreen() {
                             <Text style={{ color: '#71717A', marginTop: 8 }}>尚未追蹤任何市場信號。</Text>
                         ) : (
                             beliefs.filter(b => !b.id.startsWith('custom')).slice(0, 3).map((belief) => {
-                                // Dynamic Interpretation Logic
-                                const probRaw = belief.currentProbability;
-                                const prob = Math.round(probRaw * 100); // Convert 0-1 to 0-100
+                                // Use getPositiveProbability for accurate calculation
+                                const market = belief.marketEvent.markets?.[0];
+                                let probRaw = belief.currentProbability;
+
+                                // If market exists, use smart probability calculation
+                                if (market && market.outcomePrices) {
+                                    try {
+                                        const { getPositiveProbability } = require('@/services/marketData');
+                                        probRaw = getPositiveProbability(belief.id, market);
+                                    } catch (e) { /* fallback to stored value */ }
+                                }
+
+                                const prob = Math.round(probRaw * 100);
                                 const isPositive = prob > 50;
-                                const probText = `${prob}%`;
+                                const probText = prob > 0 ? `${prob}%` : '載入中...';
 
                                 let interpret = '→ 市場共識未形成';
                                 let impact = '→ 影響中性';
 
-                                if (prob >= 70) {
+                                if (prob === 0) {
+                                    interpret = '→ 數據載入中';
+                                    impact = '→ 請稍候';
+                                } else if (prob >= 70) {
                                     interpret = '→ 市場高度共識';
                                     impact = '→ 強化當前趨勢';
                                 } else if (prob >= 55) {

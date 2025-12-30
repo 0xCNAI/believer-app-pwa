@@ -55,10 +55,8 @@ export const POLYMARKET_SLUGS = {
 export const fetchRealPolymarketData = async (): Promise<Map<string, MarketEvent[]>> => {
     const results = new Map<string, MarketEvent[]>();
 
-    // Signal ID -> Search Config (V3.1 - Stricter Matching)
-    // mustInclude: ALL keywords must be present
-    // mustExclude: NONE of these keywords can be present
-    // anyMatch: At least ONE of these keywords must be present
+    // Signal ID -> Search Config (V3.2 - Balanced Matching)
+    // Relaxed filters to catch more markets while excluding clearly irrelevant ones
     const searchConfigs: Record<string, {
         tags: string[];
         mustInclude?: string[];
@@ -66,43 +64,39 @@ export const fetchRealPolymarketData = async (): Promise<Map<string, MarketEvent
         mustExclude?: string[]
     }> = {
         'fed_decision_series': {
-            tags: ['fed'],
-            anyMatch: ['decision', 'rate', 'fomc'],
-            mustExclude: ['chair', 'nominate', 'powell', 'trump']
+            tags: ['fed', 'fomc', 'interest rate'],
+            anyMatch: ['decision', 'rate', 'fomc', 'interest', 'january', 'february', 'march'],
+            mustExclude: ['chair', 'nominate', 'powell', 'trump', 'senate']
         },
         'us_recession_end_2026': {
             tags: ['recession'],
-            mustInclude: ['recession'],
-            anyMatch: ['us', 'u.s.', 'united states', 'america'],
-            mustExclude: ['mexico', 'china', 'europe', 'uk']
+            anyMatch: ['recession', 'us recession', 'economic'],
+            mustExclude: ['mexico', 'china', 'europe', 'uk', 'japan']
         },
         'negative_gdp_2026': {
-            tags: ['gdp'],
-            anyMatch: ['us', 'u.s.', 'united states', 'america'],
-            mustInclude: ['gdp'],
-            mustExclude: ['mexico', 'china', 'europe', 'uk', 'india']
+            tags: ['gdp', 'growth'],
+            anyMatch: ['gdp', 'growth', 'negative'],
+            mustExclude: ['mexico', 'china', 'europe', 'uk', 'india', 'japan', 'brazil']
         },
         'gov_funding_lapse_jan31_2026': {
-            tags: ['government'],
-            anyMatch: ['funding', 'lapse', 'shutdown'],
-            mustExclude: ['mexico', 'china']
+            tags: ['government', 'shutdown', 'funding'],
+            anyMatch: ['funding', 'lapse', 'shutdown', 'government'],
+            mustExclude: ['mexico', 'china', 'ukraine']
         },
         'us_default_by_2027': {
-            tags: ['government', 'debt'],
-            mustInclude: ['default'],
-            anyMatch: ['us', 'u.s.', 'debt'],
-            mustExclude: ['mexico', 'china']
+            tags: ['debt', 'default'],
+            anyMatch: ['default', 'debt', 'ceiling'],
+            mustExclude: ['mexico', 'china', 'ukraine']
         },
         'us_btc_reserve_before_2027': {
-            tags: ['bitcoin'],
-            anyMatch: ['reserve', 'strategic', 'national'],
-            mustExclude: ['price', 'etf']
+            tags: ['bitcoin', 'btc'],
+            anyMatch: ['reserve', 'strategic', 'national', 'government'],
+            mustExclude: ['price', 'etf', 'spot']
         },
         'us_bank_failure_by_mar31_2026': {
-            tags: ['banking', 'finance'],
-            anyMatch: ['bank', 'fail'],
-            mustInclude: ['us', 'u.s.'],
-            mustExclude: ['mexico', 'china', 'europe']
+            tags: ['bank', 'banking'],
+            anyMatch: ['bank', 'fail', 'failure', 'collapse'],
+            mustExclude: ['mexico', 'china', 'europe', 'central bank']
         },
     };
 
