@@ -132,10 +132,13 @@ export const useTechStore = create<TechState>()(
                         .filter(c => c.group === 'Booster' && c.enabled && c.passed)
                         .map(b => b.id);
 
-                    // Get Belief Points (Need to access beliefStore safely)
+                    // Get Belief Points
                     let beliefPoints = 0;
                     try {
-                        const beliefState = require('./beliefStore').useBeliefStore.getState();
+                        // Access store safely (lazy execution prevents cycle, but import is safer)
+                        const { useBeliefStore } = require('./beliefStore'); // Keep require if strictly needed for cycle, but try static if possible?
+                        // Actually, techStore -> beliefStore is safe.
+                        const beliefState = useBeliefStore.getState();
                         const beliefs = beliefState.beliefs || [];
                         if (beliefs.length > 0) {
                             // Probabilities are 0..1.

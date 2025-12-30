@@ -18,6 +18,7 @@ interface AuthState {
     isLoading: boolean;
     login: () => Promise<void>;
     logout: () => Promise<void>;
+    updateProfile: (name: string) => Promise<void>;
     hasRole: (role: UserRole) => boolean;
 }
 

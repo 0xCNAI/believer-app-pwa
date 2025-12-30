@@ -137,14 +137,15 @@ export const fetchUnifiedMarkets = async (
         // 1) Fed decision series: keep best market as-is (multi-outcome)
         if (event.id === 'fed_decision_series') {
             const bestMarket = markets[0];
+            const marketItm = bestMarket.markets?.[0];
             return {
                 ...event,
                 markets: [{
-                    id: bestMarket.id || 'fed_best',
-                    question: bestMarket.title,
+                    id: marketItm?.id || 'fed_best',
+                    question: marketItm?.question || bestMarket.title,
                     volume: (bestMarket as any).volume || 'N/A',
-                    outcomePrices: bestMarket.outcomePrices,
-                    outcomes: bestMarket.outcomes
+                    outcomePrices: marketItm?.outcomePrices || '[]',
+                    outcomes: marketItm?.outcomes || '[]'
                 }]
             };
         }

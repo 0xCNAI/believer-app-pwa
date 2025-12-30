@@ -2,6 +2,10 @@ import { BELIEVER_SIGNALS, MarketEvent, fetchUnifiedMarkets } from '@/services/m
 import { PredictionTopic } from '@/stores/userStore';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { useAuthStore } from './authStore';
+import { db } from '@/services/firebase';
+import { doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { syncUserMerit } from '@/services/meritService';
 
 export interface Belief {
     id: string;
@@ -77,16 +81,12 @@ export const useBeliefStore = create<BeliefState>()(
                 const timeout = setTimeout(() => {
                     const { pendingMerit } = get();
                     if (pendingMerit && pendingMerit > 0) {
-                        const { useAuthStore } = require('./authStore');
                         const { user } = useAuthStore.getState();
                         if (user?.id) {
                             const { faithClicks } = get();
-                            // Use syncUserMerit instead of incrementUserMerit
-                            import('@/services/meritService').then(({ syncUserMerit }) => {
-                                // Default display name if missing
-                                const displayName = user.name || `User ${user.id.slice(0, 4)}`;
-                                syncUserMerit(user.id, displayName, faithClicks);
-                            });
+                            // Default display name if missing
+                            const displayName = user.name || `User ${user.id.slice(0, 4)}`;
+                            syncUserMerit(user.id, displayName, faithClicks);
                             set({ pendingMerit: 0 });
                         }
                     }
@@ -169,7 +169,8 @@ export const useBeliefStore = create<BeliefState>()(
                                 });
                                 existingIds.add(candidate.id);
                             }
-                        });
+                        }
+                    });
                 });
 
                 if (newBeliefs.length > 0) {
@@ -197,18 +198,14 @@ export const useBeliefStore = create<BeliefState>()(
                 }));
 
                 // Firestore Sync
-                const { user } = require('./authStore').useAuthStore.getState();
+                const { user } = useAuthStore.getState();
                 if (user?.id) {
-                    import('@/services/firebase').then(({ db }) => {
-                        import('firebase/firestore').then(({ doc, setDoc }) => {
-                            setDoc(doc(db, `users/${user.id}/reversal_index`, event.id), newBelief)
-                                .then(() => console.log("Write success"))
-                                .catch((err) => {
-                                    console.error("Firestore Write Error:", err);
-                                    alert(`Save Failed: ${err.message}`);
-                                });
+                    setDoc(doc(db, `users/${user.id}/reversal_index`, event.id), newBelief)
+                        .then(() => console.log("Write success"))
+                        .catch((err) => {
+                            console.error("Firestore Write Error:", err);
+                            alert(`Save Failed: ${err.message}`);
                         });
-                    });
                 } else {
                     alert("User ID missing. ignoring save.");
                 }
@@ -225,13 +222,9 @@ export const useBeliefStore = create<BeliefState>()(
                     beliefs: state.beliefs.filter((b) => b.id !== id),
                 }));
                 // Firestore Sync
-                const { user } = require('./authStore').useAuthStore.getState();
+                const { user } = useAuthStore.getState();
                 if (user?.id) {
-                    import('@/services/firebase').then(({ db }) => {
-                        import('firebase/firestore').then(({ doc, deleteDoc }) => {
-                            deleteDoc(doc(db, `users/${user.id}/reversal_index`, id));
-                        });
-                    });
+                    deleteDoc(doc(db, `users/${user.id}/reversal_index`, id));
                 }
             },
 
@@ -244,13 +237,9 @@ export const useBeliefStore = create<BeliefState>()(
                             const updated = { ...belief, currentProbability: newProb, marketEvent: freshEvent };
 
                             // Passive Sync (Optional: Update DB if price changed)
-                            const { user } = require('./authStore').useAuthStore.getState();
+                            const { user } = useAuthStore.getState();
                             if (user?.id) {
-                                import('@/services/firebase').then(({ db }) => {
-                                    import('firebase/firestore').then(({ doc, setDoc }) => {
-                                        setDoc(doc(db, `users/${user.id}/reversal_index`, belief.id), updated, { merge: true });
-                                    });
-                                });
+                                setDoc(doc(db, `users/${user.id}/reversal_index`, belief.id), updated, { merge: true });
                             }
                             return updated;
                         }
@@ -268,7 +257,7 @@ export const useBeliefStore = create<BeliefState>()(
                     // Get current user prefs for optimal fetching
                     // const { experience } = require('./userStore').useUserStore.getState();
                     // Just fetch default for now to get fresh prices
-                    const freshEvents = await fetchUnifiedMarkets();
+                    const freshEvents = await fetchUnifiedMarkets([]);
                     get().updateBeliefs(freshEvents);
                     console.log('[BeliefStore] Refreshed beliefs with live data');
                 } catch (e) {

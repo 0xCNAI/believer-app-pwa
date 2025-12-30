@@ -28,7 +28,7 @@ export default function MomentScreen() {
     const signalId = params.signalId as string | undefined; // NEW: Support single signal mode
 
     // Get User Preferences
-    const { experience, focusAreas } = useUserStore();
+    const { predictionTopics } = useUserStore();
 
     const [currentEvent, setCurrentEvent] = useState<MarketEvent | null>(null);
     const [loading, setLoading] = useState(true);
@@ -37,7 +37,7 @@ export default function MomentScreen() {
 
     const loadNextEvent = async () => {
         setLoading(true);
-        const data = await fetchUnifiedMarkets(experience, focusAreas);
+        const data = await fetchUnifiedMarkets(predictionTopics);
 
         // Single signal mode: load specific signal by ID
         if (signalId) {

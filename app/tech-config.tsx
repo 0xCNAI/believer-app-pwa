@@ -158,13 +158,26 @@ export default function TechConfigScreen() {
         enabledConditions,
         personalParams,
         conditions,
-        phaseResult,
-        riskModifiers,
+        reversalState,
+        reversalInputs,
         isLoading,
         setConditionEnabled,
         setPersonalParam,
         evaluateAll,
     } = useTechStore();
+
+    // Shim for UI Compatibility (V2.6 State -> V1.0 UI)
+    const phaseResult = reversalState ? {
+        phase: (reversalState.stage === 'Confirmed' ? 'Expansion' :
+            ['Watch', 'Prepare'].includes(reversalState.stage) ? 'Transition' : 'Accumulation') as 'Accumulation' | 'Transition' | 'Expansion',
+        gatesPassedCount: reversalInputs?.gateCount || 0
+    } : null;
+
+    const riskModifiers = reversalInputs ? {
+        fundingRate: reversalInputs.funding24hWeighted || 0,
+        mvrvZScore: reversalInputs.mvrvZScore || 0,
+        liquidityStatus: 'neutral' // defaulting
+    } : null;
 
     const gates = conditions.filter(c => c.group === 'Gate');
     const boosters = conditions.filter(c => c.group === 'Booster');
