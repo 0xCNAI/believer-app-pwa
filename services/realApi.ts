@@ -151,8 +151,7 @@ import { db } from './firebase';
 
 // Internal function to hit actual 3rd party APIs
 const _fetchFromExternalApis = async () => {
-    const [polymarkets, btcDominance, fearGreed, derivatives, mvrvZ, puell] = await Promise.all([
-        fetchRealPolymarketData(),
+    const [btcDominance, fearGreed, derivatives, mvrvZ, puell] = await Promise.all([
         fetchBtcDominance(),
         fetchFearGreedIndex(),
         fetchDerivativesData(),
@@ -161,7 +160,6 @@ const _fetchFromExternalApis = async () => {
     ]);
 
     return {
-        polymarkets,
         btcDominance,
         fearGreed,
         derivatives,
@@ -214,12 +212,7 @@ export const fetchAllRealData = async () => {
         // Let's bump it so we don't spam API loop if APIs are permanently down.
     };
 
-    // Explicitly handle Polymarkets merging since it's the most critical
-    // freshData.polymarkets is Map<string, MarketEvent[]>
-    // We should convert to Object for storage
-    if (freshData.polymarkets && freshData.polymarkets.size > 0) {
-        mergedData.polymarkets = Object.fromEntries(freshData.polymarkets);
-    }
+
 
     // Save to Cache
     try {
@@ -235,13 +228,8 @@ export const fetchAllRealData = async () => {
 
 // Helper: Reconstruct Map(s) from Object for App Consumption
 const reconstituteMap = (data: any) => {
-    const polyMap = new Map<string, MarketEvent[]>();
-    if (data.polymarkets) {
-        Object.entries(data.polymarkets).forEach(([k, v]) => polyMap.set(k, v as MarketEvent[]));
-    }
     return {
-        ...data,
-        polymarkets: polyMap
+        ...data
     };
 };
 
