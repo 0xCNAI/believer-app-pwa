@@ -423,18 +423,20 @@ export default function DashboardScreen() {
                             <Text style={{ color: '#71717A', marginTop: 8 }}>尚未追蹤任何市場信號。</Text>
                         ) : (
                             beliefs.filter(b => !b.id.startsWith('custom')).slice(0, 3).map((belief) => {
-                                // Use getPositiveProbability for accurate calculation
-                                // Always compute displayed probability via getPositiveProbability (BTC-positive)
+                                // V5.0: Use signal property
+                                const signal = belief.signal;
+                                const market = signal?.markets?.[0];
                                 let probRaw = belief.currentProbability;
-                                const market = belief.marketEvent.markets?.[0];
                                 let fedStats = null;
 
                                 try {
+                                    // Recalculate if possible using fresh market data
                                     if (market && market.outcomePrices) {
-                                        probRaw = getPositiveProbability(belief.id, market);
+                                        const { getPositiveProbability } = require('@/services/marketData');
+                                        probRaw = getPositiveProbability(signal);
 
-                                        // Special calculations for Fed Policy to show Cut/Hold/Hike
-                                        if (belief.id === 'fed_policy_risk' || belief.id === 'fed_decision_series') {
+                                        // Special calculations for Fed Policy (Cut/Hold/Hike)
+                                        if (signal.scoring === 'fed_cut') {
                                             const prices = typeof market.outcomePrices === 'string' ? JSON.parse(market.outcomePrices) : market.outcomePrices;
                                             const outcomes = typeof market.outcomes === 'string' ? JSON.parse(market.outcomes) : market.outcomes;
 
@@ -449,22 +451,20 @@ export default function DashboardScreen() {
                                             };
 
                                             fedStats = {
-                                                cut: sumByKeyword(['decrease', 'cut']),
+                                                cut: sumByKeyword(['decrease', 'cut', 'lower']),
                                                 hold: sumByKeyword(['no change', 'unchanged', 'maintain']),
-                                                hike: sumByKeyword(['increase', 'hike'])
+                                                hike: sumByKeyword(['increase', 'hike', 'raise'])
                                             };
                                         }
                                     }
-                                } catch (e) { /* fallback to stored value */ }
+                                } catch (e) { /* fallback */ }
 
                                 const prob = Math.round(probRaw * 100);
 
                                 // Display Logic
                                 let probText = prob > 0 ? `${prob}%` : '載入中...';
                                 if (fedStats) {
-                                    probText = `Cut ${fedStats.cut}%`; // Primary Display
-                                    // Secondary display handled in interpretation line? 
-                                    // User asked for "Secondary: Hold XX% · Hike XX%" - usually implies second line or small text
+                                    probText = `Cut ${fedStats.cut}%`;
                                 }
 
                                 let interpret = '→ 市場共識未形成';
@@ -487,17 +487,24 @@ export default function DashboardScreen() {
                                     impact = '→ 動能稍微轉弱';
                                 }
 
-                                // Override interpretation for Fed to show breakdown
+                                // Override interpretation for Fed
                                 if (fedStats) {
                                     interpret = `Hold ${fedStats.hold}% · Hike ${fedStats.hike}%`;
-                                    impact = ''; // Hide standard impact text to save space/reduce noise
+                                    impact = '';
                                 }
+
+                                // Calculate V5 Points Score
+                                const { calculateNarrativeScore } = require('@/services/marketData');
+                                const points = signal ? calculateNarrativeScore(signal, 5) : 0;
 
                                 return (
                                     <View key={belief.id} style={styles.dynamicItem}>
-                                        <Text style={styles.dynamicChange}>• {belief.marketEvent.title} ({probText})</Text>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                                            <Text style={styles.dynamicChange}>• {signal?.title || belief.id} ({probText})</Text>
+                                            {points > 0 && <Text style={{ color: '#10b981', fontSize: 11, fontWeight: 'bold' }}>+{points.toFixed(1)} pts</Text>}
+                                        </View>
                                         <Text style={styles.dynamicInterpret}>{interpret}</Text>
-                                        <Text style={styles.dynamicImpact}>{impact}</Text>
+                                        {impact ? <Text style={styles.dynamicImpact}>{impact}</Text> : null}
                                     </View>
                                 );
                             })
@@ -509,18 +516,22 @@ export default function DashboardScreen() {
                 <View>
                     <Text style={styles.sectionTitle}>市場預期</Text>
 
-
-
                     {/* User's Selected Prediction Topics */}
-                    {/* User's Selected Prediction Topics - STRICT FILTER */}
                     {beliefs.filter(b => BELIEVER_SIGNALS.some(s => s.id === b.id)).length > 0 && (
                         beliefs
                             .filter(b => BELIEVER_SIGNALS.some(s => s.id === b.id))
                             .map((belief) => {
+                                const signal = belief.signal;
+                                if (!signal) return null;
+
                                 const probRaw = belief.currentProbability;
-                                const prob = Math.round(probRaw * 100); // Convert 0-1 to 0-100
+                                const prob = Math.round(probRaw * 100);
                                 const probText = `${prob}%`;
-                                const isPositive = prob >= 50;
+                                // V5 Logic: Good signal usually means > 50% on "Positive" outcome.
+                                // Actually depends on scoring. "Binary Bad" high prob is bad.
+                                // Let's simplify: High Probability of Event Occurring
+                                const isHighProb = prob >= 50;
+
                                 const isExpanded = expandedTopic === belief.id;
 
                                 return (
@@ -534,24 +545,24 @@ export default function DashboardScreen() {
                                             <View style={styles.topicLeft}>
                                                 <View style={[
                                                     styles.topicDot,
-                                                    { backgroundColor: isPositive ? '#22c55e' : '#ef4444' }
+                                                    { backgroundColor: isHighProb ? '#22c55e' : '#71717a' }
                                                 ]} />
                                                 <View style={styles.topicInfo}>
-                                                    <Text style={styles.topicTitle}>{belief.marketEvent.title}</Text>
+                                                    <Text style={styles.topicTitle}>{signal.title}</Text>
                                                     <Text style={styles.topicDesc} numberOfLines={isExpanded ? 0 : 1}>
-                                                        {belief.marketEvent.description}
+                                                        {signal.description}
                                                     </Text>
                                                 </View>
                                             </View>
                                             <View style={styles.topicRight}>
                                                 <Text style={[
                                                     styles.topicProb,
-                                                    { color: isPositive ? '#22c55e' : '#ef4444' }
+                                                    { color: isHighProb ? '#22c55e' : '#fbbf24' }
                                                 ]}>
                                                     {probText}
                                                 </Text>
                                                 <Text style={styles.topicSource}>
-                                                    {belief.marketEvent.source}
+                                                    Polymarket
                                                 </Text>
                                             </View>
                                         </View>
@@ -562,7 +573,7 @@ export default function DashboardScreen() {
                                                     <View style={styles.detailItem}>
                                                         <Text style={styles.detailLabel}>交易量 (Volume)</Text>
                                                         <Text style={styles.detailValue}>
-                                                            {belief.marketEvent.markets[0]?.volume || '--'}
+                                                            {signal.markets?.[0]?.volume?.toLocaleString() || '--'}
                                                         </Text>
                                                     </View>
                                                 </View>
@@ -571,11 +582,14 @@ export default function DashboardScreen() {
                                                     <View style={styles.outcomesContainer}>
                                                         <Text style={styles.detailLabel}>潛在結果 (Outcomes)</Text>
                                                         {(() => {
-                                                            const rawOutcomes = belief.marketEvent.markets[0]?.outcomes as any;
+                                                            const m = signal.markets?.[0];
+                                                            if (!m) return <Text style={{ color: '#71717a' }}>載入中...</Text>;
+
+                                                            const rawOutcomes = m.outcomes as any;
                                                             const outcomesArr: string[] = typeof rawOutcomes === 'string'
                                                                 ? JSON.parse(rawOutcomes)
                                                                 : (rawOutcomes || []);
-                                                            const rawPrices = belief.marketEvent.markets[0]?.outcomePrices as any;
+                                                            const rawPrices = m.outcomePrices as any;
                                                             const pricesArr: any[] = typeof rawPrices === 'string'
                                                                 ? JSON.parse(rawPrices)
                                                                 : (rawPrices || []);
@@ -594,12 +608,13 @@ export default function DashboardScreen() {
                                                     <TouchableOpacity
                                                         style={styles.viewMarketBtn}
                                                         onPress={() => {
-                                                            if (typeof window !== 'undefined' && belief.marketEvent.sourceUrl) {
-                                                                window.open(belief.marketEvent.sourceUrl, '_blank');
+                                                            const slug = signal.source.slug;
+                                                            if (typeof window !== 'undefined' && slug) {
+                                                                window.open(`https://polymarket.com/event/${slug}`, '_blank');
                                                             }
                                                         }}
                                                     >
-                                                        <Text style={styles.viewMarketText}>前往 {belief.marketEvent.source} 查看詳細</Text>
+                                                        <Text style={styles.viewMarketText}>前往 Polymarket 查看詳細</Text>
                                                         <Ionicons name="open-outline" size={14} color="#a1a1aa" />
                                                     </TouchableOpacity>
                                                 </View>
@@ -609,6 +624,7 @@ export default function DashboardScreen() {
                                 );
                             })
                     )}
+
                 </View>
 
                 <Text style={styles.footerVersion}>
