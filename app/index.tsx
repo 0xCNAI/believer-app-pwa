@@ -13,6 +13,7 @@ import { Animated, Easing, Image, Platform, RefreshControl, ScrollView, StyleShe
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { getGlobalMerit, getLeaderboard } from '@/services/meritService';
+import { useTechStore } from '@/stores/techStore';
 
 export default function DashboardScreen() {
     const router = useRouter();
@@ -54,70 +55,16 @@ export default function DashboardScreen() {
         }
     };
 
-    // Wooden Fish Animation State
-    const [showMerit, setShowMerit] = useState(false);
-    const [showMeritModal, setShowMeritModal] = useState(false);
-    const [showEmailDev, setShowEmailDev] = useState(false);
+    // AI State
     const [loadingAi, setLoadingAi] = useState(false);
     const [aiSummary, setAiSummary] = useState<string | null>(null);
-    const scaleAnim = useRef(new Animated.Value(1)).current;
-
-    const stickAnim = useRef(new Animated.Value(0)).current;
-
-    const handleFishClick = () => {
-        incrementFaith();
-        const triggerHaptic = () => {
-            if (Platform.OS === 'web') {
-                if (typeof navigator !== 'undefined' && navigator.vibrate) {
-                    navigator.vibrate(10);
-                }
-            } else {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => { });
-            }
-        };
-
-        Animated.sequence([
-            Animated.timing(stickAnim, {
-                toValue: 1,
-                duration: 100,
-                // useNativeDriver: Platform.OS !== 'web', // Buggy on some web
-                useNativeDriver: false,
-                easing: Easing.in(Easing.quad),
-            }),
-            Animated.parallel([
-                Animated.timing(stickAnim, {
-                    toValue: 0,
-                    duration: 150,
-                    useNativeDriver: false,
-                    easing: Easing.out(Easing.quad),
-                }),
-                Animated.sequence([
-                    Animated.timing(scaleAnim, {
-                        toValue: 0.9,
-                        duration: 50,
-                        useNativeDriver: false,
-                    }),
-                    Animated.timing(scaleAnim, {
-                        toValue: 1,
-                        duration: 150,
-                        useNativeDriver: false,
-                        easing: Easing.elastic(1.5),
-                    })
-                ])
-            ])
-        ]).start();
-
-        setTimeout(triggerHaptic, 100);
-        setShowMerit(true);
-        setTimeout(() => setShowMerit(false), 500);
-    };
 
     console.log('[Dashboard] Rendering. Index:', reversalIndex);
 
     useEffect(() => {
         console.log('[Dashboard] Mount: Fetching BTC Price & refreshing TechStore...');
         try {
-            require('@/stores/techStore').useTechStore.getState().fetchAndEvaluate();
+            useTechStore.getState().fetchAndEvaluate();
         } catch (e) {
             console.error('[Dashboard] Failed to trigger techStore update:', e);
         }
@@ -147,7 +94,7 @@ export default function DashboardScreen() {
     const onRefresh = () => {
         setRefreshing(true);
         console.log('[Dashboard] Manual Refresh Triggered');
-        require('@/stores/techStore').useTechStore.getState().fetchAndEvaluate();
+        useTechStore.getState().fetchAndEvaluate();
         setTimeout(() => setRefreshing(false), 1500);
     };
 
@@ -166,9 +113,8 @@ export default function DashboardScreen() {
         router.replace('/onboarding');
     };
 
-    // V5.3 UI Helper: Narrative Progress Bar
+    // V5.4 Helper: Narrative Progress Bar (Localized)
     const renderNarrativeProgressBar = () => {
-        // Calculate Total Narrative Score
         const totalScore = beliefs.reduce((sum, b) => {
             const points = b.signal ? calculateNarrativeScore(b.signal, 5) : 0;
             return sum + points;
@@ -177,24 +123,24 @@ export default function DashboardScreen() {
         const maxScore = 25;
         const percent = Math.min(100, (totalScore / maxScore) * 100);
 
-        // Define Stages
-        // 0-8 (0-32%): Risk Dominant
-        // 8-15 (32-60%): Accumulation
-        // 15-22 (60-88%): Brewing
-        // 22-25 (88-100%): Confirmed
+        // Stages (Localized)
+        // 0-8: 風險主導 (Risk Dominant)
+        // 8-15: 條件累積 (Accumulation)
+        // 15-22: 反轉醞釀 (Brewing)
+        // 22-25: 反轉成立 (Confirmed)
 
-        let currentStage = 'Risk Dominant';
+        let currentStage = '風險主導';
         let stageColor = '#ef4444';
 
-        if (totalScore >= 22) { currentStage = 'Confirmed'; stageColor = '#22c55e'; }
-        else if (totalScore >= 15) { currentStage = 'Brewing'; stageColor = '#eab308'; }
-        else if (totalScore >= 8) { currentStage = 'Accumulation'; stageColor = '#f97316'; }
+        if (totalScore >= 22) { currentStage = '反轉成立'; stageColor = '#22c55e'; }
+        else if (totalScore >= 15) { currentStage = '反轉醞釀'; stageColor = '#eab308'; }
+        else if (totalScore >= 8) { currentStage = '條件累積'; stageColor = '#f97316'; }
 
         return (
             <View style={{ marginBottom: 24 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <Text style={{ color: '#71717a', fontSize: 12, fontWeight: '600', textTransform: 'uppercase' }}>
-                        Reversal Conditions
+                        反轉條件 (Conditions)
                     </Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <Text style={{ color: stageColor, fontSize: 12, fontWeight: 'bold' }}>{currentStage}</Text>
@@ -212,12 +158,12 @@ export default function DashboardScreen() {
                     }} />
                 </View>
 
-                {/* Segment Markers (Optional) */}
+                {/* Segment Markers */}
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-                    <Text style={{ color: '#52525b', fontSize: 10 }}>Risk</Text>
-                    <Text style={{ color: '#52525b', fontSize: 10 }}>Accum</Text>
-                    <Text style={{ color: '#52525b', fontSize: 10 }}>Brewing</Text>
-                    <Text style={{ color: '#52525b', fontSize: 10 }}>Confirmed</Text>
+                    <Text style={{ color: '#52525b', fontSize: 10 }}>風險</Text>
+                    <Text style={{ color: '#52525b', fontSize: 10 }}>累積</Text>
+                    <Text style={{ color: '#52525b', fontSize: 10 }}>醞釀</Text>
+                    <Text style={{ color: '#52525b', fontSize: 10 }}>成立</Text>
                 </View>
             </View>
         );
@@ -230,7 +176,7 @@ export default function DashboardScreen() {
             {/* Header */}
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.headerBrand}>Believer V5.3</Text>
+                    <Text style={styles.headerBrand}>Believer V5.4</Text>
                 </View>
                 <TouchableOpacity onPress={() => setShowNotifications(true)} style={styles.notificationBtn}>
                     <View style={styles.notificationIconWrapper}>
@@ -245,7 +191,8 @@ export default function DashboardScreen() {
             </View >
 
             <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 100 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}>
-                {/* BTC Price Header */}
+
+                {/* 1. BTC Price Header (Centered) */}
                 <View style={styles.marketAnchor}>
                     <Text style={styles.anchorValue}>BTC ${roundedPrice}</Text>
                     {btc24hChange !== null && (
@@ -255,10 +202,85 @@ export default function DashboardScreen() {
                     )}
                 </View>
 
-                {/* SECTION 1: MARKET DYNAMICS (AI + State) */}
-                <View style={[styles.card, { marginBottom: 24 }]}>
+                {/* 2. CARD 1: Reversal Index (Restored Core Metric) */}
+                <View style={styles.card}>
                     <View style={styles.cardHeader}>
-                        <Text style={styles.cardHeaderLabel}>Market Dynamics</Text>
+                        <View>
+                            <Text style={styles.cardHeaderLabel}>Reversal Index</Text>
+                            <Text style={styles.cardHeaderTitle}>反轉指數</Text>
+                        </View>
+                        {/* Big Number */}
+                        <Text style={[styles.indexValue, {
+                            color: reversalIndex >= 60 ? '#22c55e' : (reversalIndex >= 40 ? '#f97316' : '#ef4444'),
+                            fontSize: 32, lineHeight: 36
+                        }]}>
+                            {reversalIndex.toFixed(0)}
+                        </Text>
+                    </View>
+
+                    {/* Copy Logic Restored */}
+                    {(() => {
+                        try {
+                            const { reversalState } = useTechStore.getState();
+                            const copy = resolveReversalCopy(reversalState || { trendScore: 0, cycleScore: 0 });
+
+                            // Stage Colors
+                            const getStageColor = (stage: string) => {
+                                switch (stage) {
+                                    case 'OVERHEATED': return '#ef4444';
+                                    case 'CONFIRMED': return '#22c55e';
+                                    case 'PREPARE': return '#eab308';
+                                    case 'WATCH': return '#f97316';
+                                    default: return '#71717a';
+                                }
+                            };
+                            const activeColor = getStageColor(copy.displayStage);
+
+                            return (
+                                <View style={styles.progressSection}>
+                                    {/* Title & Tags */}
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                                        <Text style={[styles.progressLabel, { color: activeColor, marginBottom: 0 }]}>
+                                            {copy.title}
+                                        </Text>
+                                        {copy.tags?.map((tag, i) => (
+                                            <View key={i} style={{ backgroundColor: 'rgba(39, 39, 42, 0.5)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: '#27272A' }}>
+                                                <Text style={{ color: '#A1A1AA', fontSize: 10 }}>{tag}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+
+                                    {/* Progress Bar (8 blocks) */}
+                                    <View style={styles.progressBar}>
+                                        {[...Array(8)].map((_, i) => {
+                                            const filled = reversalIndex > (i * 12.5);
+                                            return <View key={i} style={[styles.progressBlock, filled && { backgroundColor: activeColor, opacity: 0.9 }]} />;
+                                        })}
+                                    </View>
+
+                                    {/* One Liner */}
+                                    <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '700', lineHeight: 22, marginVertical: 8 }}>
+                                        {copy.oneLiner}
+                                    </Text>
+
+                                    {/* Context */}
+                                    <View style={styles.progressContext}>
+                                        <Text style={styles.contextTitle}>目前的依據</Text>
+                                        {copy.reasonLines.map((line, i) => <Text key={i} style={styles.contextItem}>• {line}</Text>)}
+
+                                        <Text style={[styles.contextTitle, { color: activeColor, marginTop: 12 }]}>下一步</Text>
+                                        {copy.next.map((line, i) => <Text key={i} style={styles.contextItem}>👉 {line}</Text>)}
+                                    </View>
+                                </View>
+                            );
+                        } catch (e) { return null; }
+                    })()}
+                </View>
+
+                {/* 3. CARD 2: Market Dynamics (AI) */}
+                <View style={[styles.card, { paddingVertical: 20 }]}>
+                    <View style={[styles.cardHeader, { marginBottom: 16 }]}>
+                        <Text style={styles.cardHeaderTitle}>市場動態</Text>
                         <TouchableOpacity
                             style={{
                                 flexDirection: 'row', alignItems: 'center', gap: 4,
@@ -274,22 +296,22 @@ export default function DashboardScreen() {
                                     const summary = await generateMarketSummary();
                                     setAiSummary(summary);
                                 } catch (e) {
-                                    setAiSummary('Analysis failed.');
+                                    setAiSummary('分析失敗，請檢查 API 設定。');
                                 } finally {
                                     setLoadingAi(false);
                                 }
                             }}
                         >
                             <Ionicons name="sparkles" size={12} color="#fbbf24" />
-                            <Text style={{ color: '#e4e4e7', fontSize: 10, fontWeight: '600' }}>AI Summary</Text>
+                            <Text style={{ color: '#e4e4e7', fontSize: 11, fontWeight: '600' }}>AI 智能分析</Text>
                         </TouchableOpacity>
                     </View>
 
-                    {/* AI Summary Display */}
+                    {/* AI Content */}
                     {(loadingAi || aiSummary) && (
-                        <View style={{ marginBottom: 16, padding: 12, backgroundColor: 'rgba(251, 191, 36, 0.1)', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(251, 191, 36, 0.3)' }}>
+                        <View style={{ marginBottom: 16, padding: 12, backgroundColor: 'rgba(251, 191, 36, 0.05)', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(251, 191, 36, 0.2)' }}>
                             {loadingAi ? (
-                                <Text style={{ color: '#fbbf24', fontSize: 13 }}>Analyzing Google Search News...</Text>
+                                <Text style={{ color: '#fbbf24', fontSize: 13 }}>正在搜尋並分析最新新聞...</Text>
                             ) : (
                                 <Text style={{ color: '#fbbf24', fontSize: 13, lineHeight: 20 }}>
                                     {aiSummary}
@@ -298,20 +320,20 @@ export default function DashboardScreen() {
                         </View>
                     )}
 
-                    {/* Dynamic Bullets (Based on Signals) */}
+                    {/* Signal Bullets */}
                     <View>
                         {beliefs.filter(b => !b.id.startsWith('custom')).slice(0, 3).map((belief) => {
                             const signal = belief.signal;
                             const points = signal ? calculateNarrativeScore(signal, 5) : 0;
                             const prob = Math.round(belief.currentProbability * 100);
 
-                            let statusText = 'Neutral';
-                            if (points > 3) statusText = 'Strong Support';
-                            else if (points > 1.5) statusText = 'Building';
-                            else statusText = 'Weak';
+                            let statusText = '中性 (Neutral)';
+                            if (points > 3) statusText = '強力支撐 (Strong)';
+                            else if (points > 1.5) statusText = '累積中 (Building)';
+                            else statusText = '疲弱 (Weak)';
 
                             return (
-                                <View key={belief.id} style={{ flexDirection: 'row', marginBottom: 8, alignItems: 'flex-start' }}>
+                                <View key={belief.id} style={{ flexDirection: 'row', marginBottom: 6, alignItems: 'flex-start' }}>
                                     <Text style={{ color: '#71717a', fontSize: 13, marginRight: 6 }}>•</Text>
                                     <Text style={{ color: '#d4d4d8', fontSize: 13, flex: 1, lineHeight: 20 }}>
                                         <Text style={{ fontWeight: '600', color: '#a1a1aa' }}>{signal?.title.split(' ')[0]}:</Text>
@@ -321,12 +343,11 @@ export default function DashboardScreen() {
                             );
                         })}
                     </View>
-
                 </View>
 
-                {/* SECTION 2: MARKET EXPECTATIONS (Progress + Cards) */}
+                {/* 4. SECTION: Market Expectations */}
                 <View>
-                    <Text style={styles.sectionTitle}>Market Expectations</Text>
+                    <Text style={styles.sectionTitle}>市場預期</Text>
 
                     {/* Narrative Progress Bar */}
                     {renderNarrativeProgressBar()}
@@ -340,19 +361,16 @@ export default function DashboardScreen() {
                         const prob = Math.round(probRaw * 100);
                         const isExpanded = expandedTopic === belief.id;
 
-                        // V5.3 Contribution Score
                         const contribution = calculateNarrativeScore(signal, 5);
-
-                        // Fed Special Logic
                         const isFed = signal.id === 'fed_decision';
                         let fedStats = null;
+
                         if (isFed) {
                             try {
                                 const m = signal.markets?.[0];
                                 if (m && m.outcomePrices && m.outcomes) {
                                     const prices = typeof m.outcomePrices === 'string' ? JSON.parse(m.outcomePrices) : m.outcomePrices;
                                     const outcomes = typeof m.outcomes === 'string' ? JSON.parse(m.outcomes) : m.outcomes;
-
                                     const sumByKeyword = (kw: string[]) => {
                                         let sum = 0;
                                         outcomes.forEach((o: string, idx: number) => {
@@ -377,9 +395,8 @@ export default function DashboardScreen() {
                                 onPress={() => setExpandedTopic(isExpanded ? null : belief.id)}
                                 activeOpacity={0.7}
                             >
-                                {/* Helper Function for Fed Bar */}
                                 {(() => {
-                                    const renderFedBar = (label: string, val: number, color: string) => (
+                                    const renderBar = (label: string, val: number, color: string) => (
                                         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                                             <Text style={{ width: 40, color: '#a1a1aa', fontSize: 12 }}>{label}</Text>
                                             <View style={{ flex: 1, height: 8, backgroundColor: '#27272a', borderRadius: 4, marginRight: 8, overflow: 'hidden' }}>
@@ -391,16 +408,14 @@ export default function DashboardScreen() {
 
                                     return (
                                         <>
-                                            {/* HEADER (Collapsed) */}
                                             <View style={styles.topicHeader}>
                                                 <View style={styles.topicLeft}>
-                                                    {/* Status Dot (Neutral Color) */}
                                                     <View style={[styles.topicDot, { backgroundColor: '#52525b' }]} />
                                                     <View style={styles.topicInfo}>
                                                         <Text style={styles.topicTitle}>{signal.title}</Text>
                                                         {!isExpanded && (
                                                             <Text style={styles.topicDesc}>
-                                                                {isFed && fedStats ? `Cut ${fedStats.cut}% / Hold ${fedStats.hold}%` : `Probability: ${prob}%`}
+                                                                {isFed && fedStats ? `Cut ${fedStats.cut}% / Hold ${fedStats.hold}%` : `機率: ${prob}%`}
                                                             </Text>
                                                         )}
                                                     </View>
@@ -412,38 +427,31 @@ export default function DashboardScreen() {
                                                 </View>
                                             </View>
 
-                                            {/* EXPANDED CONTENT */}
                                             {isExpanded && (
                                                 <View style={{ marginTop: 16 }}>
-                                                    {/* 1. Contribution Score */}
                                                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16, backgroundColor: '#27272a', padding: 8, borderRadius: 6 }}>
-                                                        <Text style={{ color: '#a1a1aa', fontSize: 12 }}>Narrative Contribution</Text>
+                                                        <Text style={{ color: '#a1a1aa', fontSize: 12 }}>敘事貢獻 (Score)</Text>
                                                         <Text style={{ color: '#10b981', fontWeight: 'bold', fontSize: 12 }}>
                                                             +{contribution.toFixed(2)} / 5.00 pts
                                                         </Text>
                                                     </View>
 
-                                                    {/* 2. Outcome Distribution (Fed Special vs Standard) */}
                                                     <View style={{ marginBottom: 16 }}>
-                                                        <Text style={{ color: '#71717a', fontSize: 11, marginBottom: 8, textTransform: 'uppercase' }}>Outcome Distribution</Text>
-
+                                                        <Text style={{ color: '#71717a', fontSize: 11, marginBottom: 8, textTransform: 'uppercase' }}>結果分佈 (Outcomes)</Text>
                                                         {isFed && fedStats ? (
-                                                            // FED UI
                                                             <View>
-                                                                {renderFedBar('Cut', fedStats.cut, '#22c55e')}
-                                                                {renderFedBar('Hold', fedStats.hold, '#f59e0b')}
-                                                                {renderFedBar('Hike', fedStats.hike, '#ef4444')}
+                                                                {renderBar('Cut', fedStats.cut, '#22c55e')}
+                                                                {renderBar('Hold', fedStats.hold, '#f59e0b')}
+                                                                {renderBar('Hike', fedStats.hike, '#ef4444')}
                                                             </View>
                                                         ) : (
-                                                            // STANDARD UI
                                                             <View>
-                                                                {renderFedBar('Yes', prob, '#22c55e')}
-                                                                {renderFedBar('No', 100 - prob, '#71717a')}
+                                                                {renderBar('Yes', prob, '#22c55e')}
+                                                                {renderBar('No', 100 - prob, '#71717a')}
                                                             </View>
                                                         )}
                                                     </View>
 
-                                                    {/* 3. Link */}
                                                     <TouchableOpacity
                                                         style={styles.viewMarketBtn}
                                                         onPress={() => {
@@ -453,7 +461,7 @@ export default function DashboardScreen() {
                                                             }
                                                         }}
                                                     >
-                                                        <Text style={styles.viewMarketText}>View on Polymarket</Text>
+                                                        <Text style={styles.viewMarketText}>前往 Polymarket 查看</Text>
                                                         <Ionicons name="open-outline" size={14} color="#a1a1aa" />
                                                     </TouchableOpacity>
                                                 </View>
@@ -467,48 +475,43 @@ export default function DashboardScreen() {
                 </View>
 
                 {/* Footer */}
-                <Text style={styles.footerVersion}>Believer System V5.3</Text>
+                <Text style={styles.footerVersion}>Believer System V5.4 (Traditional Chinese)</Text>
             </ScrollView>
 
-            {/* Notification Panel Overlay */}
-            {
-                showNotifications && (
-                    <View style={styles.notificationOverlay}>
-                        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={() => setShowNotifications(false)} />
-                        <View style={styles.drawerPanel}>
-                            <Text style={styles.drawerTitle}>通知中心</Text>
-                            <View style={styles.notificationItem}>
-                                <View style={styles.notifHeader}>
-                                    <View style={[styles.dotSmall, { backgroundColor: '#3b82f6' }]} />
-                                    <Text style={styles.notifType}>SYSTEM</Text>
-                                </View>
-                                <Text style={styles.notifContent}>UI Update 5.3: Narrative Progress bar added.</Text>
-                                <Text style={styles.notifTime}>Just now</Text>
+            {/* Notification Panel */}
+            {showNotifications && (
+                <View style={styles.notificationOverlay}>
+                    <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={() => setShowNotifications(false)} />
+                    <View style={styles.drawerPanel}>
+                        <Text style={styles.drawerTitle}>通知中心</Text>
+                        <View style={styles.notificationItem}>
+                            <View style={styles.notifHeader}>
+                                <View style={[styles.dotSmall, { backgroundColor: '#3b82f6' }]} />
+                                <Text style={styles.notifType}>SYSTEM</Text>
                             </View>
+                            <Text style={styles.notifContent}>UI V5.4 全中文化版本已上線。</Text>
+                            <Text style={styles.notifTime}>Just now</Text>
                         </View>
                     </View>
-                )
-            }
+                </View>
+            )}
 
-            {/* Settings Dropdown */}
+            {/* Settings */}
             {showSettings && (
                 <>
                     <TouchableOpacity style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 }} activeOpacity={1} onPress={() => setShowSettings(false)} />
                     <View style={styles.settingsOverlay}>
                         <View style={[styles.settingsItem, { borderBottomWidth: 1, borderBottomColor: '#27272a', paddingBottom: 16, marginBottom: 8 }]}>
                             <View style={{ flex: 1 }}>
-                                <Text style={{ color: '#71717a', fontSize: 10, marginBottom: 4 }}>DISPLAY NAME</Text>
+                                <Text style={{ color: '#71717a', fontSize: 10, marginBottom: 4 }}>顯示名稱</Text>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                                     <Text style={{ color: 'white', fontWeight: '600', fontSize: 14 }}>{user?.name || 'Believer'}</Text>
                                 </View>
                             </View>
                         </View>
-
                         <TouchableOpacity style={styles.settingsItem} onPress={handleLogout}>
                             <Text style={[styles.settingsItemText, { color: '#ef4444' }]}>登出</Text>
-                            <Ionicons name="log-out-outline" size={18} color="#ef4444" />
                         </TouchableOpacity>
-
                         <TouchableOpacity style={[styles.settingsItem, { borderTopWidth: 1, borderTopColor: '#27272a', paddingTop: 12 }]} onPress={handleResetData}>
                             <Text style={[styles.settingsItemText, { color: '#ef4444', fontSize: 12 }]}>重置使用者數據 (Debug)</Text>
                         </TouchableOpacity>
@@ -564,15 +567,16 @@ const styles = StyleSheet.create({
     marketAnchor: {
         marginTop: 24,
         marginBottom: 24,
+        alignItems: 'center', // Centered BTC
     },
     anchorValue: {
-        fontSize: 32,
+        fontSize: 36,
         fontWeight: '800',
         color: '#ffffff',
-        letterSpacing: -0.5,
+        letterSpacing: -1,
     },
     btcChange: {
-        fontSize: 14,
+        fontSize: 15,
         marginTop: 4,
         fontWeight: '600',
     },
@@ -582,7 +586,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#27272A',
         padding: 24,
-        marginBottom: 32,
+        marginBottom: 24,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
@@ -607,40 +611,36 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#FFFFFF',
     },
-    indexMeter: {
-        marginBottom: 24,
-        alignItems: 'flex-start',
-    },
     indexValue: {
-        fontSize: 56,
         fontWeight: '800',
-        letterSpacing: -2,
-        lineHeight: 60,
+        letterSpacing: -1,
     },
     progressSection: {
         marginTop: 8,
     },
     progressLabel: {
-        fontSize: 12,
+        fontSize: 14,
         fontWeight: '700',
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-        marginBottom: 8,
+        letterSpacing: 0.5,
     },
     progressBar: {
         flexDirection: 'row',
         height: 8,
         borderRadius: 4,
         overflow: 'hidden',
-        gap: 2,
+        gap: 3,
         marginBottom: 16,
     },
     progressBlock: {
         flex: 1,
         backgroundColor: '#27272A',
+        borderRadius: 2,
     },
     progressContext: {
-        marginTop: 8,
+        marginTop: 16,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderTopColor: '#27272A',
     },
     contextTitle: {
         fontSize: 12,
@@ -651,45 +651,15 @@ const styles = StyleSheet.create({
     contextItem: {
         fontSize: 14,
         color: '#D4D4D8',
-        marginBottom: 6,
-        lineHeight: 20,
-    },
-    dynamicsBox: {
-        marginTop: 32,
-        paddingTop: 24,
-        borderTopWidth: 1,
-        borderTopColor: '#27272A',
-    },
-    dynamicsLabel: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#A1A1AA',
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-    },
-    dynamicItem: {
-        marginBottom: 12,
-    },
-    dynamicChange: {
-        fontSize: 14,
-        color: '#E4E4E7',
-        fontWeight: '600',
-        marginBottom: 4,
-    },
-    dynamicInterpret: {
-        fontSize: 13,
-        color: '#A1A1AA',
-    },
-    dynamicImpact: {
-        fontSize: 13,
-        color: '#71717A',
-        marginTop: 2,
+        marginBottom: 8,
+        lineHeight: 22,
     },
     sectionTitle: {
         fontSize: 18,
         fontWeight: '700',
         color: '#ffffff',
         marginBottom: 16,
+        marginTop: 8,
     },
     topicCard: {
         backgroundColor: '#18181b',
@@ -744,53 +714,6 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#fbbf24',
     },
-    topicSource: {
-        fontSize: 10,
-        color: '#52525b',
-        marginTop: 2,
-        textTransform: 'uppercase',
-    },
-    topicDetails: {
-        marginTop: 16,
-        paddingTop: 16,
-        borderTopWidth: 1,
-        borderTopColor: '#27272a',
-    },
-    detailRow: {
-        flexDirection: 'row',
-        marginBottom: 16,
-    },
-    detailItem: {
-        flex: 1,
-    },
-    detailLabel: {
-        fontSize: 11,
-        color: '#71717a',
-        marginBottom: 4,
-        textTransform: 'uppercase',
-    },
-    detailValue: {
-        fontSize: 14,
-        color: '#e4e4e7',
-        fontWeight: '500',
-    },
-    outcomesContainer: {
-        marginBottom: 16,
-    },
-    outcomeRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 8,
-    },
-    outcomeText: {
-        fontSize: 13,
-        color: '#d4d4d8',
-    },
-    outcomeProb: {
-        fontSize: 13,
-        color: '#fbbf24',
-        fontWeight: '600',
-    },
     viewMarketBtn: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -804,9 +727,6 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#e4e4e7',
         fontWeight: '500',
-    },
-    expandedContent: {
-        // Animation container
     },
     footerVersion: {
         marginTop: 32,
@@ -878,7 +798,7 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: 60,
         right: 24,
-        width: 220,
+        width: 200,
         backgroundColor: '#18181b',
         borderRadius: 12,
         borderWidth: 1,
