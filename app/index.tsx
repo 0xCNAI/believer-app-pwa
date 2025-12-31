@@ -239,7 +239,24 @@ export default function DashboardScreen() {
                                 setAiSummary(null);
                                 try {
                                     const { generateMarketSummary } = require('@/services/aiService');
-                                    const summary = await generateMarketSummary();
+                                    // V5.1 Logic: Pass Top 3 by Delta
+                                    // We need to calculate this from 'beliefs' which is in scope
+                                    const top3 = beliefs
+                                        .filter(b => BELIEVER_SIGNALS.some(s => s.id === b.id))
+                                        .sort((a, b) => {
+                                            const deltaA = Math.abs(a.currentProbability - (a.previousProbability ?? a.currentProbability));
+                                            const deltaB = Math.abs(b.currentProbability - (b.previousProbability ?? b.currentProbability));
+                                            return deltaB - deltaA;
+                                        })
+                                        .slice(0, 3)
+                                        .map(b => ({
+                                            title: b.signal.shortTitle || b.signal.title,
+                                            prob: Math.round(b.currentProbability * 100),
+                                            delta: Math.abs(b.currentProbability - (b.previousProbability ?? b.currentProbability)),
+                                            id: b.id
+                                        }));
+
+                                    const summary = await generateMarketSummary(top3);
                                     setAiSummary(summary);
                                 } catch (e: any) {
                                     console.error('AI Error:', e);
@@ -267,28 +284,37 @@ export default function DashboardScreen() {
                         </View>
                     )}
 
-                    {/* Signal Bullets */}
+                    {/* Signal Bullets (V5.1: Top 3 by Delta) */}
                     <View>
-                        {beliefs.filter(b => !b.id.startsWith('custom')).slice(0, 3).map((belief) => {
-                            const signal = belief.signal;
-                            const points = signal ? calculateNarrativeScore(signal, 5) : 0;
-                            const prob = Math.round(belief.currentProbability * 100);
+                        {beliefs
+                            .filter(b => !b.id.startsWith('custom'))
+                            .sort((a, b) => {
+                                const deltaA = Math.abs(a.currentProbability - (a.previousProbability ?? a.currentProbability));
+                                const deltaB = Math.abs(b.currentProbability - (b.previousProbability ?? b.currentProbability));
+                                return deltaB - deltaA;
+                            })
+                            .slice(0, 3)
+                            .map((belief) => {
+                                const signal = belief.signal;
+                                const points = signal ? calculateNarrativeScore(signal, 5) : 0;
+                                const prob = Math.round(belief.currentProbability * 100);
 
-                            let statusText = '中性 (Neutral)';
-                            if (points > 3) statusText = '強力支撐 (Strong)';
-                            else if (points > 1.5) statusText = '累積中 (Building)';
-                            else statusText = '疲弱 (Weak)';
+                                // V5.1 Status Text
+                                let statusText = '條件尚未成立 (Not Met)';
+                                const score = calculateNarrativeScore(signal, 5); // Use correct function
+                                if (score > 3.0) statusText = '條件成立 (Met)';
+                                else if (score > 1.5) statusText = '條件累積中 (Accumulating)';
 
-                            return (
-                                <View key={belief.id} style={{ flexDirection: 'row', marginBottom: 6, alignItems: 'flex-start' }}>
-                                    <Text style={{ color: '#71717a', fontSize: 13, marginRight: 6 }}>•</Text>
-                                    <Text style={{ color: '#d4d4d8', fontSize: 13, flex: 1, lineHeight: 20 }}>
-                                        <Text style={{ fontWeight: '600', color: '#a1a1aa' }}>{signal?.title.split(' ')[0]}:</Text>
-                                        {' '}{statusText} ({prob}%)
-                                    </Text>
-                                </View>
-                            );
-                        })}
+                                return (
+                                    <View key={belief.id} style={{ flexDirection: 'row', marginBottom: 6, alignItems: 'flex-start' }}>
+                                        <Text style={{ color: '#71717a', fontSize: 13, marginRight: 6 }}>•</Text>
+                                        <Text style={{ color: '#d4d4d8', fontSize: 13, flex: 1, lineHeight: 20 }}>
+                                            <Text style={{ fontWeight: '600', color: '#a1a1aa' }}>{signal?.shortTitle || signal?.title}:</Text>
+                                            {' '}{statusText} ({prob}%)
+                                        </Text>
+                                    </View>
+                                );
+                            })}
                     </View>
                 </View>
 
@@ -300,6 +326,8 @@ export default function DashboardScreen() {
 
 
                     {/* Signal Cards */}
+                    {/* Signal Cards (V5.1: Top 3 by Delta) */}
+                    {/* Signal Cards (Restored: Show All) */}
                     {beliefs.filter(b => BELIEVER_SIGNALS.some(s => s.id === b.id)).map((belief) => {
                         const signal = belief.signal;
                         if (!signal) return null;
@@ -358,6 +386,18 @@ export default function DashboardScreen() {
                             } catch (e) { }
                         }
 
+                        // V5.1 Semantic Status Text
+                        let statusText = '條件尚未成立 (Not Met)';
+                        let statusColor = '#ef4444'; // Red default
+
+                        if (contribution > 3.0) {
+                            statusText = '條件成立 (Met)';
+                            statusColor = '#10b981'; // Green
+                        } else if (contribution > 1.5) {
+                            statusText = '條件累積中 (Accumulating)';
+                            statusColor = '#eab308'; // Yellow
+                        }
+
                         return (
                             <TouchableOpacity
                                 key={belief.id}
@@ -382,10 +422,11 @@ export default function DashboardScreen() {
                                                 <View style={styles.topicLeft}>
                                                     <View style={[styles.topicDot, { backgroundColor: '#52525b' }]} />
                                                     <View style={styles.topicInfo}>
-                                                        <Text style={styles.topicTitle}>{signal.title}</Text>
+                                                        <Text style={styles.topicTitle}>{signal.shortTitle || signal.title}</Text>
                                                         {!isExpanded && (
                                                             <Text style={styles.topicDesc}>
-                                                                {isFed && fedStats ? `Cut ${fedStats.cut}% / Hold ${fedStats.hold}%` : `機率: ${prob}%`}
+                                                                <Text style={{ color: statusColor, fontWeight: '600' }}>{statusText}</Text>
+                                                                <Text style={{ color: '#52525b' }}> ({isFed && fedStats ? `Cut ${fedStats.cut}%` : `${prob}%`})</Text>
                                                             </Text>
                                                         )}
                                                     </View>

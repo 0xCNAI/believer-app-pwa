@@ -10,6 +10,7 @@ export type ScoringType = 'binary_good' | 'binary_bad' | 'fed_cut';
 export interface NarrativeSignal {
     id: string;
     title: string;
+    shortTitle: string; // V5.1 Concise Title for Market Dynamics
     description: string;
     scoring: ScoringType;
     source: {
@@ -27,6 +28,7 @@ export const BELIEVER_SIGNALS: NarrativeSignal[] = [
     {
         id: 'fed_decision',
         title: 'Fed 利率決策 (Jan 2025)',
+        shortTitle: 'Fed 利率',
         description: '多選項市場：(Cut < 4.25% vs Hold 4.25-4.5%)',
         scoring: 'fed_cut',
         category: 'Macro',
@@ -39,6 +41,7 @@ export const BELIEVER_SIGNALS: NarrativeSignal[] = [
     {
         id: 'us_recession',
         title: '美國衰退風險 (2025)',
+        shortTitle: '美國衰退',
         description: '風險事件：(1 - P(Yes)) 代表「無衰退」',
         scoring: 'binary_bad',
         category: 'Macro',
@@ -50,6 +53,7 @@ export const BELIEVER_SIGNALS: NarrativeSignal[] = [
     {
         id: 'gov_shutdown',
         title: '政府停擺風險 (Jan 31)',
+        shortTitle: '政府停擺',
         description: '風險事件：(1 - P(Yes)) 代表「正常運作」',
         scoring: 'binary_bad',
         category: 'Political',
@@ -61,6 +65,7 @@ export const BELIEVER_SIGNALS: NarrativeSignal[] = [
     {
         id: 'us_debt_default',
         title: '美債違約風險 (2027)',
+        shortTitle: '美債違約',
         description: '風險事件：(1 - P(Yes)) 代表「無違約」',
         scoring: 'binary_bad',
         category: 'Political',
@@ -72,6 +77,7 @@ export const BELIEVER_SIGNALS: NarrativeSignal[] = [
     {
         id: 'btc_reserve',
         title: '比特幣戰略儲備 (2025)',
+        shortTitle: 'BTC儲備',
         description: '正向事件：P(Yes) 代表「主權採用」',
         scoring: 'binary_good',
         category: 'Structural',

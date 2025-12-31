@@ -11,6 +11,7 @@ export interface Belief {
     id: string;
     signal: NarrativeSignal; // Renamed from marketEvent for clarity
     currentProbability: number;
+    previousProbability?: number; // V5.1 Delta Tracking
     addedAt: number;
 }
 
@@ -98,6 +99,7 @@ export const useBeliefStore = create<BeliefState>()(
                                     id: candidate.id,
                                     signal: candidate,
                                     currentProbability: prob,
+                                    previousProbability: prob, // Init with same value (delta = 0)
                                     addedAt: Date.now(),
                                 });
                                 existingIds.add(candidate.id);
@@ -151,11 +153,18 @@ export const useBeliefStore = create<BeliefState>()(
                     nextBeliefs = nextBeliefs.map(belief => {
                         const freshSignal = freshEvents.find(e => e.id === belief.id);
                         if (freshSignal) {
-                            return {
-                                ...belief,
-                                currentProbability: getPositiveProbability(freshSignal),
-                                signal: freshSignal
-                            };
+                            const newProb = getPositiveProbability(freshSignal);
+                            // V5.1 Delta Logic
+                            const oldProb = belief.currentProbability;
+                            if (Math.abs(newProb - oldProb) > 0.001) {
+                                return {
+                                    ...belief,
+                                    signal: freshSignal,
+                                    previousProbability: oldProb,
+                                    currentProbability: newProb
+                                };
+                            }
+                            return { ...belief, signal: freshSignal };
                         }
                         return belief;
                     });

@@ -1,89 +1,56 @@
-# Believer Market Signals Logic (V4.2)
+# 市場動態 (Market Dynamics) 邏輯說明
 
-這份文件詳細說明了 Believer 系統如何抓取、過濾與計算市場動態指標。我們的目標是確保數據精確，並解決 "0% / 100%" 的顯示問題。
+本文件說明 Dashboard 首頁中「市場動態」區塊的顯示邏輯與計算方式。
 
-## 1. 核心邏輯 (Core Philosophy)
+## 1. 資料來源與篩選
 
-*   **資料來源**: Polymarket (Gamma API)。
-*   **搜尋策略**: 優先使用 `tag_slug` (標籤) 鎖定特定主題，確保不會抓到不相關的市場。
-*   **過濾機制**: 
-    *   **年份鎖定**: 對於宏觀長期風險（如衰退），強制鎖定 `2026` 或 `2027`，避免抓到即將過期的 2024/2025 市場。
-    *   **流動性過濾**: 透過 API 排序 (Sort by Volume) 取交易量最大的市場，確保數據具代表性。
-    *   **格式正規化**: 統一處理 API 回傳的 `snake_case` 與 `camelCase`，避免 JavaScript 讀不到數值導致的 0/100% 錯誤。
+該區塊顯示 **前 3 個** 系統預設的「敘事信號 (Narrative Signals)」。
 
-## 2. 指標定義與計算方式 (Signal Definitions)
+*   **篩選條件**: 排除自定義信號 (`!id.startsWith('custom')`)。
+*   **排序/選取**: 取列表中的前 3 個信號 (`slice(0, 3)`).
+*   **資料來源**: 來自 `services/marketData.ts` 定義的 `BELIEVER_SIGNALS`。
 
-我們目前追蹤以下 5 個關鍵指標，每個指標的抓取邏輯如下：
+## 2. 顯示格式
 
-### A. Fed 利率決策 (Fed Interest Rates)
-*   **ID**: `fed_decision_series`
-*   **搜尋標籤**: `fed`, `interest-rates`
-*   **選取邏輯**: 取交易量最高的單一市場（通常是最近期的 FOMC 會議）。
-*   **機率計算**: 
-    *   這是一個 **多選項 (Multi-outcome)** 市場。
-    *   我們不使用單一的 Yes/No。
-    *   **降息 (Cut)**: 加總包含 "Cut", "Decrease" 關鍵字的選項機率。
-    *   **維持 (Hold)**: 加總 "Maintain", "Unchanged" 的機率。
-    *   **升息 (Hike)**: 加總 "Increase", "Hike" 的機率。
-*   **顯示方式**: 優先顯示 "Cut X%" (若降息是主軸)，點擊後可看到完整分佈。
+每一行顯示一個信號，包含標題簡稱、狀態描述與當前機率。
 
-### B. 美國經濟衰退 (US Recession)
-*   **ID**: `us_recession_end_2026`
-*   **搜尋標籤**: `recession`
-*   **強制關鍵字**: `2026` (鎖定長線風險)
-*   **排除關鍵字**: `canada`, `uk`, `europe`, `germany` (排除其他國家)
-*   **機率計算**: 
-    *   這是一個 **二元 (Binary)** 市場 (Yes/No)。
-    *   **正向分數 (Positive Score)**: `1 - P(Yes)`。
-    *   例如：若市場認為 2026 衰退機率為 28% (P_Yes = 0.28)，則系統顯示「無衰退機率」為 72%。
-*   **修正重點**: 確保前端能正確解析 `outcome_prices` 陣列，避免 fallback 到 0。
+### 格式範例
+> **[標題首詞]: [狀態描述] ([機率]%)**
+> *範例: 比特幣戰略儲備: 疲弱 (Weak) (0%)*
 
-### C. 美國政府停擺 (Gov Shutdown)
-*   **ID**: `gov_funding_lapse_jan31_2026`
-*   **搜尋標籤**: `shutdown`, `government`
-*   **機率計算**: `1 - P(Yes)` (政府正常運作機率)。
+### 標題處理 (Truncation)
+為了保持版面簡潔，程式碼僅顯示標題的 **第一個單詞 (空格分隔)**。
+*   程式碼: `signal?.title.split(' ')[0]`
+*   *注意*: 如果標題是中文且沒有空格（例如 "美國衰退風險"），則會顯示全名。如果有空格（例如 "Fed 利率決策"），則只顯示 "Fed"。
 
-### D. 美債違約 (US Debt Default)
-*   **ID**: `us_default_by_2027`
-*   **搜尋標籤**: `default`, `debt`
-*   **機率計算**: `1 - P(Yes)` (無違約機率)。
+## 3. 狀態判斷邏輯 (Status Logic)
 
-### E. 比特幣戰略儲備 (BTC Strategic Reserve)
-*   **ID**: `us_btc_reserve_before_2027`
-*   **搜尋標籤**: `bitcoin`, `reserve`
-*   **機率計算**: `P(Yes)` (直接使用 Yes 機率)。
-*   **備註**: 這是唯一的「正向事件」，機率越高越好。
+狀態文字（如 "強力支撐"、"疲弱"）是根據 **敘事分數 (Narrative Score)** 動態決定的。
 
----
+### 計算公式
+敘事分數計算 (於 `calculateNarrativeScore`):
+$$ Score = 25 \times Weight \times Probability $$
+*   **Weight**: $1 / 5 = 0.2$ (假設總信號數為 5)
+*   **Max Score**: 5.0 分 (當機率為 100% 時)
 
-## 3. 0% / 100% Bug 的根源與解法
+### 狀態閾值 (Thresholds)
 
-### 問題 (Root Cause)
-Polymarket API 回傳的 JSON 欄位是 `outcome_prices` (底線)，但我們的前端代碼在某些地方預期 `outcomePrices` (駝峰)。
-當代碼讀取 `market.outcomePrices` 時得到 `undefined`，經過 `parseFloat` 或 fallback 邏輯後變成了 `0` 或 `1` (如果是 Yes/No)。
+| 敘事分數 (Points) | 對應機率 (約略) | 顯示狀態 (Status Text) | 顏色隱喻 |
+| :--- | :--- | :--- | :--- |
+| **> 3.0** | Probability > 60% | **強力支撐 (Strong)** | 🟢 強勢 |
+| **> 1.5** | Probability > 30% | **累積中 (Building)** | 🟡 中性/醞釀 |
+| **<= 1.5** | Probability <= 30% | **疲弱 (Weak)** | 🔴 弱勢 |
 
-### 解法 (Solution)
-在 `services/realApi.ts` 中實作一個 **正規化層 (Normalization Layer)**：
+*程式碼參考 (`app/index.tsx`):*
 ```typescript
-const _normalizeMarketEvent = (raw: any) => ({
-    // ...
-    outcomePrices: raw.outcome_prices || raw.outcomePrices, // 雙重檢查
-    outcomes: raw.outcomes, // 確保是陣列
-    // ...
-});
+let statusText = '中性 (Neutral)';
+if (points > 3) statusText = '強力支撐 (Strong)';
+else if (points > 1.5) statusText = '累積中 (Building)';
+else statusText = '疲弱 (Weak)';
 ```
-這已在最新的 commit 中實作，預期能解決所有二元市場的顯示問題。
 
-### Fed 系列市場的特殊問題
-使用者回報 Fed 市場顯示 "Yes/No 0%/100%"。這表示系統抓到了一個 Fed 市場，但誤判它為二元市場，或者抓到了錯誤的 Fed 相關市場。
-**修正計劃**: 
-1. 檢查 `fed_decision_series` 抓到的具體市場 ID。
-2. 確保 `marketData.ts` 中的 `fetchUnifiedMarkets` 針對 Fed 市場正確保留了 `outcomes` 陣列，而不是被後續的聚合邏輯壓成 Yes/No。
+## 4. 已知顯示異常 (Troubleshooting)
 
----
-
-## 4. 下一步行動 (Next Steps)
-
-1.  **確認正規化**: 確保所有 API 回傳都經過 `_normalizeMarketEvent`。
-2.  **Fed 邏輯優化**: 專門檢查 Fed 系列的處理邏輯，確保它保留多選項數據。
-3.  **UI 驗證**: 確保 Dashboard 能顯示 "Cut 25% · Hold 75%" 這種細膩的數據，而不是單一數字。
+如果在 UI 上看到標題為空 (例如 `: 疲弱 (Weak)`)，通常是因為：
+1.  **資料尚未載入**: `signal` 物件存在但 `title` 欄位為空。
+2.  **API 對應失敗**: `fetchSignalsByIds` 未能正確從 Polymarket 獲取資料，導致使用了預設空值或舊緩存。
