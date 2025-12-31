@@ -21,66 +21,76 @@ export const generateMarketSummary = async (): Promise<string> => {
         return "請設定 Gemini API Key (於專案根目錄建立 .env 檔案並設定 EXPO_PUBLIC_GEMINI_API_KEY)。";
     }
 
-    // 2. Format Data for AI
-    const eventsDescription = trackedEvents.map(b => {
+    // 2. Format Data for AI (Focus on keywords for search)
+    const keywords = trackedEvents.map(b => b.signal?.title).filter(Boolean).join(', ');
+    const context = trackedEvents.map(b => {
         const signal = b.signal;
-        let range = 'N/A';
+        let probDisplay = 'N/A';
         try {
             if (signal) {
                 const prob = Math.round(getPositiveProbability(signal) * 100);
-                range = `${prob}%`;
+                probDisplay = `${prob}%`;
             }
-        } catch (e) { }
-
-        // Determine if it's a risk event (bad) or opportunity (good)
-        const typeLabel = signal.scoring === 'binary_bad' ? '(Risk Metric: Low % is Good)' : '(Positive Probability)';
-
-        return `- Signal: ${signal.title}\n  Score/Prob: ${range} ${typeLabel}\n  Context: ${signal.description}`;
-    }).join('\n\n');
+        } catch { }
+        return `${signal.title} (Current Prob: ${probDisplay})`;
+    }).join('; ');
 
     const prompt = `
-    You are a professional financial analyst for the "Believer" system.
-    Analyze the following prediction market signals and their probabilities.
-    provide a concise (max 3 sentences) summary of the current market sentiment and potential risks.
-    Focus on the "Narrative" and "Macro" implications.
-    Logic: 
-    - For Risk Metrics (binary_bad), HIGH probability means HIGH RISK (Bad).
-    - For Opportunity Metrics (binary_good/fed_cut), HIGH probability means HIGH CONVICTION (Good/Consensus).
+    You are an expert financial news researcher.
     
-    Current Signals:
-    ${eventsDescription}
+    My focus list: ${keywords}
+    Current Prediction Markets Data: ${context}
+
+    Your Task:
+    1. Use Google Search to find the *latest* news (last 7 days) regarding these specific topics.
+    2. Synthesize the Prediction Market data with the Real News.
+    3. Provide a summary in exactly 3 key points (Traditional Chinese).
     
-    Output directly in Traditional Chinese (繁體中文).
+    Format:
+    1. [事件] ... (引用新聞)
+    2. [市場] ... (結合預測數據)
+    3. [風險] ... (潛在影響)
+
+    Keep it concise. Max 3 sentences per point.
     `;
 
-    // 3. Call Gemini API via Fetch
+    // 3. Call Gemini API via Fetch with proper error handling
     try {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
 
+        console.log('[AI Service] Requesting Gemini with Search Grounding...');
+
         const response = await fetch(url, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                contents: [{
-                    parts: [{ text: prompt }]
-                }]
+                contents: [{ parts: [{ text: prompt }] }],
+                tools: [{ google_search: {} }] // Enable Grounding
             })
         });
 
         if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.error?.message || 'Gemini API Error');
+            const errBody = await response.json();
+            const errMsg = errBody.error?.message || response.statusText;
+            console.error('[AI Service] API Error Details:', JSON.stringify(errBody, null, 2));
+            throw new Error(`Gemini API Error: ${errMsg}`);
         }
 
         const data = await response.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
-        return text || "無法產生分析結果。";
+        // Extract text and grounding metadata (optional to display sources, but for now just text)
+        const candidate = data.candidates?.[0];
+        const text = candidate?.content?.parts?.[0]?.text;
+
+        if (!text) {
+            console.error('[AI Service] Empty response:', data);
+            return "AI 未返回分析結果。";
+        }
+
+        return text;
 
     } catch (error: any) {
-        console.error('[AI Service] Error:', error);
-        return "AI 分析暫時無法使用，請檢查 API Key 或網路連線。";
+        console.error('[AI Service] Network/Logic Error:', error);
+        return `分析失敗: ${error.message}`;
     }
 };
