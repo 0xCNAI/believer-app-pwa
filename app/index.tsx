@@ -202,17 +202,15 @@ export default function DashboardScreen() {
                     )}
                 </View>
 
-                {/* 2. CARD 1: Reversal Index (Restored Core Metric) */}
+                {/* 2. CARD 1: Reversal Index (Hero Style) */}
                 <View style={styles.card}>
-                    <View style={styles.cardHeader}>
-                        <View>
-                            <Text style={styles.cardHeaderLabel}>Reversal Index</Text>
-                            <Text style={styles.cardHeaderTitle}>反轉指數</Text>
-                        </View>
-                        {/* Big Number */}
+                    <View style={{ alignItems: 'center', marginBottom: 24 }}>
+                        <Text style={styles.cardHeaderLabel}>REVERSAL INDEX</Text>
+                        <Text style={[styles.cardHeaderTitle, { fontSize: 24, marginBottom: 16 }]}>反轉指數</Text>
+                        {/* Hero Number */}
                         <Text style={[styles.indexValue, {
                             color: reversalIndex >= 60 ? '#22c55e' : (reversalIndex >= 40 ? '#f97316' : '#ef4444'),
-                            fontSize: 32, lineHeight: 36
+                            fontSize: 96, lineHeight: 100, marginBottom: 8
                         }]}>
                             {reversalIndex.toFixed(0)}
                         </Text>
@@ -238,16 +236,18 @@ export default function DashboardScreen() {
 
                             return (
                                 <View style={styles.progressSection}>
-                                    {/* Title & Tags */}
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                                        <Text style={[styles.progressLabel, { color: activeColor, marginBottom: 0 }]}>
+                                    {/* Centered Title & Tags */}
+                                    <View style={{ alignItems: 'center', gap: 8, marginBottom: 24 }}>
+                                        <Text style={[styles.progressLabel, { color: activeColor, fontSize: 16, marginBottom: 4 }]}>
                                             {copy.title}
                                         </Text>
-                                        {copy.tags?.map((tag, i) => (
-                                            <View key={i} style={{ backgroundColor: 'rgba(39, 39, 42, 0.5)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: '#27272A' }}>
-                                                <Text style={{ color: '#A1A1AA', fontSize: 10 }}>{tag}</Text>
-                                            </View>
-                                        ))}
+                                        <View style={{ flexDirection: 'row', gap: 6 }}>
+                                            {copy.tags?.map((tag, i) => (
+                                                <View key={i} style={{ backgroundColor: 'rgba(39, 39, 42, 0.5)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#27272A' }}>
+                                                    <Text style={{ color: '#A1A1AA', fontSize: 11 }}>{tag}</Text>
+                                                </View>
+                                            ))}
+                                        </View>
                                     </View>
 
                                     {/* Progress Bar (8 blocks) */}
@@ -258,8 +258,8 @@ export default function DashboardScreen() {
                                         })}
                                     </View>
 
-                                    {/* One Liner */}
-                                    <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '700', lineHeight: 22, marginVertical: 8 }}>
+                                    {/* One Liner - Centered */}
+                                    <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700', lineHeight: 24, marginVertical: 12, textAlign: 'center' }}>
                                         {copy.oneLiner}
                                     </Text>
 
