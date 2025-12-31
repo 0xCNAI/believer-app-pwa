@@ -145,17 +145,38 @@ export const useBeliefStore = create<BeliefState>()(
 
             updateBeliefs: (freshEvents) => {
                 set((state) => {
-                    const updatedBeliefs = state.beliefs.map(belief => {
+                    let nextBeliefs = [...state.beliefs];
+
+                    // 1. Update existing beliefs
+                    nextBeliefs = nextBeliefs.map(belief => {
                         const freshSignal = freshEvents.find(e => e.id === belief.id);
                         if (freshSignal) {
-                            const newProb = getPositiveProbability(freshSignal);
-                            // Only update if changed significantly? 
-                            // Or always update to keep UI fresh.
-                            return { ...belief, currentProbability: newProb, signal: freshSignal };
+                            return {
+                                ...belief,
+                                currentProbability: getPositiveProbability(freshSignal),
+                                signal: freshSignal
+                            };
                         }
                         return belief;
                     });
-                    return { beliefs: updatedBeliefs };
+
+                    // 2. Auto-Heal: Add missing core signals (if not discarded)
+                    // This fixes the bug where bars disappear if store is empty on load.
+                    freshEvents.forEach(fresh => {
+                        const exists = nextBeliefs.some(b => b.id === fresh.id);
+                        const isDiscarded = state.discardedIds.includes(fresh.id);
+
+                        if (!exists && !isDiscarded) {
+                            nextBeliefs.push({
+                                id: fresh.id,
+                                signal: fresh,
+                                currentProbability: getPositiveProbability(fresh),
+                                addedAt: Date.now()
+                            });
+                        }
+                    });
+
+                    return { beliefs: nextBeliefs };
                 });
             },
 

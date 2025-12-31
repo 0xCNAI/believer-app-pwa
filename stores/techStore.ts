@@ -123,7 +123,17 @@ export const useTechStore = create<TechState>()(
                 } catch (e) { }
             },
 
-            fetchAndEvaluate: async () => {
+            fetchAndEvaluate: async (force = false) => {
+                const state = get();
+                // 1. Freshness Check (5 minutes)
+                // If data is fresh and we're not forcing, skip.
+                // This prevents "reset to 0" if API fails on reload but we have cache.
+                const now = Date.now();
+                if (!force && state.lastEvaluated && (now - state.lastEvaluated < 300000)) {
+                    console.log('[TechStore] Skipping fetch, data is fresh.');
+                    return;
+                }
+
                 console.log('[TechStore] fetchAndEvaluate triggered');
                 await get().evaluateAll();
             },
