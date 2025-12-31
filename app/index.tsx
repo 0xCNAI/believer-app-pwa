@@ -296,14 +296,15 @@ export default function DashboardScreen() {
                             .slice(0, 3)
                             .map((belief) => {
                                 const signal = belief.signal;
-                                const points = signal ? calculateNarrativeScore(signal, 5) : 0;
+                                if (!signal) return null;
+
+                                const points = calculateNarrativeScore(signal, 5);
                                 const prob = Math.round(belief.currentProbability * 100);
 
                                 // V5.1 Status Text
                                 let statusText = '條件尚未成立 (Not Met)';
-                                const score = calculateNarrativeScore(signal, 5); // Use correct function
-                                if (score > 3.0) statusText = '條件成立 (Met)';
-                                else if (score > 1.5) statusText = '條件累積中 (Accumulating)';
+                                if (points > 3.0) statusText = '條件成立 (Met)';
+                                else if (points > 1.5) statusText = '條件累積中 (Accumulating)';
 
                                 return (
                                     <View key={belief.id} style={{ flexDirection: 'row', marginBottom: 6, alignItems: 'flex-start' }}>
