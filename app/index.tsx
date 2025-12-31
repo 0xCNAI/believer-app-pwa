@@ -1,5 +1,6 @@
+
 import { resolveReversalCopy } from '@/services/copyService';
-import { BELIEVER_SIGNALS, getPositiveProbability } from '@/services/marketData';
+import { BELIEVER_SIGNALS, getPositiveProbability, calculateNarrativeScore } from '@/services/marketData';
 import { useBeliefStore } from '@/stores/beliefStore';
 import { useUserStore } from '@/stores/userStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -61,15 +62,10 @@ export default function DashboardScreen() {
     const [aiSummary, setAiSummary] = useState<string | null>(null);
     const scaleAnim = useRef(new Animated.Value(1)).current;
 
-    // ...
-
-    // ADD NEW STYLES HERE
-    const stickAnim = useRef(new Animated.Value(0)).current; // 0 = resting, 1 = hit
+    const stickAnim = useRef(new Animated.Value(0)).current;
 
     const handleFishClick = () => {
         incrementFaith();
-
-        // Haptics with Web Fallback (Trigger on Impact)
         const triggerHaptic = () => {
             if (Platform.OS === 'web') {
                 if (typeof navigator !== 'undefined' && navigator.vibrate) {
@@ -80,54 +76,46 @@ export default function DashboardScreen() {
             }
         };
 
-        // Coordinated Animation: Stick Hit -> Fish Bounce
         Animated.sequence([
-            // 1. Stick swings down (Hit)
             Animated.timing(stickAnim, {
                 toValue: 1,
                 duration: 100,
-                useNativeDriver: Platform.OS !== 'web',
+                // useNativeDriver: Platform.OS !== 'web', // Buggy on some web
+                useNativeDriver: false,
                 easing: Easing.in(Easing.quad),
             }),
-            // 2. Impact! (Stick moves back up + Fish Bounces)
             Animated.parallel([
                 Animated.timing(stickAnim, {
                     toValue: 0,
                     duration: 150,
-                    useNativeDriver: Platform.OS !== 'web',
+                    useNativeDriver: false,
                     easing: Easing.out(Easing.quad),
                 }),
                 Animated.sequence([
                     Animated.timing(scaleAnim, {
                         toValue: 0.9,
                         duration: 50,
-                        useNativeDriver: Platform.OS !== 'web',
+                        useNativeDriver: false,
                     }),
                     Animated.timing(scaleAnim, {
                         toValue: 1,
                         duration: 150,
-                        useNativeDriver: Platform.OS !== 'web',
+                        useNativeDriver: false,
                         easing: Easing.elastic(1.5),
                     })
                 ])
             ])
         ]).start();
 
-        // Trigger haptic slightly after start to sync with impact
         setTimeout(triggerHaptic, 100);
-
         setShowMerit(true);
         setTimeout(() => setShowMerit(false), 500);
     };
 
-    // Debug Log
     console.log('[Dashboard] Rendering. Index:', reversalIndex);
 
-    // 1. BTC Price - Real API with 24h change
     useEffect(() => {
         console.log('[Dashboard] Mount: Fetching BTC Price & refreshing TechStore...');
-
-        // Trigger TechStore update on mount
         try {
             require('@/stores/techStore').useTechStore.getState().fetchAndEvaluate();
         } catch (e) {
@@ -148,12 +136,11 @@ export default function DashboardScreen() {
         };
         fetchBtcPrice();
 
-        // Refresh Beliefs (Polymarkets Data)
         try {
             useBeliefStore.getState().refreshBeliefs();
         } catch (e) { }
 
-        const interval = setInterval(fetchBtcPrice, 60000); // Update every 60s
+        const interval = setInterval(fetchBtcPrice, 60000);
         return () => clearInterval(interval);
     }, []);
 
@@ -163,14 +150,6 @@ export default function DashboardScreen() {
         require('@/stores/techStore').useTechStore.getState().fetchAndEvaluate();
         setTimeout(() => setRefreshing(false), 1500);
     };
-
-    const openSignals = (category: string) => {
-        router.push({ pathname: "/signals", params: { category } });
-    };
-
-    const openTechConfig = () => {
-        router.push('/tech-config');
-    }
 
     const roundedPrice = btcPrice.toLocaleString(undefined, { maximumFractionDigits: 0 });
 
@@ -187,6 +166,63 @@ export default function DashboardScreen() {
         router.replace('/onboarding');
     };
 
+    // V5.3 UI Helper: Narrative Progress Bar
+    const renderNarrativeProgressBar = () => {
+        // Calculate Total Narrative Score
+        const totalScore = beliefs.reduce((sum, b) => {
+            const points = b.signal ? calculateNarrativeScore(b.signal, 5) : 0;
+            return sum + points;
+        }, 0);
+
+        const maxScore = 25;
+        const percent = Math.min(100, (totalScore / maxScore) * 100);
+
+        // Define Stages
+        // 0-8 (0-32%): Risk Dominant
+        // 8-15 (32-60%): Accumulation
+        // 15-22 (60-88%): Brewing
+        // 22-25 (88-100%): Confirmed
+
+        let currentStage = 'Risk Dominant';
+        let stageColor = '#ef4444';
+
+        if (totalScore >= 22) { currentStage = 'Confirmed'; stageColor = '#22c55e'; }
+        else if (totalScore >= 15) { currentStage = 'Brewing'; stageColor = '#eab308'; }
+        else if (totalScore >= 8) { currentStage = 'Accumulation'; stageColor = '#f97316'; }
+
+        return (
+            <View style={{ marginBottom: 24 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <Text style={{ color: '#71717a', fontSize: 12, fontWeight: '600', textTransform: 'uppercase' }}>
+                        Reversal Conditions
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={{ color: stageColor, fontSize: 12, fontWeight: 'bold' }}>{currentStage}</Text>
+                        <Text style={{ color: '#52525b', fontSize: 12 }}>{totalScore.toFixed(1)} / 25.0</Text>
+                    </View>
+                </View>
+
+                {/* Progress Track */}
+                <View style={{ height: 6, backgroundColor: '#27272a', borderRadius: 3, overflow: 'hidden' }}>
+                    <View style={{
+                        width: `${percent}%`,
+                        height: '100%',
+                        backgroundColor: stageColor,
+                        borderRadius: 3
+                    }} />
+                </View>
+
+                {/* Segment Markers (Optional) */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
+                    <Text style={{ color: '#52525b', fontSize: 10 }}>Risk</Text>
+                    <Text style={{ color: '#52525b', fontSize: 10 }}>Accum</Text>
+                    <Text style={{ color: '#52525b', fontSize: 10 }}>Brewing</Text>
+                    <Text style={{ color: '#52525b', fontSize: 10 }}>Confirmed</Text>
+                </View>
+            </View>
+        );
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar style="light" />
@@ -194,417 +230,220 @@ export default function DashboardScreen() {
             {/* Header */}
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.headerBrand}>Believer V1.5</Text>
+                    <Text style={styles.headerBrand}>Believer V5.3</Text>
                 </View>
-                <TouchableOpacity
-                    onPress={() => setShowNotifications(true)}
-                    style={styles.notificationBtn}
-                >
+                <TouchableOpacity onPress={() => setShowNotifications(true)} style={styles.notificationBtn}>
                     <View style={styles.notificationIconWrapper}>
                         <Ionicons name="notifications-outline" size={20} color="white" />
                         <View style={styles.notificationBadge} />
                     </View>
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                    onPress={() => setShowSettings(!showSettings)}
-                    style={[styles.notificationBtn, { marginLeft: 8, borderColor: '#3f3f46' }]}
-                >
+                <TouchableOpacity onPress={() => setShowSettings(!showSettings)} style={[styles.notificationBtn, { marginLeft: 8, borderColor: '#3f3f46' }]}>
                     <Ionicons name="settings-outline" size={18} color="#71717a" />
                 </TouchableOpacity>
             </View >
 
-            <ScrollView
-                contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 100 }}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}
-            >
+            <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 100 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}>
                 {/* BTC Price Header */}
                 <View style={styles.marketAnchor}>
                     <Text style={styles.anchorValue}>BTC ${roundedPrice}</Text>
                     {btc24hChange !== null && (
-                        <Text style={[
-                            styles.btcChange,
-                            { color: btc24hChange >= 0 ? '#22c55e' : '#ef4444' }
-                        ]}>
+                        <Text style={[styles.btcChange, { color: btc24hChange >= 0 ? '#22c55e' : '#ef4444' }]}>
                             {btc24hChange >= 0 ? '+' : ''}{btc24hChange.toFixed(2)}% (24h)
                         </Text>
                     )}
                 </View>
 
-                {/* Core Metric: Reversal Index (V2 Simplified) */}
-                <View style={styles.card}>
+                {/* SECTION 1: MARKET DYNAMICS (AI + State) */}
+                <View style={[styles.card, { marginBottom: 24 }]}>
                     <View style={styles.cardHeader}>
-                        <View>
-                            <Text style={styles.cardHeaderLabel}>Reversal Index</Text>
-                            <Text style={styles.cardHeaderTitle}>反轉指數</Text>
-                        </View>
+                        <Text style={styles.cardHeaderLabel}>Market Dynamics</Text>
+                        <TouchableOpacity
+                            style={{
+                                flexDirection: 'row', alignItems: 'center', gap: 4,
+                                backgroundColor: '#27272a', paddingHorizontal: 8, paddingVertical: 4,
+                                borderRadius: 12, borderWidth: 1, borderColor: '#3f3f46'
+                            }}
+                            onPress={async () => {
+                                if (loadingAi) return;
+                                setLoadingAi(true);
+                                setAiSummary(null);
+                                try {
+                                    const { generateMarketSummary } = require('@/services/aiService');
+                                    const summary = await generateMarketSummary();
+                                    setAiSummary(summary);
+                                } catch (e) {
+                                    setAiSummary('Analysis failed.');
+                                } finally {
+                                    setLoadingAi(false);
+                                }
+                            }}
+                        >
+                            <Ionicons name="sparkles" size={12} color="#fbbf24" />
+                            <Text style={{ color: '#e4e4e7', fontSize: 10, fontWeight: '600' }}>AI Summary</Text>
+                        </TouchableOpacity>
                     </View>
 
-                    {/* V2: Just the number, bright color */}
-                    <View style={styles.indexMeter}>
-                        {(() => {
-                            let color = '#71717a';
-                            if (reversalIndex < 40) color = '#ef4444'; // Red
-                            else if (reversalIndex < 60) color = '#f97316'; // Orange
-                            else if (reversalIndex < 75) color = '#eab308'; // Yellow
-                            else color = '#22c55e'; // Green
+                    {/* AI Summary Display */}
+                    {(loadingAi || aiSummary) && (
+                        <View style={{ marginBottom: 16, padding: 12, backgroundColor: 'rgba(251, 191, 36, 0.1)', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(251, 191, 36, 0.3)' }}>
+                            {loadingAi ? (
+                                <Text style={{ color: '#fbbf24', fontSize: 13 }}>Analyzing Google Search News...</Text>
+                            ) : (
+                                <Text style={{ color: '#fbbf24', fontSize: 13, lineHeight: 20 }}>
+                                    {aiSummary}
+                                </Text>
+                            )}
+                        </View>
+                    )}
+
+                    {/* Dynamic Bullets (Based on Signals) */}
+                    <View>
+                        {beliefs.filter(b => !b.id.startsWith('custom')).slice(0, 3).map((belief) => {
+                            const signal = belief.signal;
+                            const points = signal ? calculateNarrativeScore(signal, 5) : 0;
+                            const prob = Math.round(belief.currentProbability * 100);
+
+                            let statusText = 'Neutral';
+                            if (points > 3) statusText = 'Strong Support';
+                            else if (points > 1.5) statusText = 'Building';
+                            else statusText = 'Weak';
 
                             return (
-                                <Text style={[styles.indexValue, { color }]}>
-                                    {reversalIndex.toFixed(0)}
-                                </Text>
-                            );
-                        })()}
-
-                        {/* Dual-Track Sub-scores - Hidden but data preserved for internal logic */}
-                        {/* Viewing these scores now happens in Tech Config only
-                        {(() => {
-                            try {
-                                const { reversalState } = require('@/stores/techStore').useTechStore();
-                                if (!reversalState) return null;
-                                return (
-                                    <View style={{ flexDirection: 'row', gap: 16, marginTop: 8 }}>
-                                        <View style={{ alignItems: 'center' }}>
-                                            <Text style={{ color: '#71717A', fontSize: 10, textTransform: 'uppercase', fontWeight: '700' }}>Cycle (Fund)</Text>
-                                            <Text style={{ color: '#E4E4E7', fontSize: 16, fontWeight: '700' }}>{reversalState.cycleScore.toFixed(0)}</Text>
-                                        </View>
-                                        <View style={{ width: 1, height: '100%', backgroundColor: '#27272A' }} />
-                                        <View style={{ alignItems: 'center' }}>
-                                            <Text style={{ color: '#71717A', fontSize: 10, textTransform: 'uppercase', fontWeight: '700' }}>Trend (Tech)</Text>
-                                            <Text style={{ color: '#E4E4E7', fontSize: 16, fontWeight: '700' }}>{reversalState.trendScore.toFixed(0)}</Text>
-                                        </View>
-                                    </View>
-                                );
-                            } catch (e) { return null; }
-                        })()}
-                        */}
-                    </View>
-
-                    {/* V2: Reversal Stage Display */}
-                    {/* V2: Reversal Stage Display (AI Copywriting) */}
-                    <View style={styles.progressSection}>
-                        {(() => {
-                            try {
-                                const { reversalState } = require('@/stores/techStore').useTechStore();
-                                // Generate Copy
-                                const copy = resolveReversalCopy(reversalState);
-
-                                // Color Logic
-                                const getStageColor = (stage: string) => {
-                                    switch (stage) {
-                                        case 'OVERHEATED': return '#ef4444';
-                                        case 'CONFIRMED': return '#22c55e';
-                                        case 'PREPARE': return '#eab308'; // dimmed yellow
-                                        case 'WATCH': return '#f97316';
-                                        default: return '#71717a';
-                                    }
-                                };
-                                const activeColor = getStageColor(copy.displayStage);
-
-                                return (
-                                    <>
-                                        {/* 1. Header: Stage Title & Tags */}
-                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                                <Text style={[styles.progressLabel, { color: activeColor, marginBottom: 0 }]}>
-                                                    {copy.title}
-                                                </Text>
-                                                {/* Tags */}
-                                                {copy.tags?.map((tag, i) => (
-                                                    <View key={i} style={{
-                                                        backgroundColor: 'rgba(39, 39, 42, 0.5)',
-                                                        paddingHorizontal: 8, paddingVertical: 2,
-                                                        borderRadius: 4, borderWidth: 1, borderColor: '#27272A'
-                                                    }}>
-                                                        <Text style={{ color: '#A1A1AA', fontSize: 10, fontWeight: '600' }}>{tag}</Text>
-                                                    </View>
-                                                ))}
-                                            </View>
-                                        </View>
-
-                                        {/* 2. One Liner (Hero) */}
-                                        <Text style={{
-                                            color: '#FFFFFF',
-                                            fontSize: 16,
-                                            fontWeight: '700',
-                                            lineHeight: 24,
-                                            marginBottom: 16
-                                        }}>
-                                            {copy.oneLiner}
-                                        </Text>
-
-                                        {/* 3. Progress Bar (Visual) */}
-                                        <View style={styles.progressBar}>
-                                            {[...Array(8)].map((_, i) => {
-                                                const filled = reversalIndex > (i * 12.5);
-                                                return (
-                                                    <View
-                                                        key={i}
-                                                        style={[
-                                                            styles.progressBlock,
-                                                            filled && { backgroundColor: activeColor, opacity: 0.8 } // Tint with stage color
-                                                        ]}
-                                                    />
-                                                );
-                                            })}
-                                        </View>
-
-                                        {/* 4. Context: Reason & Next Steps */}
-                                        <View style={styles.progressContext}>
-                                            {/* Reasons */}
-                                            <View style={{ marginBottom: 16 }}>
-                                                <Text style={styles.contextTitle}>目前的依據</Text>
-                                                {copy.reasonLines.map((line, i) => (
-                                                    <Text key={i} style={styles.contextItem}>• {line}</Text>
-                                                ))}
-                                            </View>
-
-                                            {/* Next Steps */}
-                                            <View>
-                                                <Text style={[styles.contextTitle, { color: activeColor }]}>下一步</Text>
-                                                {copy.next.map((line, i) => (
-                                                    <Text key={i} style={styles.contextItem}>👉 {line}</Text>
-                                                ))}
-                                            </View>
-                                        </View>
-                                    </>
-                                );
-                            } catch (e) {
-                                return <Text style={{ color: '#71717A' }}>Loading Analysis...</Text>;
-                            }
-                        })()}
-                    </View>
-
-                    {/* V2: Market Dynamics (Real User Signals) */}
-                    <View style={styles.dynamicsBox}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                            <Text style={styles.dynamicsLabel}>市場動態（Market Dynamics）</Text>
-                            <TouchableOpacity
-                                style={{
-                                    flexDirection: 'row', alignItems: 'center', gap: 4,
-                                    backgroundColor: '#27272a', paddingHorizontal: 8, paddingVertical: 4,
-                                    borderRadius: 12, borderWidth: 1, borderColor: '#3f3f46'
-                                }}
-                                onPress={async () => {
-                                    if (loadingAi) return;
-                                    setLoadingAi(true);
-                                    setAiSummary(null);
-                                    try {
-                                        const { generateMarketSummary } = require('@/services/aiService');
-                                        const summary = await generateMarketSummary();
-                                        setAiSummary(summary);
-                                    } catch (e) {
-                                        setAiSummary('Analysis failed.');
-                                    } finally {
-                                        setLoadingAi(false);
-                                    }
-                                }}
-                            >
-                                <Ionicons name="sparkles" size={12} color="#fbbf24" />
-                                <Text style={{ color: '#e4e4e7', fontSize: 10, fontWeight: '600' }}>AI Summary</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {/* AI Summary Display */}
-                        {(loadingAi || aiSummary) && (
-                            <View style={{ marginBottom: 16, padding: 12, backgroundColor: 'rgba(251, 191, 36, 0.1)', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(251, 191, 36, 0.3)' }}>
-                                {loadingAi ? (
-                                    <Text style={{ color: '#fbbf24', fontSize: 12 }}>正在分析市場數據 (Gemini Flash Lite)...</Text>
-                                ) : (
-                                    <Text style={{ color: '#fbbf24', fontSize: 13, lineHeight: 20 }}>
-                                        <Text style={{ fontWeight: 'bold' }}>✦ AI Insight: </Text>
-                                        {aiSummary}
+                                <View key={belief.id} style={{ flexDirection: 'row', marginBottom: 8, alignItems: 'flex-start' }}>
+                                    <Text style={{ color: '#71717a', fontSize: 13, marginRight: 6 }}>•</Text>
+                                    <Text style={{ color: '#d4d4d8', fontSize: 13, flex: 1, lineHeight: 20 }}>
+                                        <Text style={{ fontWeight: '600', color: '#a1a1aa' }}>{signal?.title.split(' ')[0]}:</Text>
+                                        {' '}{statusText} ({prob}%)
                                     </Text>
-                                )}
-                            </View>
-                        )}
-
-                        {beliefs.length === 0 ? (
-                            <Text style={{ color: '#71717A', marginTop: 8 }}>尚未追蹤任何市場信號。</Text>
-                        ) : (
-                            beliefs.filter(b => !b.id.startsWith('custom')).slice(0, 3).map((belief) => {
-                                // V5.0: Use signal property
-                                const signal = belief.signal;
-                                const market = signal?.markets?.[0];
-                                let probRaw = belief.currentProbability;
-                                let fedStats = null;
-
-                                try {
-                                    // Recalculate if possible using fresh market data
-                                    if (market && market.outcomePrices) {
-                                        const { getPositiveProbability } = require('@/services/marketData');
-                                        probRaw = getPositiveProbability(signal);
-
-                                        // Special calculations for Fed Policy (Cut/Hold/Hike)
-                                        if (signal.scoring === 'fed_cut') {
-                                            const prices = typeof market.outcomePrices === 'string' ? JSON.parse(market.outcomePrices) : market.outcomePrices;
-                                            const outcomes = typeof market.outcomes === 'string' ? JSON.parse(market.outcomes) : market.outcomes;
-
-                                            // Helper to sum outcome probabilities by keyword
-                                            const sumByKeyword = (kw: string[]) => {
-                                                let sum = 0;
-                                                outcomes.forEach((o: string, idx: number) => {
-                                                    const lower = o.toLowerCase();
-                                                    if (kw.some(k => lower.includes(k))) sum += parseFloat(prices[idx]) || 0;
-                                                });
-                                                return Math.round(Math.min(1, sum) * 100);
-                                            };
-
-                                            fedStats = {
-                                                cut: sumByKeyword(['decrease', 'cut', 'lower']),
-                                                hold: sumByKeyword(['no change', 'unchanged', 'maintain']),
-                                                hike: sumByKeyword(['increase', 'hike', 'raise'])
-                                            };
-                                        }
-                                    }
-                                } catch (e) { /* fallback */ }
-
-                                const prob = Math.round(probRaw * 100);
-
-                                // Display Logic
-                                let probText = prob > 0 ? `${prob}%` : '載入中...';
-                                if (fedStats) {
-                                    probText = `Cut ${fedStats.cut}%`;
-                                }
-
-                                let interpret = '→ 市場共識未形成';
-                                let impact = '→ 影響中性';
-
-                                if (prob === 0) {
-                                    interpret = '→ 數據載入中';
-                                    impact = '→ 請稍候';
-                                } else if (prob >= 70) {
-                                    interpret = '→ 市場高度共識';
-                                    impact = '→ 強化當前趨勢';
-                                } else if (prob >= 55) {
-                                    interpret = '→ 市場預期偏高';
-                                    impact = '→ 支撐力道增強';
-                                } else if (prob <= 30) {
-                                    interpret = '→ 市場預期低落';
-                                    impact = '→ 潛在利空風險';
-                                } else if (prob <= 45) {
-                                    interpret = '→ 市場信心不足';
-                                    impact = '→ 動能稍微轉弱';
-                                }
-
-                                // Override interpretation for Fed
-                                if (fedStats) {
-                                    interpret = `Hold ${fedStats.hold}% · Hike ${fedStats.hike}%`;
-                                    impact = '';
-                                }
-
-                                // Calculate V5 Points Score
-                                const { calculateNarrativeScore } = require('@/services/marketData');
-                                const points = signal ? calculateNarrativeScore(signal, 5) : 0;
-
-                                return (
-                                    <View key={belief.id} style={styles.dynamicItem}>
-                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                                            <Text style={styles.dynamicChange}>• {signal?.title || belief.id} ({probText})</Text>
-                                            {points > 0 && <Text style={{ color: '#10b981', fontSize: 11, fontWeight: 'bold' }}>+{points.toFixed(1)} pts</Text>}
-                                        </View>
-                                        <Text style={styles.dynamicInterpret}>{interpret}</Text>
-                                        {impact ? <Text style={styles.dynamicImpact}>{impact}</Text> : null}
-                                    </View>
-                                );
-                            })
-                        )}
+                                </View>
+                            );
+                        })}
                     </View>
+
                 </View>
 
-                {/* Market Expectations - User's Selected Topics */}
+                {/* SECTION 2: MARKET EXPECTATIONS (Progress + Cards) */}
                 <View>
-                    <Text style={styles.sectionTitle}>市場預期</Text>
+                    <Text style={styles.sectionTitle}>Market Expectations</Text>
 
-                    {/* User's Selected Prediction Topics */}
-                    {beliefs.filter(b => BELIEVER_SIGNALS.some(s => s.id === b.id)).length > 0 && (
-                        beliefs
-                            .filter(b => BELIEVER_SIGNALS.some(s => s.id === b.id))
-                            .map((belief) => {
-                                const signal = belief.signal;
-                                if (!signal) return null;
+                    {/* Narrative Progress Bar */}
+                    {renderNarrativeProgressBar()}
 
-                                const probRaw = belief.currentProbability;
-                                const prob = Math.round(probRaw * 100);
-                                const probText = `${prob}%`;
-                                // V5 Logic: Good signal usually means > 50% on "Positive" outcome.
-                                // Actually depends on scoring. "Binary Bad" high prob is bad.
-                                // Let's simplify: High Probability of Event Occurring
-                                const isHighProb = prob >= 50;
+                    {/* Signal Cards */}
+                    {beliefs.filter(b => BELIEVER_SIGNALS.some(s => s.id === b.id)).map((belief) => {
+                        const signal = belief.signal;
+                        if (!signal) return null;
 
-                                const isExpanded = expandedTopic === belief.id;
+                        const probRaw = belief.currentProbability;
+                        const prob = Math.round(probRaw * 100);
+                        const isExpanded = expandedTopic === belief.id;
 
-                                return (
-                                    <TouchableOpacity
-                                        key={belief.id}
-                                        style={[styles.topicCard, isExpanded && styles.topicCardExpanded]}
-                                        onPress={() => setExpandedTopic(isExpanded ? null : belief.id)}
-                                        activeOpacity={0.7}
-                                    >
-                                        <View style={styles.topicHeader}>
-                                            <View style={styles.topicLeft}>
-                                                <View style={[
-                                                    styles.topicDot,
-                                                    { backgroundColor: isHighProb ? '#22c55e' : '#71717a' }
-                                                ]} />
-                                                <View style={styles.topicInfo}>
-                                                    <Text style={styles.topicTitle}>{signal.title}</Text>
-                                                    <Text style={styles.topicDesc} numberOfLines={isExpanded ? 0 : 1}>
-                                                        {signal.description}
+                        // V5.3 Contribution Score
+                        const contribution = calculateNarrativeScore(signal, 5);
+
+                        // Fed Special Logic
+                        const isFed = signal.id === 'fed_decision';
+                        let fedStats = null;
+                        if (isFed) {
+                            try {
+                                const m = signal.markets?.[0];
+                                if (m && m.outcomePrices && m.outcomes) {
+                                    const prices = typeof m.outcomePrices === 'string' ? JSON.parse(m.outcomePrices) : m.outcomePrices;
+                                    const outcomes = typeof m.outcomes === 'string' ? JSON.parse(m.outcomes) : m.outcomes;
+
+                                    const sumByKeyword = (kw: string[]) => {
+                                        let sum = 0;
+                                        outcomes.forEach((o: string, idx: number) => {
+                                            const lower = o.toLowerCase();
+                                            if (kw.some(k => lower.includes(k))) sum += parseFloat(prices[idx]) || 0;
+                                        });
+                                        return Math.round(Math.min(1, sum) * 100);
+                                    };
+                                    fedStats = {
+                                        cut: sumByKeyword(['decrease', 'cut', 'lower']),
+                                        hold: sumByKeyword(['no change', 'unchanged', 'maintain']),
+                                        hike: sumByKeyword(['increase', 'hike', 'raise'])
+                                    };
+                                }
+                            } catch (e) { }
+                        }
+
+                        return (
+                            <TouchableOpacity
+                                key={belief.id}
+                                style={[styles.topicCard, isExpanded && styles.topicCardExpanded]}
+                                onPress={() => setExpandedTopic(isExpanded ? null : belief.id)}
+                                activeOpacity={0.7}
+                            >
+                                {/* Helper Function for Fed Bar */}
+                                {(() => {
+                                    const renderFedBar = (label: string, val: number, color: string) => (
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                                            <Text style={{ width: 40, color: '#a1a1aa', fontSize: 12 }}>{label}</Text>
+                                            <View style={{ flex: 1, height: 8, backgroundColor: '#27272a', borderRadius: 4, marginRight: 8, overflow: 'hidden' }}>
+                                                <View style={{ width: `${val}%`, height: '100%', backgroundColor: color }} />
+                                            </View>
+                                            <Text style={{ width: 35, color: '#e4e4e7', fontSize: 12, textAlign: 'right' }}>{val}%</Text>
+                                        </View>
+                                    );
+
+                                    return (
+                                        <>
+                                            {/* HEADER (Collapsed) */}
+                                            <View style={styles.topicHeader}>
+                                                <View style={styles.topicLeft}>
+                                                    {/* Status Dot (Neutral Color) */}
+                                                    <View style={[styles.topicDot, { backgroundColor: '#52525b' }]} />
+                                                    <View style={styles.topicInfo}>
+                                                        <Text style={styles.topicTitle}>{signal.title}</Text>
+                                                        {!isExpanded && (
+                                                            <Text style={styles.topicDesc}>
+                                                                {isFed && fedStats ? `Cut ${fedStats.cut}% / Hold ${fedStats.hold}%` : `Probability: ${prob}%`}
+                                                            </Text>
+                                                        )}
+                                                    </View>
+                                                </View>
+                                                <View style={styles.topicRight}>
+                                                    <Text style={[styles.topicProb, { color: '#e4e4e7' }]}>
+                                                        {isFed && fedStats ? `${fedStats.cut}%` : `${prob}%`}
                                                     </Text>
                                                 </View>
                                             </View>
-                                            <View style={styles.topicRight}>
-                                                <Text style={[
-                                                    styles.topicProb,
-                                                    { color: isHighProb ? '#22c55e' : '#fbbf24' }
-                                                ]}>
-                                                    {probText}
-                                                </Text>
-                                                <Text style={styles.topicSource}>
-                                                    Polymarket
-                                                </Text>
-                                            </View>
-                                        </View>
 
-                                        {isExpanded && (
-                                            <View style={styles.topicDetails}>
-                                                <View style={styles.detailRow}>
-                                                    <View style={styles.detailItem}>
-                                                        <Text style={styles.detailLabel}>交易量 (Volume)</Text>
-                                                        <Text style={styles.detailValue}>
-                                                            {signal.markets?.[0]?.volume?.toLocaleString() || '--'}
+                                            {/* EXPANDED CONTENT */}
+                                            {isExpanded && (
+                                                <View style={{ marginTop: 16 }}>
+                                                    {/* 1. Contribution Score */}
+                                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16, backgroundColor: '#27272a', padding: 8, borderRadius: 6 }}>
+                                                        <Text style={{ color: '#a1a1aa', fontSize: 12 }}>Narrative Contribution</Text>
+                                                        <Text style={{ color: '#10b981', fontWeight: 'bold', fontSize: 12 }}>
+                                                            +{contribution.toFixed(2)} / 5.00 pts
                                                         </Text>
                                                     </View>
-                                                </View>
 
-                                                <View style={styles.expandedContent}>
-                                                    <View style={styles.outcomesContainer}>
-                                                        <Text style={styles.detailLabel}>潛在結果 (Outcomes)</Text>
-                                                        {(() => {
-                                                            const m = signal.markets?.[0];
-                                                            if (!m) return <Text style={{ color: '#71717a' }}>載入中...</Text>;
+                                                    {/* 2. Outcome Distribution (Fed Special vs Standard) */}
+                                                    <View style={{ marginBottom: 16 }}>
+                                                        <Text style={{ color: '#71717a', fontSize: 11, marginBottom: 8, textTransform: 'uppercase' }}>Outcome Distribution</Text>
 
-                                                            const rawOutcomes = m.outcomes as any;
-                                                            const outcomesArr: string[] = typeof rawOutcomes === 'string'
-                                                                ? JSON.parse(rawOutcomes)
-                                                                : (rawOutcomes || []);
-                                                            const rawPrices = m.outcomePrices as any;
-                                                            const pricesArr: any[] = typeof rawPrices === 'string'
-                                                                ? JSON.parse(rawPrices)
-                                                                : (rawPrices || []);
-                                                            return outcomesArr.map((outcome, idx) => {
-                                                                const outcomeProb = Math.round((parseFloat(pricesArr[idx]) || 0) * 100);
-                                                                return (
-                                                                    <View key={idx} style={styles.outcomeRow}>
-                                                                        <Text style={styles.outcomeText}>{outcome}</Text>
-                                                                        <Text style={styles.outcomeProb}>{outcomeProb}%</Text>
-                                                                    </View>
-                                                                );
-                                                            });
-                                                        })()}
+                                                        {isFed && fedStats ? (
+                                                            // FED UI
+                                                            <View>
+                                                                {renderFedBar('Cut', fedStats.cut, '#22c55e')}
+                                                                {renderFedBar('Hold', fedStats.hold, '#f59e0b')}
+                                                                {renderFedBar('Hike', fedStats.hike, '#ef4444')}
+                                                            </View>
+                                                        ) : (
+                                                            // STANDARD UI
+                                                            <View>
+                                                                {renderFedBar('Yes', prob, '#22c55e')}
+                                                                {renderFedBar('No', 100 - prob, '#71717a')}
+                                                            </View>
+                                                        )}
                                                     </View>
 
+                                                    {/* 3. Link */}
                                                     <TouchableOpacity
                                                         style={styles.viewMarketBtn}
                                                         onPress={() => {
@@ -614,109 +453,28 @@ export default function DashboardScreen() {
                                                             }
                                                         }}
                                                     >
-                                                        <Text style={styles.viewMarketText}>前往 Polymarket 查看詳細</Text>
+                                                        <Text style={styles.viewMarketText}>View on Polymarket</Text>
                                                         <Ionicons name="open-outline" size={14} color="#a1a1aa" />
                                                     </TouchableOpacity>
                                                 </View>
-                                            </View>
-                                        )}
-                                    </TouchableOpacity>
-                                );
-                            })
-                    )}
-
+                                            )}
+                                        </>
+                                    );
+                                })()}
+                            </TouchableOpacity>
+                        );
+                    })}
                 </View>
 
-                <Text style={styles.footerVersion}>
-                    Believer System V1.5 · Perception Only
-                </Text>
-
-                {/* BetalphaX Footer */}
-                <View style={{ padding: 24, paddingBottom: 60, alignItems: 'center' }}>
-                    <Text style={{ color: '#71717a', fontSize: 14, marginBottom: 20, textAlign: 'center', lineHeight: 24, letterSpacing: 0.5 }}>
-                        紀錄下你的交易想法，累積長期交易紀律
-                    </Text>
-
-                    {/* Professional Button */}
-                    <TouchableOpacity
-                        style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            paddingHorizontal: 24,
-                            paddingVertical: 14,
-                            backgroundColor: '#18181B',
-                            borderRadius: 12,
-                            borderWidth: 1,
-                            borderColor: '#3F3F46',
-                            gap: 12,
-                            shadowColor: '#000',
-                            shadowOffset: { width: 0, height: 2 },
-                            shadowOpacity: 0.2,
-                            shadowRadius: 4,
-                        }}
-                        onPress={() => {
-                            if (typeof window !== 'undefined') {
-                                window.open('https://betalphax.vercel.app/', '_blank');
-                            }
-                        }}
-                    >
-                        <Image
-                            source={require('@/assets/images/betalphax_logo.jpg')}
-                            style={{ width: 20, height: 20, borderRadius: 4 }}
-                        />
-                        <Text style={{ color: '#F4F4F5', fontSize: 16, fontWeight: '600' }}>BetalphaX</Text>
-                        <Ionicons name="arrow-forward" size={16} color="#71717A" />
-                    </TouchableOpacity>
-
-                    {/* Social Links */}
-                    <View style={{ flexDirection: 'row', gap: 16, marginTop: 32 }}>
-                        <TouchableOpacity
-                            style={{
-                                width: 44, height: 44, borderRadius: 22,
-                                backgroundColor: '#18181B',
-                                alignItems: 'center', justifyContent: 'center',
-                                borderWidth: 1, borderColor: '#27272A'
-                            }}
-                            onPress={() => {
-                                if (typeof window !== 'undefined') {
-                                    window.open('https://www.instagram.com/betalpha_news/', '_blank');
-                                }
-                            }}
-                        >
-                            <Ionicons name="logo-instagram" size={20} color="#A1A1AA" />
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={{
-                                width: 44, height: 44, borderRadius: 22,
-                                backgroundColor: '#18181B',
-                                alignItems: 'center', justifyContent: 'center',
-                                borderWidth: 1, borderColor: '#27272A'
-                            }}
-                            onPress={() => {
-                                if (typeof window !== 'undefined') {
-                                    window.open('https://t.me/+BKg09wTOVGZhYzBl', '_blank');
-                                }
-                            }}
-                        >
-                            <FontAwesome name="telegram" size={18} color="#A1A1AA" />
-                        </TouchableOpacity>
-                    </View>
-                </View>
-
+                {/* Footer */}
+                <Text style={styles.footerVersion}>Believer System V5.3</Text>
             </ScrollView>
 
             {/* Notification Panel Overlay */}
             {
                 showNotifications && (
                     <View style={styles.notificationOverlay}>
-                        {/* Backdrop */}
-                        <TouchableOpacity
-                            style={styles.backdrop}
-                            activeOpacity={1}
-                            onPress={() => setShowNotifications(false)}
-                        />
-                        {/* Panel */}
+                        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={() => setShowNotifications(false)} />
                         <View style={styles.drawerPanel}>
                             <Text style={styles.drawerTitle}>通知中心</Text>
                             <View style={styles.notificationItem}>
@@ -724,16 +482,8 @@ export default function DashboardScreen() {
                                     <View style={[styles.dotSmall, { backgroundColor: '#3b82f6' }]} />
                                     <Text style={styles.notifType}>SYSTEM</Text>
                                 </View>
-                                <Text style={styles.notifContent}>歡迎使用 Believer 1.4。Liquidity 模組已上線。</Text>
-                                <Text style={styles.notifTime}>15 mins ago</Text>
-                            </View>
-                            <View style={styles.notificationItem}>
-                                <View style={styles.notifHeader}>
-                                    <View style={[styles.dotSmall, { backgroundColor: '#f97316' }]} />
-                                    <Text style={styles.notifType}>ALERT</Text>
-                                </View>
-                                <Text style={styles.notifContent}>反轉指數接近臨界值 (60)，請留意宏觀信號變化。</Text>
-                                <Text style={styles.notifTime}>2 hours ago</Text>
+                                <Text style={styles.notifContent}>UI Update 5.3: Narrative Progress bar added.</Text>
+                                <Text style={styles.notifTime}>Just now</Text>
                             </View>
                         </View>
                     </View>
@@ -743,1131 +493,286 @@ export default function DashboardScreen() {
             {/* Settings Dropdown */}
             {showSettings && (
                 <>
-                    {/* Backdrop to close */}
-                    <TouchableOpacity
-                        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 }}
-                        activeOpacity={1}
-                        onPress={() => setShowSettings(false)}
-                    />
+                    <TouchableOpacity style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 }} activeOpacity={1} onPress={() => setShowSettings(false)} />
                     <View style={styles.settingsOverlay}>
-
-                        {/* 1. Profile Section */}
                         <View style={[styles.settingsItem, { borderBottomWidth: 1, borderBottomColor: '#27272a', paddingBottom: 16, marginBottom: 8 }]}>
                             <View style={{ flex: 1 }}>
                                 <Text style={{ color: '#71717a', fontSize: 10, marginBottom: 4 }}>DISPLAY NAME</Text>
-                                {editingName ? (
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                        <TextInput
-                                            value={tempName}
-                                            onChangeText={setTempName}
-                                            style={{
-                                                flex: 1,
-                                                backgroundColor: '#27272a',
-                                                color: 'white',
-                                                padding: 4,
-                                                borderRadius: 4,
-                                                fontSize: 14
-                                            }}
-                                            autoFocus
-                                        />
-                                        <TouchableOpacity onPress={handleUpdateName}>
-                                            <Ionicons name="checkmark-circle" size={20} color="#22c55e" />
-                                        </TouchableOpacity>
-                                        <TouchableOpacity onPress={() => setEditingName(false)}>
-                                            <Ionicons name="close-circle" size={20} color="#71717a" />
-                                        </TouchableOpacity>
-                                    </View>
-                                ) : (
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <Text style={{ color: 'white', fontWeight: '600', fontSize: 14 }}>
-                                            {user?.name || 'Believer'}
-                                        </Text>
-                                        <TouchableOpacity onPress={() => { setTempName(user?.name || ''); setEditingName(true); }}>
-                                            <Ionicons name="pencil" size={14} color="#71717a" />
-                                        </TouchableOpacity>
-                                    </View>
-                                )}
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <Text style={{ color: 'white', fontWeight: '600', fontSize: 14 }}>{user?.name || 'Believer'}</Text>
+                                </View>
                             </View>
                         </View>
 
-                        {/* 2. Notification Settings */}
-                        <TouchableOpacity
-                            style={styles.settingsItem}
-                            onPress={() => setNotificationSetting('phaseTransitions', !notificationSettings?.phaseTransitions)}
-                        >
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.settingsItemText}>階段轉換通知</Text>
-                            </View>
-                            <Switch
-                                value={notificationSettings?.phaseTransitions ?? true}
-                                onValueChange={(v) => setNotificationSetting('phaseTransitions', v)}
-                                trackColor={{ false: '#27272a', true: '#fb923c' }}
-                            />
+                        <TouchableOpacity style={styles.settingsItem} onPress={handleLogout}>
+                            <Text style={[styles.settingsItemText, { color: '#ef4444' }]}>登出</Text>
+                            <Ionicons name="log-out-outline" size={18} color="#ef4444" />
                         </TouchableOpacity>
 
-                        <TouchableOpacity
-                            style={styles.settingsItem}
-                            onPress={() => setNotificationSetting('newIndicators', !notificationSettings?.newIndicators)}
-                        >
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.settingsItemText}>新增追蹤指標</Text>
-                            </View>
-                            <Switch
-                                value={notificationSettings?.newIndicators ?? true}
-                                onValueChange={(v) => setNotificationSetting('newIndicators', v)}
-                                trackColor={{ false: '#27272a', true: '#fb923c' }}
-                            />
+                        <TouchableOpacity style={[styles.settingsItem, { borderTopWidth: 1, borderTopColor: '#27272a', paddingTop: 12 }]} onPress={handleResetData}>
+                            <Text style={[styles.settingsItemText, { color: '#ef4444', fontSize: 12 }]}>重置使用者數據 (Debug)</Text>
                         </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.settingsItem}
-                            onPress={() => setNotificationSetting('extremeDynamics', !notificationSettings?.extremeDynamics)}
-                        >
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.settingsItemText}>指標極端動態</Text>
-                            </View>
-                            <Switch
-                                value={notificationSettings?.extremeDynamics ?? true}
-                                onValueChange={(v) => setNotificationSetting('extremeDynamics', v)}
-                                trackColor={{ false: '#27272a', true: '#fb923c' }}
-                            />
-                        </TouchableOpacity>
-
-                        <View style={{ height: 1, backgroundColor: '#27272a', marginVertical: 8 }} />
-
-                        <Text style={{ color: '#71717a', fontSize: 10, paddingHorizontal: 16, marginTop: 8, marginBottom: 4 }}>ACCOUNT</Text>
-
-                        <TouchableOpacity style={styles.settingsItem} onPress={() => {
-                            // Reset all stores
-                            resetProfile();
-                            useOnboardingStore.getState().resetOnboarding();
-                            setShowSettings(false);
-                            router.replace('/onboarding');
-                        }}>
-                            <Ionicons name="refresh" size={16} color="#E4E4E7" />
-                            <Text style={styles.settingsItemText}>重置偏好設定</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.settingsItem} onPress={logout}>
-                            <Ionicons name="log-out" size={16} color="#ef4444" />
-                            <Text style={[styles.settingsItemText, styles.settingsItemDanger]}>登出帳號</Text>
-                        </TouchableOpacity>
-
                     </View>
                 </>
             )}
-
-            {/* Cyber Wooden Fish FAB */}
-            <TouchableOpacity
-                onPress={handleFishClick}
-                style={styles.fishFabContainer}
-            >
-                {/* The Wooden Stick (Mallet) */}
-                <Animated.View
-                    style={[
-                        styles.woodenStick,
-                        {
-                            transform: [
-                                { translateX: 20 }, // Pivot adjust
-                                { translateY: -20 },
-                                {
-                                    rotate: stickAnim.interpolate({
-                                        inputRange: [0, 1],
-                                        outputRange: ['-30deg', '15deg'] // Swing from -30 to 15
-                                    })
-                                },
-                                { translateX: -20 }, // Pivot back
-                                { translateY: 20 }
-                            ]
-                        }
-                    ]}
-                >
-                    <View style={styles.stickHead} />
-                    <View style={styles.stickHandle} />
-                </Animated.View>
-
-                <Animated.View style={[styles.fishFab, { transform: [{ scale: scaleAnim }] }]}>
-                    <View style={styles.fishCounter}>
-                        <Text style={styles.fishCountText}>{faithClicks}</Text>
-                        <Text style={styles.fishLabelText}>功德</Text>
-                    </View>
-                    <View style={styles.fishIconBg}>
-                        {/* Use Image instead of Icon */}
-                        <Image
-                            source={require('../assets/images/wooden-fish.png')}
-                            style={{ width: 44, height: 44 }}
-                            resizeMode="contain"
-                        />
-                    </View>
-                    {/* Settings Button */}
-                    <TouchableOpacity
-                        style={styles.meritSettingsBtn}
-                        onPress={() => setShowMeritModal(true)}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
-                        <Ionicons name="settings-sharp" size={12} color="#71717a" />
-                    </TouchableOpacity>
-                </Animated.View>
-                {showMerit && (
-                    <View style={styles.meritPopup}>
-                        <Text style={styles.meritText}>功德 +1</Text>
-                    </View>
-                )}
-
-
-
-
-            </TouchableOpacity>
-
-
-
-            {/* Dev Tools - Open for all users for testing */}
-            {user && (
-                <View style={{ position: 'absolute', bottom: 100, left: 20, zIndex: 999 }}>
-                    <TouchableOpacity
-                        style={{ backgroundColor: '#4f46e5', padding: 10, borderRadius: 8 }}
-                        onPress={() => setShowEmailDev(true)}
-                    >
-                        <Text style={{ color: 'white', fontWeight: 'bold' }}>📧 Test Email</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
-
-            {/* Existing Modals */}
-            <MeritModal
-                visible={showMeritModal}
-                onClose={() => setShowMeritModal(false)}
-                myMerit={faithClicks}
-                userEmail={user?.email}
-            />
-
-            {/* Email Dev Modal */}
-            <EmailDevModal
-                visible={showEmailDev}
-                onClose={() => setShowEmailDev(false)}
-                userName={user?.name || 'User'}
-            />
-        </SafeAreaView >
-    );
-}
-
-// Email Dev Modal Component
-function EmailDevModal({ visible, onClose, userName }: { visible: boolean, onClose: () => void, userName: string }) {
-    const [previewHtml, setPreviewHtml] = useState<string | null>(null);
-    const [subject, setSubject] = useState('');
-
-    if (!visible) return null;
-
-    const handleTrigger = async (type: any, sendReal = false) => {
-        // Mock Data based on Scenario
-        let mockData: any = { recipientName: userName };
-
-        if (type === 'STAGE_UPGRADE') {
-            mockData = { ...mockData, stage: 'PREPARE', score: 65, gatesPassed: 3, cycleZone: 'STRONG' };
-        } else if (type === 'GATE_CONFIRMATION') {
-            mockData = { ...mockData, gateName: 'Higher Low', newCap: 100 };
-        } else if (type === 'WEEKLY_REPORT') {
-            mockData = { ...mockData, weeklyMerit: 324, rank: 14, contributionPct: '0.0042' };
-        }
-
-        if (sendReal) {
-            try {
-                const { sendTrafficEmail } = require('@/services/emailService');
-                const id = await sendTrafficEmail(type, mockData);
-                alert(`Email Queued! ID: ${id}\nCheck Firebase Console -> Firestore -> 'mail' collection.`);
-            } catch (e: any) {
-                alert('Send Failed: ' + e.message);
-            }
-            return;
-        }
-
-        // Preview Mode
-        try {
-            const { generateEmailHtml } = require('@/services/mockEmailService');
-            const result = generateEmailHtml(type, mockData);
-            setSubject(result.subject);
-            setPreviewHtml(result.html);
-        } catch (e) {
-            alert('Error generating email: ' + e);
-        }
-    };
-
-    return (
-        <View style={styles.modalOverlay} onStartShouldSetResponder={() => true} onResponderRelease={onClose}>
-            <TouchableOpacity activeOpacity={1} onPress={e => e.stopPropagation()} style={[styles.modalContent, { height: '80%' }]}>
-                <View style={styles.modalHeader}>
-                    <Text style={styles.modalTitle}>Email Notification Tests</Text>
-                    <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                        <Ionicons name="close" size={20} color="#71717a" />
-                    </TouchableOpacity>
-                </View>
-
-                {previewHtml ? (
-                    <View style={{ flex: 1 }}>
-                        <View style={{ padding: 10, borderBottomWidth: 1, borderColor: '#27272a' }}>
-                            <Text style={{ color: '#a1a1aa', fontSize: 12 }}>Subject:</Text>
-                            <Text style={{ color: '#e4e4e7', fontWeight: 'bold' }}>{subject}</Text>
-                            <TouchableOpacity onPress={() => setPreviewHtml(null)} style={{ marginTop: 8 }}>
-                                <Text style={{ color: '#4f46e5' }}>← Back to Scenarios</Text>
-                            </TouchableOpacity>
-                        </View>
-                        {Platform.OS === 'web' ? (
-                            <iframe
-                                srcDoc={previewHtml}
-                                style={{ width: '100%', height: '100%', border: 'none', background: 'white' }}
-                            />
-                        ) : (
-                            <ScrollView style={{ flex: 1, padding: 10, backgroundColor: 'white' }}>
-                                <Text style={{ color: 'black' }}>{previewHtml}</Text>
-                            </ScrollView>
-                        )}
-                        {/* Send Real Email Button */}
-                        <View style={{ padding: 16, borderTopWidth: 1, borderColor: '#27272a', flexDirection: 'row', justifyContent: 'flex-end', gap: 10 }}>
-                            <TouchableOpacity
-                                style={{ padding: 10, backgroundColor: '#27272a', borderRadius: 8 }}
-                                onPress={() => setPreviewHtml(null)}
-                            >
-                                <Text style={{ color: '#a1a1aa' }}>Close</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={{ padding: 10, backgroundColor: '#10b981', borderRadius: 8 }}
-                                onPress={async () => {
-                                    try {
-                                        // Retrieve mock data from state is hard because we didn't save it.
-                                        // Let's refactor slightly to pass data or simple re-trigger logic.
-                                        // Actually, simpler: The user sees the preview. We can just add a button
-                                        // "Send to Me" inside the handleTrigger or pass the current specific props.
-                                        // BUT since we are inside the render where we only have HTML,
-                                        // we should probably move the data generation out or just re-generate.
-
-                                        // Let's rely on the user confirming the "Scenario" again?
-                                        // No, that's bad UX.
-                                        // Let's alert for now, or use a closure if we can.
-
-                                        // Better: Add "Send to Console" logic in the separate button handler is tricky without data.
-                                        // Re-implementation: Pass a "onSend" callback or saving currentData in state.
-                                        // For MVP Debug: Just put the button on the main list?
-                                        // No, preview then send is better.
-
-                                        // Quick Fix: Save `currentData` and `currentType` in state along with previewHtml.
-                                        alert("Please update code to support real sending state.");
-                                    } catch (e) {
-                                        alert("Failed");
-                                    }
-                                }}
-                            >
-                                <Text style={{ color: 'white', fontWeight: 'bold' }}>Send Real Email 🚀</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                ) : (
-                    <View style={{ padding: 20, gap: 15 }}>
-                        <Text style={{ color: '#a1a1aa', marginBottom: 10 }}>Select a Scenario to Trigger:</Text>
-
-                        {['STAGE_UPGRADE', 'GATE_CONFIRMATION', 'WEEKLY_REPORT'].map((type) => (
-                            <View key={type} style={{ flexDirection: 'row', gap: 8 }}>
-                                <TouchableOpacity
-                                    style={[styles.actionBtn, { flex: 1 }]}
-                                    onPress={() => handleTrigger(type)}
-                                >
-                                    <Text style={styles.actionBtnText}>
-                                        {type === 'STAGE_UPGRADE' && '🔔 Stage Upgrade'}
-                                        {type === 'GATE_CONFIRMATION' && '✅ Gate Confirmation'}
-                                        {type === 'WEEKLY_REPORT' && '🕯️ Weekly Merit'}
-                                    </Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.actionBtn, { backgroundColor: '#059669', width: 50, justifyContent: 'center' }]}
-                                    onPress={() => handleTrigger(type, true)}
-                                >
-                                    <Ionicons name="paper-plane" size={16} color="white" />
-                                </TouchableOpacity>
-                            </View>
-                        ))}
-                    </View>
-                )}
-            </TouchableOpacity>
-        </View>
-    );
-}
-
-// Merit Modal Component
-function MeritModal({ visible, onClose, myMerit, userEmail }: { visible: boolean, onClose: () => void, myMerit: number, userEmail?: string }) {
-    const [tab, setTab] = useState<'personal' | 'rank'>('personal');
-    const [stats, setStats] = useState({ total: 0 });
-    const [leaderboard, setLeaderboard] = useState<{ id: string, displayName: string, merit: number }[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const { user } = useAuthStore(); // Access User for Sync
-
-    const loadData = async () => {
-        setLoading(true);
-        setError(null);
-
-        // 1. Sync
-        try {
-            if (user?.id) {
-                const displayName = user.name || `User ${user.id.slice(0, 4)}`;
-                await require('@/services/meritService').syncUserMerit(user.id, displayName, myMerit);
-            }
-        } catch (e) {
-            console.warn("Sync warning:", e);
-            // Don't block loading
-        }
-
-        // 2. Fetch
-        try {
-            const [total, ranks] = await Promise.all([
-                getGlobalMerit(),
-                getLeaderboard()
-            ]);
-            setStats({ total });
-            setLeaderboard(ranks);
-        } catch (err) {
-            console.error("Fetch Error:", err);
-            setError("無法讀取數據，請檢查權限或網絡");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        if (visible) {
-            loadData();
-        }
-    }, [visible]);
-
-    if (!visible) return null;
-
-    const contribution = stats.total > 0 ? ((myMerit / stats.total) * 100).toFixed(4) : '0';
-
-    return (
-        <View style={styles.modalOverlay} onStartShouldSetResponder={() => true} onResponderRelease={onClose}>
-            <TouchableOpacity activeOpacity={1} onPress={e => e.stopPropagation()} style={styles.modalContent}>
-                <View style={styles.modalHeader}>
-                    <TouchableOpacity onPress={() => setTab('personal')} style={[styles.tabBtn, tab === 'personal' && styles.tabBtnActive]}>
-                        <Text style={[styles.tabText, tab === 'personal' && styles.tabTextActive]}>我的功德</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setTab('rank')} style={[styles.tabBtn, tab === 'rank' && styles.tabBtnActive]}>
-                        <Text style={[styles.tabText, tab === 'rank' && styles.tabTextActive]}>功德榜</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                        <Ionicons name="close" size={20} color="#71717a" />
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.modalBody}>
-                    {loading ? (
-                        <Text style={{ color: '#71717a', textAlign: 'center', marginTop: 20 }}>載入中...</Text>
-                    ) : error ? (
-                        <View style={{ alignItems: 'center', padding: 20 }}>
-                            <Text style={{ color: '#ef4444', marginBottom: 12 }}>{error}</Text>
-                            <TouchableOpacity onPress={loadData} style={{ padding: 8, backgroundColor: '#27272a', borderRadius: 8 }}>
-                                <Text style={{ color: 'white' }}>重試</Text>
-                            </TouchableOpacity>
-                        </View>
-                    ) : tab === 'personal' ? (
-                        <View style={{ alignItems: 'center', paddingVertical: 20 }}>
-                            <Text style={{ color: '#a1a1aa', fontSize: 14, marginBottom: 8 }}>你已經為牛市回歸貢獻了</Text>
-                            <Text style={{ color: '#fb923c', fontSize: 32, fontWeight: 'bold', marginBottom: 4 }}>{myMerit}</Text>
-                            <Text style={{ color: '#71717a', fontSize: 12, marginBottom: 24 }}>({contribution}%) 的念力</Text>
-
-                            <View style={{ height: 1, width: '100%', backgroundColor: '#27272a', marginBottom: 24 }} />
-
-                            <Text style={{ color: '#a1a1aa', fontSize: 14, marginBottom: 8 }}>目前所有用戶共捐獻了</Text>
-                            <Text style={{ color: '#e4e4e7', fontSize: 24, fontWeight: '700' }}>{stats.total.toLocaleString()}</Text>
-                            <Text style={{ color: '#71717a', fontSize: 12, marginTop: 4 }}>功德</Text>
-                            <Text style={{ color: '#52525b', fontSize: 10, marginTop: 24 }}>ID: {user?.id}</Text>
-                        </View>
-                    ) : (
-                        <View>
-                            {leaderboard.length === 0 ? (
-                                <View style={{ alignItems: 'center', padding: 20 }}>
-                                    <Text style={{ color: '#a1a1aa', marginBottom: 12 }}>暫無排行數據</Text>
-                                    <Text style={{ color: '#52525b', fontSize: 10, textAlign: 'center' }}>
-                                        如果這是第一次使用，請先敲擊木魚並同步數據。{'\n'}確保網路正常。
-                                    </Text>
-                                    <TouchableOpacity onPress={loadData} style={{ marginTop: 16, padding: 8, backgroundColor: '#27272a', borderRadius: 8 }}>
-                                        <Text style={{ color: '#fb923c' }}>刷新榜單</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            ) : (
-                                <ScrollView style={{ maxHeight: 300 }}>
-                                    {leaderboard.map((user, idx) => (
-                                        <View key={user.id} style={styles.rankRow}>
-                                            <Text style={[styles.rankNum, idx < 3 && styles.rankTop]}>{idx + 1}</Text>
-                                            <View style={{ flex: 1, marginRight: 8 }}>
-                                                <Text style={styles.rankName} numberOfLines={1}>{user.displayName}</Text>
-                                                <Text style={{ color: '#52525b', fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}>
-                                                    {user.id.slice(0, 6)}...
-                                                </Text>
-                                            </View>
-                                            <Text style={styles.rankScore}>{user.merit.toLocaleString()}</Text>
-                                        </View>
-                                    ))}
-                                </ScrollView>
-                            )}
-                        </View>
-                    )}
-                </View>
-            </TouchableOpacity>
-        </View>
+        </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#000000',
-        position: 'relative',
+        backgroundColor: '#09090b',
     },
     header: {
-        paddingHorizontal: 24,
-        paddingTop: 8,
-        paddingBottom: 16,
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        zIndex: 10,
+        paddingHorizontal: 24,
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#27272a',
     },
     headerBrand: {
-        color: '#71717A', // zinc-500
-        fontWeight: '700',
-        fontSize: 10,
-        textTransform: 'uppercase',
-        letterSpacing: 2,
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#f4f4f5',
+        letterSpacing: 0.5,
     },
     notificationBtn: {
-        width: 40,
-        height: 40,
-        backgroundColor: '#18181B', // zinc-900
-        borderRadius: 999,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#18181b',
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
-        borderColor: '#27272A', // zinc-800
+        borderColor: '#27272a',
+        marginLeft: 'auto',
     },
     notificationIconWrapper: {
         position: 'relative',
     },
     notificationBadge: {
         position: 'absolute',
-        top: -2,
-        right: -2,
-        width: 8,
-        height: 8,
-        backgroundColor: '#EF4444', // red-500
-        borderRadius: 999,
+        top: -1,
+        right: 0,
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: '#ef4444',
     },
     marketAnchor: {
-        alignItems: 'center',
-        marginBottom: 32,
-        paddingTop: 16,
-    },
-    anchorLabel: {
-        color: '#71717A',
-        fontWeight: '700',
-        fontSize: 12,
-        textTransform: 'uppercase',
-        letterSpacing: 2,
-        marginBottom: 4,
+        marginTop: 24,
+        marginBottom: 24,
     },
     anchorValue: {
-        color: '#FFFFFF',
-        fontSize: 36,
-        fontWeight: '900',
-        letterSpacing: -1,
+        fontSize: 32,
+        fontWeight: '800',
+        color: '#ffffff',
+        letterSpacing: -0.5,
     },
-    anchorStats: {
-        flexDirection: 'row',
-        gap: 8,
+    btcChange: {
+        fontSize: 14,
         marginTop: 4,
-    },
-    statText: {
-        color: '#52525B', // zinc-600
-        fontSize: 12,
-        fontWeight: '700',
+        fontWeight: '600',
     },
     card: {
-        backgroundColor: '#18181B', // zinc-900
-        borderRadius: 24, // rounded-3xl
-        padding: 32, // p-8
-        marginBottom: 32,
+        backgroundColor: '#18181B',
+        borderRadius: 16,
         borderWidth: 1,
         borderColor: '#27272A',
+        padding: 24,
+        marginBottom: 32,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.5,
-        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
     },
     cardHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        marginBottom: 16,
+        marginBottom: 24,
     },
     cardHeaderLabel: {
-        color: '#A1A1AA', // zinc-400
-        fontWeight: '700',
-        textTransform: 'uppercase',
         fontSize: 12,
-        letterSpacing: 2,
+        fontWeight: '700',
+        color: '#A1A1AA',
+        textTransform: 'uppercase',
+        letterSpacing: 1,
         marginBottom: 4,
     },
     cardHeaderTitle: {
-        color: '#FFFFFF',
-        fontSize: 24,
-        fontWeight: '900',
-    },
-    statusBadge: {
-        paddingHorizontal: 12,
-        paddingVertical: 4,
-        borderRadius: 999,
-        borderWidth: 1,
-    },
-    statusBadgeActive: {
-        backgroundColor: 'rgba(124, 45, 18, 0.3)', // orange-900/30
-        borderColor: 'rgba(249, 115, 22, 0.5)', // orange-500/50
-    },
-    statusBadgeNeutral: {
-        backgroundColor: '#27272A',
-        borderColor: '#3F3F46',
-    },
-    statusText: {
-        fontSize: 12,
+        fontSize: 18,
         fontWeight: '700',
+        color: '#FFFFFF',
     },
-    textOrange: { color: '#FB923C' }, // orange-400
-    textZinc: { color: '#A1A1AA' }, // zinc-400
-    textZincLight: { color: '#E4E4E7' }, // zinc-200
     indexMeter: {
-        alignItems: 'center',
-        marginVertical: 24,
+        marginBottom: 24,
+        alignItems: 'flex-start',
     },
     indexValue: {
-        fontSize: 96, // text-8xl
-        fontWeight: '900',
-    },
-    btcChange: {
-        fontSize: 14,
-        fontWeight: '600',
-        marginTop: 4,
-    },
-    barContainer: {
-        width: '100%',
-        flexDirection: 'row',
-        gap: 4,
-        marginTop: 24,
-    },
-    barLeft: {
-        flex: 1,
-        height: 6,
-        backgroundColor: '#27272A',
-        borderTopLeftRadius: 999,
-        borderBottomLeftRadius: 999,
-        overflow: 'hidden',
-    },
-    barRight: {
-        flex: 1,
-        height: 6,
-        backgroundColor: '#27272A',
-        borderTopRightRadius: 999,
-        borderBottomRightRadius: 999,
-        overflow: 'hidden',
-    },
-    barFill: {
-        height: '100%',
-    },
-    barLabels: {
-        width: '100%',
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: 4,
-        marginBottom: 16,
-    },
-    barLabelText: {
-        color: '#52525B', // zinc-600
-        fontSize: 10,
-        fontWeight: '700',
-        textTransform: 'uppercase',
-    },
-    liquidityBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        backgroundColor: 'rgba(39, 39, 42, 0.5)', // zinc-800/50
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#27272A',
-    },
-    liquidityText: {
-        color: '#71717A',
-        fontSize: 10,
-        fontWeight: '700',
-        textTransform: 'uppercase',
-        letterSpacing: 2,
-    },
-    interpretationBox: {
-        borderTopWidth: 1,
-        borderTopColor: '#27272A',
-        paddingTop: 16,
-        marginTop: 8,
-    },
-    interpretationLabel: {
-        color: '#71717A', // zinc-500
-        fontWeight: '700',
-        fontSize: 12,
-        textTransform: 'uppercase',
-        marginBottom: 8,
-    },
-    interpretationText: {
-        color: '#D4D4D8', // zinc-300
-        fontSize: 14,
-        lineHeight: 24,
-    },
-    sectionTitle: {
-        color: '#71717A',
-        fontWeight: '700',
-        fontSize: 12,
-        textTransform: 'uppercase',
-        letterSpacing: 2,
-        marginBottom: 16,
-    },
-    categoryCard: {
-        backgroundColor: '#18181B', // zinc-900
-        borderWidth: 1,
-        borderColor: '#27272A',
-        padding: 20,
-        borderRadius: 12,
-        marginBottom: 12,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    categoryHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    techIconBg: {
-        width: 32,
-        height: 32,
-        borderRadius: 999,
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(59, 130, 246, 0.2)',
-    },
-    categoryTitle: {
-        color: '#FFFFFF',
-        fontWeight: '700',
-        fontSize: 16,
-    },
-    categorySubtitle: {
-        color: '#71717A',
-        fontSize: 12,
-    },
-    accordionContainer: {
-        marginBottom: 12,
-        backgroundColor: '#18181B',
-        borderWidth: 1,
-        borderColor: '#27272A',
-        borderRadius: 12,
-        overflow: 'hidden',
-    },
-    accordionHeader: {
-        padding: 20,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backgroundColor: '#18181B',
-    },
-    accordionLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    dot: {
-        width: 8,
-        height: 8,
-        borderRadius: 999,
-    },
-    dotActive: { backgroundColor: '#F97316' }, // orange-500
-    dotInactive: { backgroundColor: '#3F3F46' }, // zinc-700
-    accordionTitle: {
-        color: '#FFFFFF',
-        fontWeight: '700',
-        fontSize: 16,
-    },
-    accordionRight: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    accordionCount: {
-        color: '#71717A',
-        fontWeight: '700',
-        fontSize: 12,
-    },
-    accordionBody: {
-        backgroundColor: 'rgba(0,0,0,0.2)',
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(39, 39, 42, 0.5)',
-        padding: 8,
-    },
-    beliefItem: {
-        padding: 12,
-        marginBottom: 4,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        borderRadius: 8,
-    },
-    beliefTitle: {
-        color: '#D4D4D8', // zinc-300
-        fontSize: 14,
-        fontWeight: '500',
-        flex: 1,
-        marginRight: 8,
-    },
-    probabilityTrack: {
-        width: 48,
-        height: 4,
-        backgroundColor: '#27272A',
-        borderRadius: 999,
-    },
-    probabilityFill: {
-        height: '100%',
-        backgroundColor: '#71717A', // zinc-500
-        borderRadius: 999,
-    },
-    addSignalBtn: {
-        marginTop: 8,
-        paddingVertical: 12,
-        borderWidth: 1,
-        borderStyle: 'dashed',
-        borderColor: '#3F3F46', // zinc-700
-        borderRadius: 8,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-    },
-    addSignalText: {
-        color: '#A1A1AA', // zinc-400
-        fontSize: 12,
-        fontWeight: '700',
-        textTransform: 'uppercase',
-    },
-    footerVersion: {
-        color: '#3F3F46', // zinc-700
-        textAlign: 'center',
-        marginTop: 48,
-        fontSize: 10,
-        fontWeight: '700',
-        textTransform: 'uppercase',
-    },
-    notificationOverlay: {
-        position: 'absolute',
-        top: 0,
-        bottom: 0,
-        left: 0,
-        right: 0,
-        zIndex: 50,
-        flexDirection: 'row',
-    },
-    backdrop: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.8)',
-    },
-    drawerPanel: {
-        width: '80%',
-        backgroundColor: '#18181B',
-        height: '100%',
-        borderLeftWidth: 1,
-        borderLeftColor: '#27272A',
-        paddingTop: 64,
-        paddingHorizontal: 24,
-        shadowColor: '#000',
-        shadowOffset: { width: -5, height: 0 },
-        shadowOpacity: 0.5,
-        shadowRadius: 10,
-    },
-    drawerTitle: {
-        color: '#FFFFFF',
-        fontWeight: '700',
-        fontSize: 20, // text-xl
-        marginBottom: 24,
-    },
-    notificationItem: {
-        backgroundColor: 'rgba(39, 39, 42, 0.5)',
-        padding: 16,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#27272A',
-        marginBottom: 8,
-    },
-    notifHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginBottom: 8,
-    },
-    dotSmall: {
-        width: 6,
-        height: 6,
-        borderRadius: 999,
-    },
-    notifType: {
-        color: '#FFFFFF',
-        fontSize: 10,
-        fontWeight: '700',
-    },
-    notifContent: {
-        color: '#E4E4E7',
-        fontSize: 12,
-        lineHeight: 18,
-        marginBottom: 8,
-    },
-    notifTime: {
-        color: '#71717A',
-        fontSize: 10,
-    },
-    fishFabContainer: {
-        position: 'absolute',
-        bottom: 32,
-        right: 24,
-        zIndex: 40,
-    },
-    fishFab: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(24, 24, 27, 0.95)', // Increased opacity
-        padding: 4, // Tighter padding for "card" look
-        paddingLeft: 24, // Text on left needs padding
-        paddingRight: 6, // Fish on right needs less padding
-        borderRadius: 24,
-        borderWidth: 1.5,
-        borderColor: '#F59E0B',
-        shadowColor: '#F59E0B',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.5,
-        shadowRadius: 16,
-        elevation: 8,
-    },
-    woodenStick: {
-        position: 'absolute',
-        top: -24,
-        right: -10,
-        zIndex: 50, // Above the fish
-        alignItems: 'center',
-    },
-    stickHead: {
-        width: 12,
-        height: 24,
-        backgroundColor: '#78350F', // Dark Wood
-        borderRadius: 6,
-        marginBottom: -4,
-        zIndex: 2,
-    },
-    stickHandle: {
-        width: 6,
-        height: 48,
-        backgroundColor: '#92400E', // Lighter Wood
-        borderRadius: 3,
-    },
-    fishIconBg: {
-        width: 56,
-        height: 56,
-        borderRadius: 28, // Circle
-        backgroundColor: '#27272A',
-        borderWidth: 1,
-        borderColor: 'rgba(245, 158, 11, 0.3)',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginLeft: 16, // Spacing between Text and Fish
-    },
-    fishCounter: {
-        alignItems: 'flex-end', // Align text to right (towards fish) or center? Let's use flex-end to make number align right next to fish
-    },
-    fishCountText: {
-        color: '#F59E0B',
-        fontSize: 24, // Larger font
+        fontSize: 56,
         fontWeight: '800',
-        fontVariant: ['tabular-nums'],
-        lineHeight: 28,
-        textShadowColor: 'rgba(245, 158, 11, 0.5)',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 8,
-    },
-    fishLabelText: {
-        color: '#A1A1AA',
-        fontSize: 10,
-        fontWeight: '700',
-        letterSpacing: 1.5,
-        textTransform: 'uppercase',
-    },
-    meritPopup: {
-        position: 'absolute',
-        bottom: 150,
-        right: 40,
-        backgroundColor: 'rgba(34, 197, 94, 0.9)',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-        zIndex: 110,
-    },
-    meritText: {
-        color: '#ffffff',
-        fontWeight: 'bold',
-        fontSize: 14,
+        letterSpacing: -2,
+        lineHeight: 60,
     },
     progressSection: {
-        marginTop: 24,
-        borderTopWidth: 1,
-        borderTopColor: '#27272A',
-        paddingTop: 20,
+        marginTop: 8,
     },
     progressLabel: {
-        color: '#71717A',
         fontSize: 12,
         fontWeight: '700',
         textTransform: 'uppercase',
         letterSpacing: 1,
-        marginBottom: 12,
+        marginBottom: 8,
     },
     progressBar: {
         flexDirection: 'row',
-        gap: 4,
-        marginBottom: 8,
+        height: 8,
+        borderRadius: 4,
+        overflow: 'hidden',
+        gap: 2,
+        marginBottom: 16,
     },
     progressBlock: {
         flex: 1,
-        height: 8,
         backgroundColor: '#27272A',
-        borderRadius: 2,
-    },
-    progressBlockFilled: {
-        backgroundColor: '#22c55e',
-    },
-    progressStatus: {
-        color: '#A1A1AA',
-        fontSize: 14,
-        fontWeight: '600',
-        marginBottom: 16,
     },
     progressContext: {
-        backgroundColor: '#0c0c0f',
-        borderRadius: 12,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: '#1f1f22',
+        marginTop: 8,
     },
     contextTitle: {
-        color: '#71717A',
-        fontSize: 13,
+        fontSize: 12,
         fontWeight: '600',
+        color: '#A1A1AA',
         marginBottom: 8,
     },
     contextItem: {
-        color: '#52525B',
-        fontSize: 13,
-        lineHeight: 22,
+        fontSize: 14,
+        color: '#D4D4D8',
+        marginBottom: 6,
+        lineHeight: 20,
     },
-
-    // V2: Market Dynamics Styles
     dynamicsBox: {
-        marginTop: 24,
+        marginTop: 32,
+        paddingTop: 24,
         borderTopWidth: 1,
         borderTopColor: '#27272A',
-        paddingTop: 20,
     },
     dynamicsLabel: {
-        color: '#71717A',
         fontSize: 12,
         fontWeight: '700',
+        color: '#A1A1AA',
         textTransform: 'uppercase',
         letterSpacing: 1,
-        marginBottom: 16,
     },
     dynamicItem: {
-        marginBottom: 16,
-        paddingBottom: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#1f1f22',
+        marginBottom: 12,
     },
     dynamicChange: {
-        color: '#E4E4E7',
         fontSize: 14,
-        fontWeight: '500',
+        color: '#E4E4E7',
+        fontWeight: '600',
         marginBottom: 4,
     },
     dynamicInterpret: {
-        color: '#71717A',
         fontSize: 13,
-        marginLeft: 12,
-        marginBottom: 2,
+        color: '#A1A1AA',
     },
     dynamicImpact: {
-        color: '#52525B',
         fontSize: 13,
-        marginLeft: 12,
-        fontStyle: 'italic',
+        color: '#71717A',
+        marginTop: 2,
     },
-    // Topic Cards for Market Expectations
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#ffffff',
+        marginBottom: 16,
+    },
     topicCard: {
-        backgroundColor: '#18181B',
-        borderWidth: 1,
-        borderColor: '#27272A',
+        backgroundColor: '#18181b',
         borderRadius: 12,
-        marginBottom: 8,
-        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: '#27272a',
+        padding: 16,
+        marginBottom: 12,
     },
     topicCardExpanded: {
-        backgroundColor: '#27272A',
-        borderColor: '#3F3F46',
+        borderColor: '#3f3f46',
+        backgroundColor: '#18181b',
     },
     topicHeader: {
-        padding: 16,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
     },
+    topicLeft: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        flex: 1,
+        gap: 12,
+    },
+    topicDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        marginTop: 6,
+    },
+    topicInfo: {
+        flex: 1,
+    },
+    topicTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#f4f4f5',
+        marginBottom: 4,
+    },
+    topicDesc: {
+        fontSize: 13,
+        color: '#a1a1aa',
+        lineHeight: 18,
+    },
+    topicRight: {
+        alignItems: 'flex-end',
+        justifyContent: 'center',
+        marginLeft: 12,
+    },
+    topicProb: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#fbbf24',
+    },
+    topicSource: {
+        fontSize: 10,
+        color: '#52525b',
+        marginTop: 2,
+        textTransform: 'uppercase',
+    },
     topicDetails: {
-        padding: 16,
-        paddingTop: 0,
+        marginTop: 16,
+        paddingTop: 16,
         borderTopWidth: 1,
-        borderTopColor: '#3F3F46',
-        marginTop: 0,
+        borderTopColor: '#27272a',
     },
     detailRow: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         marginBottom: 16,
-        marginTop: 16,
     },
     detailItem: {
         flex: 1,
     },
     detailLabel: {
+        fontSize: 11,
         color: '#71717a',
-        fontSize: 12,
         marginBottom: 4,
+        textTransform: 'uppercase',
     },
     detailValue: {
-        color: '#E4E4E7',
         fontSize: 14,
-        fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    },
-    expandedContent: {
-        marginTop: 16,
-        paddingTop: 16,
-        borderTopWidth: 1,
-        borderTopColor: '#3F3F46',
+        color: '#e4e4e7',
+        fontWeight: '500',
     },
     outcomesContainer: {
         marginBottom: 16,
@@ -1875,15 +780,15 @@ const styles = StyleSheet.create({
     outcomeRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: 4,
+        marginBottom: 8,
     },
     outcomeText: {
-        color: '#D4D4D8',
-        fontSize: 14,
+        fontSize: 13,
+        color: '#d4d4d8',
     },
     outcomeProb: {
-        color: '#E4E4E7',
-        fontSize: 14,
+        fontSize: 13,
+        color: '#fbbf24',
         fontWeight: '600',
     },
     viewMarketBtn: {
@@ -1891,83 +796,95 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 6,
-        paddingVertical: 8,
-        backgroundColor: '#3F3F46',
+        paddingVertical: 10,
+        backgroundColor: '#27272a',
         borderRadius: 8,
     },
     viewMarketText: {
-        color: '#D4D4D8',
         fontSize: 12,
+        color: '#e4e4e7',
         fontWeight: '500',
     },
-    topicLeft: {
+    expandedContent: {
+        // Animation container
+    },
+    footerVersion: {
+        marginTop: 32,
+        fontSize: 12,
+        color: '#3f3f46',
+        textAlign: 'center',
+    },
+    notificationOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 100,
+        justifyContent: 'flex-end',
+    },
+    backdrop: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+    },
+    drawerPanel: {
+        backgroundColor: '#18181b',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        padding: 24,
+        paddingBottom: 40,
+        minHeight: 300,
+    },
+    drawerTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: 'white',
+        marginBottom: 24,
+    },
+    notificationItem: {
+        marginBottom: 24,
+    },
+    notifHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
-        flex: 1,
+        marginBottom: 8,
     },
-    topicDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 999,
+    dotSmall: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        marginRight: 8,
     },
-    topicInfo: {
-        flex: 1,
-    },
-    topicTitle: {
-        color: '#FFFFFF',
-        fontWeight: '600',
-        fontSize: 14,
-        marginBottom: 2,
-    },
-    topicDesc: {
-        color: '#71717A',
-        fontSize: 12,
-    },
-    topicRight: {
-        alignItems: 'flex-end',
-    },
-    topicProb: {
-        fontSize: 18,
-        fontWeight: '700',
-    },
-    topicSource: {
-        color: '#52525b',
+    notifType: {
         fontSize: 10,
-        fontWeight: '600',
-        textTransform: 'uppercase',
+        fontWeight: 'bold',
+        color: '#a1a1aa',
     },
-    emptyTopics: {
-        backgroundColor: '#18181B',
-        borderWidth: 1,
-        borderColor: '#27272A',
-        borderStyle: 'dashed',
-        padding: 24,
-        borderRadius: 12,
-        alignItems: 'center',
-    },
-    emptyTopicsText: {
-        color: '#71717A',
+    notifContent: {
         fontSize: 14,
-        fontWeight: '600',
+        color: '#e4e4e7',
         marginBottom: 4,
+        lineHeight: 20,
     },
-    emptyTopicsHint: {
-        color: '#52525b',
+    notifTime: {
         fontSize: 12,
+        color: '#71717a',
     },
-    // Settings Menu Styles
     settingsOverlay: {
         position: 'absolute',
         top: 60,
         right: 24,
-        zIndex: 100,
-        backgroundColor: '#18181B',
-        borderWidth: 1,
-        borderColor: '#27272A',
+        width: 220,
+        backgroundColor: '#18181b',
         borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#3f3f46',
         padding: 8,
-        minWidth: 180,
+        zIndex: 100,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
@@ -1976,128 +893,13 @@ const styles = StyleSheet.create({
     settingsItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
+        justifyContent: 'space-between',
         paddingVertical: 12,
-        paddingHorizontal: 16,
-        borderRadius: 8,
+        paddingHorizontal: 12,
     },
     settingsItemText: {
-        color: '#E4E4E7',
-        fontSize: 14,
+        fontSize: 13,
+        color: '#e4e4e7',
         fontWeight: '500',
-    },
-    settingsItemDanger: {
-        color: '#ef4444',
-    },
-    // Merit Modal Styles
-    meritSettingsBtn: {
-        position: 'absolute',
-        bottom: -6,
-        right: -6,
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        backgroundColor: '#27272a',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: '#3f3f46',
-        zIndex: 101,
-    },
-
-    modalOverlay: {
-        position: 'absolute',
-        top: 0, left: 0, right: 0, bottom: 0,
-        backgroundColor: '#09090b', // Full screen dark background
-        zIndex: 1000,
-        paddingTop: Platform.OS === 'ios' ? 50 : 20, // SafeArea
-    },
-    modalContent: {
-        flex: 1,
-        width: '100%',
-        backgroundColor: 'transparent',
-        borderRadius: 0,
-        borderWidth: 0,
-    },
-    modalHeader: {
-        flexDirection: 'row',
-        borderBottomWidth: 1,
-        borderBottomColor: '#27272a',
-        paddingHorizontal: 16,
-        paddingBottom: 8,
-        alignItems: 'center',
-    },
-    tabBtn: {
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        alignItems: 'center',
-        marginRight: 16,
-    },
-    tabBtnActive: {
-        borderBottomWidth: 2,
-        borderBottomColor: '#fb923c',
-    },
-    tabText: {
-        color: '#71717a',
-        fontSize: 18, // Larger text for full screen
-        fontWeight: '600',
-    },
-    tabTextActive: {
-        color: '#fb923c',
-    },
-    closeBtn: {
-        marginLeft: 'auto',
-        padding: 8,
-        backgroundColor: '#27272a',
-        borderRadius: 20,
-    },
-    modalBody: {
-        padding: 24,
-    },
-    rankRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: '#27272a',
-    },
-    rankNum: {
-        width: 30,
-        color: '#71717a',
-        fontWeight: 'bold',
-        fontSize: 14,
-    },
-    rankTop: {
-        color: '#fb923c',
-    },
-    rankName: {
-        flex: 1,
-        color: '#e4e4e7',
-        fontSize: 14,
-    },
-    rankScore: {
-        color: '#fb923c',
-        fontWeight: '600',
-        fontSize: 14,
-    },
-    // Email Dev Modal Styles
-    modalTitle: {
-        color: '#e4e4e7',
-        fontSize: 18,
-        fontWeight: '700',
-    },
-    actionBtn: {
-        backgroundColor: '#27272a',
-        padding: 16,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#3f3f46',
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    actionBtnText: {
-        color: '#e4e4e7',
-        fontWeight: '600',
-        fontSize: 14,
     },
 });
