@@ -56,16 +56,17 @@ export const generateMarketSummary = async (): Promise<string> => {
 
     // 3. Call Gemini API via Fetch with proper error handling
     try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
+        // Use gemini-1.5-flash for speed and stability (no search tool needed, model has recent knowledge)
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
-        console.log('[AI Service] Requesting Gemini with Search Grounding...');
+        console.log('[AI Service] Requesting Gemini Flash...');
 
         const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                tools: [{ google_search: {} }] // Enable Grounding
+                contents: [{ parts: [{ text: prompt }] }]
+                // Removed tools: [{ google_search: {} }] to prevent permission errors
             })
         });
 

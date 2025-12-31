@@ -26,13 +26,13 @@ export interface NarrativeSignal {
 export const BELIEVER_SIGNALS: NarrativeSignal[] = [
     {
         id: 'fed_decision',
-        title: 'Fed 利率決策 (Jan/Mar)',
-        description: '多選項市場：以「降息機率」作為敘事分數',
+        title: 'Fed 利率決策 (Jan 2025)',
+        description: '多選項市場：(Cut < 4.25% vs Hold 4.25-4.5%)',
         scoring: 'fed_cut',
         category: 'Macro',
         source: {
             type: 'polymarket',
-            // Verified active slug for Jan 2026 meeting (User Request)
+            // Verified active slug for Jan 2025 meeting
             slug: 'fed-decision-in-january'
         }
     },

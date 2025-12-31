@@ -113,61 +113,7 @@ export default function DashboardScreen() {
         router.replace('/onboarding');
     };
 
-    // V5.4 Helper: Narrative Progress Bar (Localized)
-    const renderNarrativeProgressBar = () => {
-        const totalScore = beliefs.reduce((sum, b) => {
-            const points = b.signal ? calculateNarrativeScore(b.signal, 5) : 0;
-            return sum + points;
-        }, 0);
 
-        const maxScore = 25;
-        const percent = Math.min(100, (totalScore / maxScore) * 100);
-
-        // Stages (Localized)
-        // 0-8: 風險主導 (Risk Dominant)
-        // 8-15: 條件累積 (Accumulation)
-        // 15-22: 反轉醞釀 (Brewing)
-        // 22-25: 反轉成立 (Confirmed)
-
-        let currentStage = '風險主導';
-        let stageColor = '#ef4444';
-
-        if (totalScore >= 22) { currentStage = '反轉成立'; stageColor = '#22c55e'; }
-        else if (totalScore >= 15) { currentStage = '反轉醞釀'; stageColor = '#eab308'; }
-        else if (totalScore >= 8) { currentStage = '條件累積'; stageColor = '#f97316'; }
-
-        return (
-            <View style={{ marginBottom: 24 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <Text style={{ color: '#71717a', fontSize: 12, fontWeight: '600', textTransform: 'uppercase' }}>
-                        反轉條件 (Conditions)
-                    </Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Text style={{ color: stageColor, fontSize: 12, fontWeight: 'bold' }}>{currentStage}</Text>
-                        <Text style={{ color: '#52525b', fontSize: 12 }}>{totalScore.toFixed(1)} / 25.0</Text>
-                    </View>
-                </View>
-
-                {/* Progress Track */}
-                <View style={{ height: 6, backgroundColor: '#27272a', borderRadius: 3, overflow: 'hidden' }}>
-                    <View style={{
-                        width: `${percent}%`,
-                        height: '100%',
-                        backgroundColor: stageColor,
-                        borderRadius: 3
-                    }} />
-                </View>
-
-                {/* Segment Markers */}
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-                    <Text style={{ color: '#52525b', fontSize: 10 }}>風險</Text>
-                    <Text style={{ color: '#52525b', fontSize: 10 }}>累積</Text>
-                    <Text style={{ color: '#52525b', fontSize: 10 }}>醞釀</Text>
-                    <Text style={{ color: '#52525b', fontSize: 10 }}>成立</Text>
-                </View>
-            </View>
-        );
-    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -295,8 +241,9 @@ export default function DashboardScreen() {
                                     const { generateMarketSummary } = require('@/services/aiService');
                                     const summary = await generateMarketSummary();
                                     setAiSummary(summary);
-                                } catch (e) {
-                                    setAiSummary('分析失敗，請檢查 API 設定。');
+                                } catch (e: any) {
+                                    console.error('AI Error:', e);
+                                    setAiSummary(typeof e === 'string' ? e : (e.message || '分析失敗'));
                                 } finally {
                                     setLoadingAi(false);
                                 }
@@ -350,7 +297,7 @@ export default function DashboardScreen() {
                     <Text style={styles.sectionTitle}>市場預期</Text>
 
                     {/* Narrative Progress Bar */}
-                    {renderNarrativeProgressBar()}
+
 
                     {/* Signal Cards */}
                     {beliefs.filter(b => BELIEVER_SIGNALS.some(s => s.id === b.id)).map((belief) => {
@@ -365,24 +312,47 @@ export default function DashboardScreen() {
                         const isFed = signal.id === 'fed_decision';
                         let fedStats = null;
 
+                        let marketTitle = signal.title;
+                        // Try to get original market title
+                        if (signal.markets?.[0]?.title) {
+                            marketTitle = signal.markets[0].title;
+                        }
+
                         if (isFed) {
                             try {
                                 const m = signal.markets?.[0];
                                 if (m && m.outcomePrices && m.outcomes) {
                                     const prices = typeof m.outcomePrices === 'string' ? JSON.parse(m.outcomePrices) : m.outcomePrices;
                                     const outcomes = typeof m.outcomes === 'string' ? JSON.parse(m.outcomes) : m.outcomes;
-                                    const sumByKeyword = (kw: string[]) => {
-                                        let sum = 0;
-                                        outcomes.forEach((o: string, idx: number) => {
-                                            const lower = o.toLowerCase();
-                                            if (kw.some(k => lower.includes(k))) sum += parseFloat(prices[idx]) || 0;
-                                        });
-                                        return Math.round(Math.min(1, sum) * 100);
-                                    };
+                                    // Robust Heuristic for Rate Ranges (Current Target: 4.25-4.50)
+                                    // Cut: < 4.25 (e.g. 4.00-4.25, or anything with 3.x)
+                                    // Hold: 4.25-4.50
+                                    // Hike: > 4.50
+                                    let cut = 0, hold = 0, hike = 0;
+
+                                    outcomes.forEach((o: string, idx: number) => {
+                                        const label = o.toLowerCase();
+                                        const p = parseFloat(prices[idx]) || 0;
+
+                                        // Explicit Keywords
+                                        if (label.includes('cut') || label.includes('decrease') || label.includes('lower')) { cut += p; return; }
+                                        if (label.includes('hold') || label.includes('maintain') || label.includes('unchanged')) { hold += p; return; }
+                                        if (label.includes('hike') || label.includes('increase') || label.includes('raise')) { hike += p; return; }
+
+                                        // Rate Range Logic
+                                        if (label.includes('3.') || label.includes('4.00') || (label.includes('4.25') && !label.includes('4.50'))) {
+                                            cut += p;
+                                        } else if (label.includes('4.25') && label.includes('4.50')) {
+                                            hold += p;
+                                        } else if (label.includes('4.75') || label.includes('5.') || (label.includes('4.50') && !label.includes('4.25'))) {
+                                            hike += p;
+                                        }
+                                    });
+
                                     fedStats = {
-                                        cut: sumByKeyword(['decrease', 'cut', 'lower']),
-                                        hold: sumByKeyword(['no change', 'unchanged', 'maintain']),
-                                        hike: sumByKeyword(['increase', 'hike', 'raise'])
+                                        cut: Math.round(Math.min(1, cut) * 100),
+                                        hold: Math.round(Math.min(1, hold) * 100),
+                                        hike: Math.round(Math.min(1, hike) * 100)
                                     };
                                 }
                             } catch (e) { }
@@ -429,6 +399,11 @@ export default function DashboardScreen() {
 
                                             {isExpanded && (
                                                 <View style={{ marginTop: 16 }}>
+                                                    {/* Full Topic Name */}
+                                                    <Text style={{ color: '#e4e4e7', fontSize: 13, fontWeight: '600', marginBottom: 16, lineHeight: 20, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#27272a' }}>
+                                                        {marketTitle}
+                                                    </Text>
+
                                                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16, backgroundColor: '#27272a', padding: 8, borderRadius: 6 }}>
                                                         <Text style={{ color: '#a1a1aa', fontSize: 12 }}>敘事貢獻 (Score)</Text>
                                                         <Text style={{ color: '#10b981', fontWeight: 'bold', fontSize: 12 }}>
