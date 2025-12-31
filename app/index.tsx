@@ -57,6 +57,8 @@ export default function DashboardScreen() {
     const [showMerit, setShowMerit] = useState(false);
     const [showMeritModal, setShowMeritModal] = useState(false);
     const [showEmailDev, setShowEmailDev] = useState(false);
+    const [loadingAi, setLoadingAi] = useState(false);
+    const [aiSummary, setAiSummary] = useState<string | null>(null);
     const scaleAnim = useRef(new Animated.Value(1)).current;
 
     // ...
@@ -375,7 +377,47 @@ export default function DashboardScreen() {
 
                     {/* V2: Market Dynamics (Real User Signals) */}
                     <View style={styles.dynamicsBox}>
-                        <Text style={styles.dynamicsLabel}>市場動態（Market Dynamics）</Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                            <Text style={styles.dynamicsLabel}>市場動態（Market Dynamics）</Text>
+                            <TouchableOpacity
+                                style={{
+                                    flexDirection: 'row', alignItems: 'center', gap: 4,
+                                    backgroundColor: '#27272a', paddingHorizontal: 8, paddingVertical: 4,
+                                    borderRadius: 12, borderWidth: 1, borderColor: '#3f3f46'
+                                }}
+                                onPress={async () => {
+                                    if (loadingAi) return;
+                                    setLoadingAi(true);
+                                    setAiSummary(null);
+                                    try {
+                                        const { generateMarketSummary } = require('@/services/aiService');
+                                        const summary = await generateMarketSummary();
+                                        setAiSummary(summary);
+                                    } catch (e) {
+                                        setAiSummary('Analysis failed.');
+                                    } finally {
+                                        setLoadingAi(false);
+                                    }
+                                }}
+                            >
+                                <Ionicons name="sparkles" size={12} color="#fbbf24" />
+                                <Text style={{ color: '#e4e4e7', fontSize: 10, fontWeight: '600' }}>AI Summary</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* AI Summary Display */}
+                        {(loadingAi || aiSummary) && (
+                            <View style={{ marginBottom: 16, padding: 12, backgroundColor: 'rgba(251, 191, 36, 0.1)', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(251, 191, 36, 0.3)' }}>
+                                {loadingAi ? (
+                                    <Text style={{ color: '#fbbf24', fontSize: 12 }}>正在分析市場數據 (Gemini Flash Lite)...</Text>
+                                ) : (
+                                    <Text style={{ color: '#fbbf24', fontSize: 13, lineHeight: 20 }}>
+                                        <Text style={{ fontWeight: 'bold' }}>✦ AI Insight: </Text>
+                                        {aiSummary}
+                                    </Text>
+                                )}
+                            </View>
+                        )}
 
                         {beliefs.length === 0 ? (
                             <Text style={{ color: '#71717A', marginTop: 8 }}>尚未追蹤任何市場信號。</Text>

@@ -35,202 +35,51 @@ const _normalizeMarketEvent = (raw: any): MarketEvent => {
 };
 
 // Search for specific markets on Polymarket
-export const searchPolymarkets = async (query: string, type: 'tag' | 'q' = 'tag'): Promise<MarketEvent[]> => {
-    try {
-        // V4.1 Fix: Q parameter is ignored by API. Tag is mandatory.
-        // We FORCE tag_slug usage even if 'q' is requested to ensure results.
-        const param = `tag_slug=${encodeURIComponent(query)}`;
-        const response = await fetch(
-            getPolymarketUrl(`limit=50&active=true&closed=false&${param}`)
-        );
-        if (!response.ok) return [];
-        const rawData = await response.json();
-        return rawData.map(_normalizeMarketEvent);
-    } catch (error) {
-        console.error('[API] Polymarket search error:', error);
-        return [];
-    }
-};
-
-// Fetch specific market by slug
 export const fetchPolymarketBySlug = async (slug: string): Promise<MarketEvent | null> => {
     try {
         const response = await fetch(getPolymarketUrl(`slug=${encodeURIComponent(slug)}`));
         if (!response.ok) return null;
         const data = await response.json();
-        return data[0] ? _normalizeMarketEvent(data[0]) : null;
+        // API often returns array for slug search
+        const eventData = Array.isArray(data) ? data[0] : data;
+        return eventData ? _normalizeMarketEvent(eventData) : null;
     } catch (error) {
         console.error('[API] Polymarket slug fetch error:', error);
         return null;
     }
 };
 
-// Predefined Polymarket event slugs for our signals
-export const POLYMARKET_SLUGS = {
-    fed_rate: 'fed-rate-decision-december-18',
-    btc_100k: 'will-bitcoin-reach-100k-in-2024',
-    eth_etf: 'will-sec-approve-ethereum-spot-etf',
-    btc_reserve: 'will-trump-create-strategic-bitcoin-reserve',
-    crypto_bill: 'will-congress-pass-crypto-bill-2025',
-};
+// V5.0 Strict Fetch
+import { NarrativeSignal } from './marketData';
 
-// Search uses the 'q' parameter for text search if tag_slug is not specific enough
-// But for now we stick to tag_slug or keywords
-// Helper to getting top markets by volume (Global Fallback)
-export const fetchTopMarkets = async (): Promise<MarketEvent[]> => {
-    try {
-        const response = await fetch(getPolymarketUrl(`limit=100&active=true&closed=false&sort=volume`));
-        if (!response.ok) return [];
-        const rawData = await response.json();
-        return rawData.map(_normalizeMarketEvent);
-    } catch (error) {
-        console.error('[API] Polymarket top markets fetch error:', error);
-        return [];
-    }
-};
+export const fetchSignalsByIds = async (signals: NarrativeSignal[]): Promise<NarrativeSignal[]> => {
+    console.log('[API] V5.0 strict fetch starting...');
 
-export const fetchRealPolymarketData = async (): Promise<Map<string, MarketEvent[]>> => {
-    const results = new Map<string, MarketEvent[]>();
+    const results: NarrativeSignal[] = [];
 
-    // Signal ID -> Search Config (V4.1 - Tag Search + Global Fallback + Soft Date)
-    // Signal ID -> Search Config (V4.1 - Tag Search + Global Fallback + Soft Date)
-    const searchConfigs: Record<string, {
-        tags: string[];
-        mustInclude?: string[];
-        anyMatch?: string[];
-        mustExclude?: string[]
-    }> = {
-        'fed_decision_series': {
-            tags: ['fed', 'interest-rates', 'monetary-policy', 'economics'],
-            anyMatch: ['fed', 'interest', 'rate', 'cut'],
-            mustExclude: ['chair', 'powell']
-        },
-        'us_recession_end_2026': {
-            tags: ['recession', 'economics'],
-            mustInclude: ['2026'], // Strict filter for 2026 based on user feedback
-            anyMatch: ['recession'],
-            mustExclude: ['canada', 'uk', 'europe'] // Exclude other countries seen in screenshot
-        },
-        // Removed negative_gdp_2026 as per request
-        'gov_funding_lapse_jan31_2026': {
-            tags: ['government', 'politics', 'shutdown', 'usa'],
-            anyMatch: ['shutdown', 'funding', 'lapse'],
-            mustExclude: []
-        },
-        'us_default_by_2027': {
-            tags: ['debt', 'economics', 'politics', 'usa'],
-            anyMatch: ['default', 'debt'],
-            mustExclude: ['mexico', 'china', 'ukraine']
-        },
-        'us_btc_reserve_before_2027': {
-            tags: ['bitcoin', 'crypto'],
-            anyMatch: ['reserve', 'strategic', 'national'],
-            mustExclude: ['price', 'etf', 'below', 'above']
-        },
-        'us_bank_failure_by_mar31_2026': {
-            tags: ['banking', 'finance', 'economics'],
-            anyMatch: ['bank', 'failure', 'collapse'],
-            mustExclude: []
-        },
-    };
+    await Promise.all(signals.map(async (signal) => {
+        const slug = signal.source.slug;
+        const mkData = await fetchPolymarketBySlug(slug);
 
-    const year2026 = new Date('2026-01-01').getTime();
-
-    try {
-        console.log('[API] Starting Robust Polymarket Fetch (V4.1)...');
-
-        for (const [signalId, config] of Object.entries(searchConfigs)) {
-            let matches: MarketEvent[] = [];
-            const seenIds = new Set<string>();
-
-            // 1. Tag Search
-            for (const tag of config.tags) {
-                const data = await searchPolymarkets(tag, 'tag');
-                for (const m of data) {
-                    if (!seenIds.has(m.id)) {
-                        matches.push(m);
-                        seenIds.add(m.id);
-                    }
-                }
-            }
-
-            // 2. Fallback: If low matches, fetch Top Markets and filter locally
-            if (matches.length < 5) {
-                const topMarkets = await fetchTopMarkets();
-                for (const m of topMarkets) {
-                    if (!seenIds.has(m.id)) {
-                        matches.push(m);
-                        seenIds.add(m.id);
-                    }
-                }
-            }
-
-            // 3. Keyword Filtering
-            let filtered = matches.filter(m => {
-                const title = m.title.toLowerCase();
-                if (config.mustExclude?.some(kw => title.includes(kw.toLowerCase()))) return false;
-                if (config.mustInclude && !config.mustInclude.every(kw => title.includes(kw.toLowerCase()))) return false;
-                if (config.anyMatch && config.anyMatch.length > 0 && !config.anyMatch.some(kw => title.includes(kw.toLowerCase()))) return false;
-                return true;
+        if (mkData) {
+            // Check if we need a specific market ID (if 'markets' has multiple)
+            // But usually slug points to one event.
+            // We just attach the markets array found.
+            results.push({
+                ...signal,
+                markets: mkData.markets
             });
-
-            // 3b. Active/Closed Check (Double check)
-            filtered = filtered.filter(m => m.closed === false && m.active === true);
-
-            // 4. Date Filtering (Soft Filter)
-            // Exception: Fed decisions can be near term (series)
-            if (signalId !== 'fed_decision_series') {
-                // Try strictly 2026+
-                const strictMatches = filtered.filter(m => {
-                    if (!m.endDate) return false;
-                    const end = new Date(m.endDate).getTime();
-                    return end >= year2026;
-                });
-
-                if (strictMatches.length > 0) {
-                    filtered = strictMatches;
-                } else {
-                    // Fallback to all future dates (e.g. 2025)
-                    // But strictly future (now + buffer?)
-                    const now = Date.now();
-                    filtered = filtered.filter(m => {
-                        if (!m.endDate) return false;
-                        return new Date(m.endDate).getTime() > now;
-                    });
-                }
-            }
-
-            // 5. Sort: Nearest Expiry First
-            if (filtered.length > 0) {
-                filtered.sort((a, b) => {
-                    // We filtered for existing endDate above, so safe to assert
-                    const dateA = new Date(a.endDate!).getTime();
-                    const dateB = new Date(b.endDate!).getTime();
-
-                    // If same date, use volume
-                    if (Math.abs(dateA - dateB) < 86400000) {
-                        const volA = parseFloat((a as any).volume) || 0;
-                        const volB = parseFloat((b as any).volume) || 0;
-                        return volB - volA; // Higher volume first
-                    }
-                    return dateA - dateB; // Nearest date first
-                });
-            }
-
-            results.set(signalId, filtered);
-            console.log(`[API] ${signalId}: found ${filtered.length} markets (Top: ${filtered[0]?.title || 'None'})`);
+            console.log(`[API] Loaded: ${signal.title} (Slug: ${slug})`);
+        } else {
+            console.warn(`[API] 404/Error for Signal: ${signal.title} (${slug})`);
+            // Return signal without markets (UI will handle empty state)
+            results.push(signal);
         }
-
-        console.log('[API] Found Markets:', Object.fromEntries(
-            Array.from(results.entries()).map(([k, v]) => [k, v.length])
-        ));
-
-    } catch (error) {
-        console.error('[API] Polymarket batch fetch error:', error);
-    }
+    }));
 
     return results;
 };
+
 
 // FRED API (Federal Reserve Economic Data) - Free, no auth needed
 const FRED_API = 'https://api.stlouisfed.org/fred';

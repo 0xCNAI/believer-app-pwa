@@ -44,6 +44,7 @@ interface TechState {
     evaluateAll: () => Promise<void>;
     fetchAndEvaluate: () => Promise<void>;
     resetToDefaults: () => void;
+    syncFromCloud: (uid: string) => Promise<void>;
 }
 
 // ============ Default State ============
@@ -75,21 +76,51 @@ export const useTechStore = create<TechState>()(
 
             // Actions
             setConditionEnabled: (id, enabled) => {
-                set((state) => ({
-                    enabledConditions: {
-                        ...state.enabledConditions,
-                        [id]: enabled,
-                    },
-                }));
+                set((state) => {
+                    const newConditions = { ...state.enabledConditions, [id]: enabled };
+
+                    try {
+                        const { useAuthStore } = require('./authStore');
+                        const uid = useAuthStore.getState().user?.id;
+                        if (uid) {
+                            require('@/services/statePersistence').saveUserConfig(uid, { enabledConditions: newConditions });
+                        }
+                    } catch (e) { }
+
+                    return { enabledConditions: newConditions };
+                });
             },
 
             setPersonalParam: (key, value) => {
-                set((state) => ({
-                    personalParams: {
-                        ...state.personalParams,
-                        [key]: value,
-                    },
-                }));
+                set((state) => {
+                    const newParams = { ...state.personalParams, [key]: value };
+
+                    try {
+                        const { useAuthStore } = require('./authStore');
+                        const uid = useAuthStore.getState().user?.id;
+                        if (uid) {
+                            require('@/services/statePersistence').saveUserConfig(uid, { personalParams: newParams });
+                        }
+                    } catch (e) { }
+
+                    return { personalParams: newParams };
+                });
+            },
+
+            // Action: Sync FROM Cloud (on login)
+            syncFromCloud: async (uid: string) => {
+                try {
+                    const config = await require('@/services/statePersistence').loadUserConfig(uid);
+                    if (config) {
+                        set((state) => ({
+                            enabledConditions: config.enabledConditions || state.enabledConditions,
+                            personalParams: config.personalParams || state.personalParams,
+                        }));
+                        console.log('[TechStore] Synced from cloud');
+                        // re-evaluate with new params
+                        get().evaluateAll();
+                    }
+                } catch (e) { }
             },
 
             fetchAndEvaluate: async () => {

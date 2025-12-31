@@ -47,6 +47,8 @@ interface UserState {
     setNotificationSetting: (key: keyof UserState['notificationSettings'], value: boolean) => void;
 
     resetProfile: () => void;
+
+    syncFromCloud: (uid: string) => Promise<void>;
 }
 
 export const useUserStore = create<UserState>()(
@@ -64,35 +66,59 @@ export const useUserStore = create<UserState>()(
 
             setExperience: (level) => set({ experience: level }),
 
-            togglePredictionTopic: (topic) => set((state) => {
-                const isSelected = state.predictionTopics.includes(topic);
-                if (isSelected) {
-                    return { predictionTopics: state.predictionTopics.filter(t => t !== topic) };
-                } else {
-                    if (state.predictionTopics.length >= 3) return state;
-                    return { predictionTopics: [...state.predictionTopics, topic] };
-                }
-            }),
+            togglePredictionTopic: (topic) => {
+                set((state) => {
+                    const isSelected = state.predictionTopics.includes(topic);
+                    let newTopics;
+                    if (isSelected) {
+                        newTopics = state.predictionTopics.filter(t => t !== topic);
+                    } else {
+                        if (state.predictionTopics.length >= 3) return state; // No change
+                        newTopics = [...state.predictionTopics, topic];
+                    }
 
-            // Legacy
+                    // Cloud Sync
+                    try {
+                        const { useAuthStore } = require('./authStore');
+                        const uid = useAuthStore.getState().user?.id;
+                        if (uid) {
+                            require('@/services/statePersistence').saveUserConfig(uid, { predictionTopics: newTopics });
+                        }
+                    } catch (e) { }
+
+                    return { predictionTopics: newTopics };
+                });
+            },
+
             toggleFocusArea: (area) => set((state) => {
+                // Legacy - no sync needed
                 const isSelected = state.focusAreas.includes(area);
-                if (isSelected) {
-                    return { focusAreas: state.focusAreas.filter(a => a !== area) };
-                } else {
-                    if (state.focusAreas.length >= 3) return state;
-                    return { focusAreas: [...state.focusAreas, area] };
-                }
+                if (isSelected) return { focusAreas: state.focusAreas.filter(a => a !== area) };
+                if (state.focusAreas.length >= 3) return state;
+                return { focusAreas: [...state.focusAreas, area] };
             }),
 
             setAlertStyle: (style) => set({ alertStyle: style }),
 
-            setNotificationSetting: (key, value) => set((state) => ({
-                notificationSettings: {
-                    ...state.notificationSettings,
-                    [key]: value
-                }
-            })),
+            setNotificationSetting: (key, value) => {
+                set((state) => {
+                    const newSettings = {
+                        ...state.notificationSettings,
+                        [key]: value
+                    };
+
+                    // Cloud Sync
+                    try {
+                        const { useAuthStore } = require('./authStore');
+                        const uid = useAuthStore.getState().user?.id;
+                        if (uid) {
+                            require('@/services/statePersistence').saveUserConfig(uid, { notificationSettings: newSettings });
+                        }
+                    } catch (e) { }
+
+                    return { notificationSettings: newSettings };
+                });
+            },
 
             resetProfile: () => set({
                 experience: null,
@@ -105,6 +131,20 @@ export const useUserStore = create<UserState>()(
                     extremeDynamics: true,
                 }
             }),
+
+            // Action to load from cloud
+            syncFromCloud: async (uid: string) => {
+                try {
+                    const config = await require('@/services/statePersistence').loadUserConfig(uid);
+                    if (config) {
+                        set((state) => ({
+                            predictionTopics: config.predictionTopics || state.predictionTopics,
+                            notificationSettings: config.notificationSettings || state.notificationSettings,
+                        }));
+                        console.log('[UserStore] Synced from cloud');
+                    }
+                } catch (e) { console.warn('Sync failed', e); }
+            }
         }),
         {
             name: 'user-storage',

@@ -177,6 +177,42 @@ export const syncStateAndCheckDiff = async (
     return { hasChanged: stateChanged, notifications };
 };
 
+// ============ Config Sync (New) ============
+
+export interface UserConfig {
+    // User Store
+    predictionTopics?: string[];
+    notificationSettings?: any;
+    // Tech Store
+    enabledConditions?: Record<string, boolean>;
+    personalParams?: any;
+    updatedAt: number;
+}
+
+export const saveUserConfig = async (userId: string, config: Partial<UserConfig>) => {
+    if (!userId) return;
+    try {
+        const docRef = doc(db, `users/${userId}/config/settings`);
+        // Merge with existing
+        await setDoc(docRef, { ...config, updatedAt: Date.now() }, { merge: true });
+        console.log('[Persistence] Config saved to cloud.');
+    } catch (e) {
+        console.warn('[Persistence] Save config failed:', e);
+    }
+};
+
+export const loadUserConfig = async (userId: string): Promise<UserConfig | null> => {
+    if (!userId) return null;
+    try {
+        const docRef = doc(db, `users/${userId}/config/settings`);
+        const snap = await getDoc(docRef);
+        return snap.exists() ? snap.data() as UserConfig : null;
+    } catch (e) {
+        console.warn('[Persistence] Load config failed:', e);
+        return null;
+    }
+};
+
 function getEventMessage(event: NotificationEvent, state: ReversalState): string {
     switch (event) {
         case 'ENTER_WATCH':
