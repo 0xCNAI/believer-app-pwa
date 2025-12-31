@@ -103,7 +103,7 @@ export const BELIEVER_SIGNALS: MarketEvent[] = [
 export const IMPACT_WEIGHTS: Record<string, number> = {
     'fed_decision_series': 0.8,
     'us_recession_end_2026': 1.0,
-    'negative_gdp_2026': 1.0,
+    // negative_gdp_2026 removed
     'gov_funding_lapse_jan31_2026': 1.0,
     'us_default_by_2027': 1.0,
     'us_btc_reserve_before_2027': 1.0,
@@ -258,7 +258,6 @@ export const getPositiveProbability = (signalId: string, market: any): number =>
     // 2) Risk events: return (1 - P_yes)
     if ([
         'us_recession_end_2026',
-        'negative_gdp_2026',
         'gov_funding_lapse_jan31_2026',
         'us_default_by_2027',
         'us_bank_failure_by_mar31_2026'

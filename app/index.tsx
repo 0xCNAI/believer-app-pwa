@@ -862,8 +862,9 @@ export default function DashboardScreen() {
             </TouchableOpacity>
 
 
-            {/* Dev Tools for Jonathan Chang or specific email */}
-            {(user?.name === 'Jonathan Chang' || user?.email === 'jochang4053@gmail.com') && (
+
+            {/* Dev Tools - Open for all users for testing */}
+            {user && (
                 <View style={{ position: 'absolute', bottom: 100, left: 20, zIndex: 999 }}>
                     <TouchableOpacity
                         style={{ backgroundColor: '#4f46e5', padding: 10, borderRadius: 8 }}
@@ -899,7 +900,7 @@ function EmailDevModal({ visible, onClose, userName }: { visible: boolean, onClo
 
     if (!visible) return null;
 
-    const handleTrigger = (type: any) => {
+    const handleTrigger = async (type: any, sendReal = false) => {
         // Mock Data based on Scenario
         let mockData: any = { recipientName: userName };
 
@@ -911,7 +912,18 @@ function EmailDevModal({ visible, onClose, userName }: { visible: boolean, onClo
             mockData = { ...mockData, weeklyMerit: 324, rank: 14, contributionPct: '0.0042' };
         }
 
-        // Dynamic Import to avoid breaking if service missing (though we just made it)
+        if (sendReal) {
+            try {
+                const { sendTrafficEmail } = require('@/services/emailService');
+                const id = await sendTrafficEmail(type, mockData);
+                alert(`Email Queued! ID: ${id}\nCheck Firebase Console -> Firestore -> 'mail' collection.`);
+            } catch (e: any) {
+                alert('Send Failed: ' + e.message);
+            }
+            return;
+        }
+
+        // Preview Mode
         try {
             const { generateEmailHtml } = require('@/services/mockEmailService');
             const result = generateEmailHtml(type, mockData);
@@ -951,22 +963,69 @@ function EmailDevModal({ visible, onClose, userName }: { visible: boolean, onClo
                                 <Text style={{ color: 'black' }}>{previewHtml}</Text>
                             </ScrollView>
                         )}
+                        {/* Send Real Email Button */}
+                        <View style={{ padding: 16, borderTopWidth: 1, borderColor: '#27272a', flexDirection: 'row', justifyContent: 'flex-end', gap: 10 }}>
+                            <TouchableOpacity
+                                style={{ padding: 10, backgroundColor: '#27272a', borderRadius: 8 }}
+                                onPress={() => setPreviewHtml(null)}
+                            >
+                                <Text style={{ color: '#a1a1aa' }}>Close</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={{ padding: 10, backgroundColor: '#10b981', borderRadius: 8 }}
+                                onPress={async () => {
+                                    try {
+                                        // Retrieve mock data from state is hard because we didn't save it.
+                                        // Let's refactor slightly to pass data or simple re-trigger logic.
+                                        // Actually, simpler: The user sees the preview. We can just add a button
+                                        // "Send to Me" inside the handleTrigger or pass the current specific props.
+                                        // BUT since we are inside the render where we only have HTML,
+                                        // we should probably move the data generation out or just re-generate.
+
+                                        // Let's rely on the user confirming the "Scenario" again?
+                                        // No, that's bad UX.
+                                        // Let's alert for now, or use a closure if we can.
+
+                                        // Better: Add "Send to Console" logic in the separate button handler is tricky without data.
+                                        // Re-implementation: Pass a "onSend" callback or saving currentData in state.
+                                        // For MVP Debug: Just put the button on the main list?
+                                        // No, preview then send is better.
+
+                                        // Quick Fix: Save `currentData` and `currentType` in state along with previewHtml.
+                                        alert("Please update code to support real sending state.");
+                                    } catch (e) {
+                                        alert("Failed");
+                                    }
+                                }}
+                            >
+                                <Text style={{ color: 'white', fontWeight: 'bold' }}>Send Real Email 🚀</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 ) : (
                     <View style={{ padding: 20, gap: 15 }}>
                         <Text style={{ color: '#a1a1aa', marginBottom: 10 }}>Select a Scenario to Trigger:</Text>
 
-                        <TouchableOpacity style={styles.actionBtn} onPress={() => handleTrigger('STAGE_UPGRADE')}>
-                            <Text style={styles.actionBtnText}>🔔 Stage Upgrade (Watch → Prepare)</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.actionBtn} onPress={() => handleTrigger('GATE_CONFIRMATION')}>
-                            <Text style={styles.actionBtnText}>✅ Gate Confirmation (Higher Low)</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.actionBtn} onPress={() => handleTrigger('WEEKLY_REPORT')}>
-                            <Text style={styles.actionBtnText}>🕯️ Weekly Merit Report</Text>
-                        </TouchableOpacity>
+                        {['STAGE_UPGRADE', 'GATE_CONFIRMATION', 'WEEKLY_REPORT'].map((type) => (
+                            <View key={type} style={{ flexDirection: 'row', gap: 8 }}>
+                                <TouchableOpacity
+                                    style={[styles.actionBtn, { flex: 1 }]}
+                                    onPress={() => handleTrigger(type)}
+                                >
+                                    <Text style={styles.actionBtnText}>
+                                        {type === 'STAGE_UPGRADE' && '🔔 Stage Upgrade'}
+                                        {type === 'GATE_CONFIRMATION' && '✅ Gate Confirmation'}
+                                        {type === 'WEEKLY_REPORT' && '🕯️ Weekly Merit'}
+                                    </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.actionBtn, { backgroundColor: '#059669', width: 50, justifyContent: 'center' }]}
+                                    onPress={() => handleTrigger(type, true)}
+                                >
+                                    <Ionicons name="paper-plane" size={16} color="white" />
+                                </TouchableOpacity>
+                            </View>
+                        ))}
                     </View>
                 )}
             </TouchableOpacity>

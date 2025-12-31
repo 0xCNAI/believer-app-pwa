@@ -14,6 +14,26 @@ const getPolymarketUrl = (queryString: string): string => {
     return `${POLYMARKET_API_BASE}?${queryString}`;
 };
 
+// Helper to normalize API response (snake_case -> camelCase)
+const _normalizeMarketEvent = (raw: any): MarketEvent => {
+    return {
+        id: raw.id,
+        title: raw.title,
+        description: raw.description,
+        slug: raw.slug,
+        category: raw.category || 'Unknown',
+        endDate: raw.end_date || raw.endDate, // Handle both
+        active: raw.active,
+        closed: raw.closed,
+        image: raw.image,
+        icon: raw.icon,
+        volume: typeof raw.volume === 'number' ? raw.volume : parseFloat(raw.volume || '0'),
+        outcomes: raw.outcomes, // Often stringified JSON
+        outcomePrices: raw.outcome_prices || raw.outcomePrices, // CRITICAL FIX
+        markets: raw.markets ? raw.markets.map(_normalizeMarketEvent) : []
+    };
+};
+
 // Search for specific markets on Polymarket
 export const searchPolymarkets = async (query: string, type: 'tag' | 'q' = 'tag'): Promise<MarketEvent[]> => {
     try {
@@ -24,7 +44,8 @@ export const searchPolymarkets = async (query: string, type: 'tag' | 'q' = 'tag'
             getPolymarketUrl(`limit=50&active=true&closed=false&${param}`)
         );
         if (!response.ok) return [];
-        return await response.json();
+        const rawData = await response.json();
+        return rawData.map(_normalizeMarketEvent);
     } catch (error) {
         console.error('[API] Polymarket search error:', error);
         return [];
@@ -37,7 +58,7 @@ export const fetchPolymarketBySlug = async (slug: string): Promise<MarketEvent |
         const response = await fetch(getPolymarketUrl(`slug=${encodeURIComponent(slug)}`));
         if (!response.ok) return null;
         const data = await response.json();
-        return data[0] || null;
+        return data[0] ? _normalizeMarketEvent(data[0]) : null;
     } catch (error) {
         console.error('[API] Polymarket slug fetch error:', error);
         return null;
@@ -60,7 +81,8 @@ export const fetchTopMarkets = async (): Promise<MarketEvent[]> => {
     try {
         const response = await fetch(getPolymarketUrl(`limit=100&active=true&closed=false&sort=volume`));
         if (!response.ok) return [];
-        return await response.json();
+        const rawData = await response.json();
+        return rawData.map(_normalizeMarketEvent);
     } catch (error) {
         console.error('[API] Polymarket top markets fetch error:', error);
         return [];
@@ -70,6 +92,7 @@ export const fetchTopMarkets = async (): Promise<MarketEvent[]> => {
 export const fetchRealPolymarketData = async (): Promise<Map<string, MarketEvent[]>> => {
     const results = new Map<string, MarketEvent[]>();
 
+    // Signal ID -> Search Config (V4.1 - Tag Search + Global Fallback + Soft Date)
     // Signal ID -> Search Config (V4.1 - Tag Search + Global Fallback + Soft Date)
     const searchConfigs: Record<string, {
         tags: string[];
@@ -83,15 +106,12 @@ export const fetchRealPolymarketData = async (): Promise<Map<string, MarketEvent
             mustExclude: ['chair', 'powell']
         },
         'us_recession_end_2026': {
-            tags: ['recession', 'economics', 'gdp'],
-            anyMatch: ['recession', 'US', 'United States'],
-            mustExclude: ['mexico', 'china', 'europe', 'uk', 'japan', 'global']
+            tags: ['recession', 'economics'],
+            mustInclude: ['2026'], // Strict filter for 2026 based on user feedback
+            anyMatch: ['recession'],
+            mustExclude: ['canada', 'uk', 'europe'] // Exclude other countries seen in screenshot
         },
-        'negative_gdp_2026': {
-            tags: ['gdp', 'economics'],
-            anyMatch: ['GDP', 'growth'],
-            mustExclude: ['mexico', 'china', 'europe', 'uk', 'japan', 'global']
-        },
+        // Removed negative_gdp_2026 as per request
         'gov_funding_lapse_jan31_2026': {
             tags: ['government', 'politics', 'shutdown', 'usa'],
             anyMatch: ['shutdown', 'funding', 'lapse'],
