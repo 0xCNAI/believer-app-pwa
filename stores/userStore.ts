@@ -48,6 +48,8 @@ interface UserState {
 
     resetProfile: () => void;
 
+    completeSystemReset: () => Promise<void>;
+
     syncFromCloud: (uid: string) => Promise<void>;
 }
 
@@ -131,6 +133,40 @@ export const useUserStore = create<UserState>()(
                     extremeDynamics: true,
                 }
             }),
+
+            completeSystemReset: async () => {
+                console.log('[UserStore] Initiating Complete System Reset...');
+
+                // 1. Reset Local Stores (Zustand)
+                get().resetProfile();
+
+                try {
+                    const { useTechStore } = require('./techStore');
+                    useTechStore.getState().resetToDefaults();
+                    console.log('[UserStore] TechStore reset.');
+                } catch (e) {
+                    console.warn('[UserStore] Failed to reset TechStore:', e);
+                }
+
+                try {
+                    const { useBeliefStore } = require('./beliefStore');
+                    useBeliefStore.getState().resetStore();
+                    console.log('[UserStore] BeliefStore reset.');
+                } catch (e) {
+                    console.warn('[UserStore] Failed to reset BeliefStore:', e);
+                }
+
+                // 2. Clear Async Storage (Persistence)
+                try {
+                    await AsyncStorage.clear();
+                    console.log('[UserStore] AsyncStorage cleared completely.');
+                } catch (e) {
+                    console.error('[UserStore] Failed to clear AsyncStorage:', e);
+                }
+
+                // 3. Force Reload (Optional, but ensures clean slate)
+                // if (Platform.OS === 'web') window.location.reload();
+            },
 
             // Action to load from cloud
             syncFromCloud: async (uid: string) => {

@@ -197,7 +197,8 @@ export const useBeliefStore = create<BeliefState>()(
                     beliefs: [],
                     faithClicks: 0,
                     pendingMerit: 0,
-                    discardedIds: []
+                    discardedIds: [],
+                    btcPrice: 94500, // Reset to default
                 });
             },
 

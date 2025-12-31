@@ -259,6 +259,14 @@ export const useTechStore = create<TechState>()(
                 set({
                     enabledConditions: getDefaultEnabledConditions(),
                     personalParams: { ...DEFAULT_PERSONAL_PARAMS },
+                    conditions: [],
+                    reversalState: null,
+                    reversalInputs: null,
+                    lastEvaluated: 0,
+                    isLoading: false,
+                    error: null,
+                    gateCount: 0,
+                    higherLow: false,
                 });
             },
         }),

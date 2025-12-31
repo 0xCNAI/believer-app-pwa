@@ -48,20 +48,25 @@ export function getInterpretation(prob: number): { interpret: string; impact: st
  * Convert belief to MarketDynamicItem with proper probability calculation
  */
 export function beliefToMarketDynamic(belief: Belief): MarketDynamicItem {
-    // Get positive probability using the smart function
-    const market = belief.marketEvent.markets?.[0];
-    let positiveProbRaw = belief.currentProbability; // Already 0-1 from parsePrice
+    const signal = belief.signal;
 
-    // If market data is available, use getPositiveProbability for accurate calculation
-    if (market && market.outcomePrices && market.outcomes) {
-        positiveProbRaw = getPositiveProbability(belief.id, market);
+    // Get positive probability using V5 smart function
+    let positiveProbRaw = 0;
+    try {
+        if (signal) {
+            positiveProbRaw = getPositiveProbability(signal);
+        } else {
+            positiveProbRaw = belief.currentProbability; // Fallback
+        }
+    } catch (e) {
+        positiveProbRaw = belief.currentProbability;
     }
 
     const prob = Math.round(positiveProbRaw * 100);
     const { interpret, impact } = getInterpretation(prob);
 
     return {
-        title: belief.marketEvent.title,
+        title: signal?.title || 'Unknown Signal',
         probability: positiveProbRaw,
         probabilityDisplay: `${prob}%`,
         interpretation: interpret,

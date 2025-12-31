@@ -32,11 +32,8 @@ export const BELIEVER_SIGNALS: NarrativeSignal[] = [
         category: 'Macro',
         source: {
             type: 'polymarket',
-            // Falling back to a known active prediction if specific meeting not found.
-            // Ideally: 'fed-decision-in-march-2025' or similar.
-            // Using a search-friendly slug based on "Fed" search results or known pattern.
-            // Note: If this 404s, API will need a manual update.
-            slug: 'fed-policy-decision-january-2025'
+            // Verified active slug for Jan 2026 meeting (User Request)
+            slug: 'fed-decision-in-january'
         }
     },
     {
