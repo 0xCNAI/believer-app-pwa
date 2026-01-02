@@ -1,5 +1,5 @@
-
 import { resolveReversalCopy } from '@/services/copyService';
+import { useNotificationStore, NotificationItem } from '@/stores/notificationStore'; // Import Notification Store
 import { BELIEVER_SIGNALS, getPositiveProbability, calculateNarrativeScore } from '@/services/marketData';
 import { useBeliefStore } from '@/stores/beliefStore';
 import { useUserStore } from '@/stores/userStore';
@@ -349,7 +349,7 @@ export default function DashboardScreen() {
                                                                         {c.nameCN}
                                                                     </Text>
                                                                     <Text style={{ color: '#71717a' }}>
-                                                                        {isExpanded ? '' : `：${c.passed ? (c.detail || '條件成立') : '條件未滿足'}`}
+                                                                        {isExpanded ? '' : `：${c.passed ? (c.detail || '條件成立') : '條件未滿足'} `}
                                                                     </Text>
                                                                 </View>
 
@@ -600,7 +600,7 @@ export default function DashboardScreen() {
                                                 <Text style={{ color: '#a1a1aa', fontSize: 12 }}>{val}%</Text>
                                             </View>
                                             <View style={{ height: 8, backgroundColor: '#27272a', borderRadius: 4, overflow: 'hidden' }}>
-                                                <View style={{ width: `${val}%`, height: '100%', backgroundColor: color }} />
+                                                <View style={{ width: `${val}% `, height: '100%', backgroundColor: color }} />
                                             </View>
                                         </View>
                                     );
@@ -615,14 +615,14 @@ export default function DashboardScreen() {
                                                         {!isExpanded && (
                                                             <Text style={styles.topicDesc}>
                                                                 <Text style={{ color: statusColor, fontWeight: '600' }}>{statusText}</Text>
-                                                                <Text style={{ color: '#52525b' }}> ({isFed && fedStats ? `Cut ${fedStats.cut}%` : `${prob}%`})</Text>
+                                                                <Text style={{ color: '#52525b' }}> ({isFed && fedStats ? `Cut ${fedStats.cut}% ` : `${prob}% `})</Text>
                                                             </Text>
                                                         )}
                                                     </View>
                                                 </View>
                                                 <View style={styles.topicRight}>
                                                     <Text style={[styles.topicProb, { color: '#e4e4e7' }]}>
-                                                        {isFed && fedStats ? `${fedStats.cut}%` : `${prob}%`}
+                                                        {isFed && fedStats ? `${fedStats.cut}% ` : `${prob}% `}
                                                     </Text>
                                                 </View>
                                             </View>
@@ -679,19 +679,19 @@ export default function DashboardScreen() {
                                                     >
                                                         <Text style={styles.viewMarketText}>前往 Polymarket 查看</Text>
                                                         <Ionicons name="open-outline" size={14} color="#a1a1aa" />
-                                                    </TouchableOpacity>
-                                                </View>
+                                                    </TouchableOpacity >
+                                                </View >
                                             )}
                                         </>
                                     );
                                 })()}
-                            </TouchableOpacity>
+                            </TouchableOpacity >
                         );
                     })}
-                </View>
+                </View >
 
                 {/* Footer */}
-                <View style={styles.footer}>
+                < View style={styles.footer} >
                     <Text style={styles.exportDescription}>在 BetalphaX 紀錄交易想法，建立你的專屬交易系統</Text>
                     <TouchableOpacity onPress={() => Linking.openURL('https://betalphax.vercel.app/')} style={styles.exportBtn}>
                         <Image source={require('@/assets/images/betalphax_logo.jpg')} style={styles.exportLogo} />
@@ -708,26 +708,42 @@ export default function DashboardScreen() {
                     </View>
 
                     <Text style={styles.footerVersion}>Believer System V5.4 (Traditional Chinese)</Text>
-                </View>
-            </ScrollView>
+                </View >
+            </ScrollView >
 
             {/* Notification Panel */}
-            {showNotifications && (
-                <View style={styles.notificationOverlay}>
-                    <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={() => setShowNotifications(false)} />
-                    <View style={styles.drawerPanel}>
-                        <Text style={styles.drawerTitle}>通知中心</Text>
-                        <View style={styles.notificationItem}>
-                            <View style={styles.notifHeader}>
-                                <View style={[styles.dotSmall, { backgroundColor: '#3b82f6' }]} />
-                                <Text style={styles.notifType}>SYSTEM</Text>
-                            </View>
-                            <Text style={styles.notifContent}>UI V5.4 全中文化版本已上線。</Text>
-                            <Text style={styles.notifTime}>Just now</Text>
+            {
+                showNotifications && (
+                    <View style={styles.notificationOverlay}>
+                        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={() => setShowNotifications(false)} />
+                        <View style={styles.drawerPanel}>
+                            <Text style={styles.drawerTitle}>通知中心</Text>
+                            <ScrollView style={{ maxHeight: '80%' }}>
+                                {useNotificationStore.getState().notifications.length === 0 ? (
+                                    <Text style={{ color: '#71717a', fontSize: 13, textAlign: 'center', marginTop: 20 }}>
+                                        暫無通知
+                                    </Text>
+                                ) : (
+                                    useNotificationStore.getState().notifications.map((n: NotificationItem) => (
+                                        <View key={n.id} style={styles.notificationItem}>
+                                            <View style={styles.notifHeader}>
+                                                <View style={[styles.dotSmall, {
+                                                    backgroundColor: n.type === 'SYSTEM' ? '#3b82f6' :
+                                                        n.type === 'VOLATILITY' ? '#ef4444' :
+                                                            n.type === 'PHASE' ? '#10b981' : '#f59e0b'
+                                                }]} />
+                                                <Text style={styles.notifType}>{n.type}</Text>
+                                            </View>
+                                            <Text style={styles.notifContent}>{n.content}</Text>
+                                            <Text style={styles.notifTime}>{new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+                                        </View>
+                                    ))
+                                )}
+                            </ScrollView>
                         </View>
                     </View>
-                </View>
-            )}
+                )
+            }
 
             {/* Floating Merit UI (Bottom Right) */}
             <View style={{ position: 'absolute', bottom: 30, right: 20, alignItems: 'flex-end', zIndex: 50 }}>
@@ -800,228 +816,232 @@ export default function DashboardScreen() {
             </View>
 
             {/* Merit Leaderboard Modal */}
-            {showMeritModal && (
-                <View style={styles.modalOverlay}>
-                    <SafeAreaView style={{ flex: 1 }}>
-                        <View style={styles.modalHeader}>
-                            <TouchableOpacity onPress={() => setShowMeritModal(false)} style={styles.closeBtn}>
-                                <Ionicons name="close" size={24} color="#a1a1aa" />
-                            </TouchableOpacity>
-                            <View style={{ flexDirection: 'row', gap: 24 }}>
-                                <TouchableOpacity onPress={() => setMeritTab('mine')} style={[styles.tabBtn, meritTab === 'mine' && styles.tabBtnActive]}>
-                                    <Text style={[styles.tabText, meritTab === 'mine' && styles.tabTextActive]}>您的貢獻</Text>
+            {
+                showMeritModal && (
+                    <View style={styles.modalOverlay}>
+                        <SafeAreaView style={{ flex: 1 }}>
+                            <View style={styles.modalHeader}>
+                                <TouchableOpacity onPress={() => setShowMeritModal(false)} style={styles.closeBtn}>
+                                    <Ionicons name="close" size={24} color="#a1a1aa" />
                                 </TouchableOpacity>
-                                <TouchableOpacity onPress={() => setMeritTab('leaderboard')} style={[styles.tabBtn, meritTab === 'leaderboard' && styles.tabBtnActive]}>
-                                    <Text style={[styles.tabText, meritTab === 'leaderboard' && styles.tabTextActive]}>排行榜</Text>
-                                </TouchableOpacity>
+                                <View style={{ flexDirection: 'row', gap: 24 }}>
+                                    <TouchableOpacity onPress={() => setMeritTab('mine')} style={[styles.tabBtn, meritTab === 'mine' && styles.tabBtnActive]}>
+                                        <Text style={[styles.tabText, meritTab === 'mine' && styles.tabTextActive]}>您的貢獻</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity onPress={() => setMeritTab('leaderboard')} style={[styles.tabBtn, meritTab === 'leaderboard' && styles.tabBtnActive]}>
+                                        <Text style={[styles.tabText, meritTab === 'leaderboard' && styles.tabTextActive]}>排行榜</Text>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
-                        </View>
 
-                        <View style={styles.modalBody}>
-                            {meritTab === 'mine' ? (
-                                <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1, paddingBottom: 60 }}>
-                                    <View style={{
-                                        shadowColor: '#fbbf24',
-                                        shadowOffset: { width: 0, height: 0 },
-                                        shadowOpacity: 0.5,
-                                        shadowRadius: 50,
-                                        elevation: 10,
-                                        marginBottom: 16
-                                    }}>
-                                        <Image
-                                            source={require('@/assets/images/bull_buddha.png')}
-                                            style={{ width: 340, height: 340 }}
-                                            resizeMode="contain"
-                                        />
-                                    </View>
-
-                                    <Text style={{ color: '#a1a1aa', fontSize: 15, marginBottom: 12, textAlign: 'center' }}>你已經為牛市回歸的念力增添了</Text>
-                                    <Text style={{ color: '#fbbf24', fontSize: 48, fontWeight: 'bold', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', marginBottom: 8 }}>
-                                        {faithClicks}
-                                    </Text>
-                                    <Text style={{ color: '#52525b', fontSize: 13, marginBottom: 32 }}>
-                                        佔全球貢獻 {(globalMerit > 0 ? (faithClicks / globalMerit * 100) : 0).toFixed(6)}%
-                                    </Text>
-                                </View>
-                            ) : (
-                                <View style={{ flex: 1 }}>
-                                    <ScrollView contentContainerStyle={{ paddingBottom: 80 }}>
-                                        <View style={{ alignItems: 'center', marginBottom: 32 }}>
-                                            <Text style={{ color: '#a1a1aa', fontSize: 13, textTransform: 'uppercase' }}>Global Total</Text>
-                                            <Text style={{ color: 'white', fontSize: 32, fontWeight: 'bold' }}>
-                                                {globalMerit.toLocaleString()}
-                                            </Text>
-                                        </View>
-
-                                        <View style={{ backgroundColor: '#18181b', borderRadius: 12, overflow: 'hidden' }}>
-                                            {leaderboard.map((u, i) => (
-                                                <View key={u.id} style={styles.rankRow}>
-                                                    <View style={{ width: 40, alignItems: 'center' }}>
-                                                        {i < 3 ? (
-                                                            <Text style={{ fontSize: 20 }}>{i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</Text>
-                                                        ) : (
-                                                            <Text style={styles.rankNum}>#{i + 1}</Text>
-                                                        )}
-                                                    </View>
-                                                    <Text style={styles.rankName}>
-                                                        {u.displayName}
-                                                        {u.id === user?.id && <Text style={{ color: '#fbbf24', fontSize: 12 }}> (你)</Text>}
-                                                    </Text>
-                                                    <Text style={styles.rankScore}>{u.merit.toLocaleString()}</Text>
-                                                </View>
-                                            ))}
-                                        </View>
-                                    </ScrollView>
-
-                                    {/* Pinned User Rank (if > 50) */}
-                                    {userRank > 50 && (
+                            <View style={styles.modalBody}>
+                                {meritTab === 'mine' ? (
+                                    <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1, paddingBottom: 60 }}>
                                         <View style={{
-                                            position: 'absolute',
-                                            bottom: 0,
-                                            left: 0,
-                                            right: 0,
-                                            backgroundColor: '#27272a',
-                                            borderTopWidth: 1,
-                                            borderTopColor: '#3f3f46',
-                                            paddingVertical: 12,
-                                            paddingHorizontal: 0,
-                                            flexDirection: 'row',
-                                            alignItems: 'center',
-                                            borderBottomLeftRadius: 12,
-                                            borderBottomRightRadius: 12
+                                            shadowColor: '#fbbf24',
+                                            shadowOffset: { width: 0, height: 0 },
+                                            shadowOpacity: 0.5,
+                                            shadowRadius: 50,
+                                            elevation: 10,
+                                            marginBottom: 16
                                         }}>
-                                            <View style={{ width: 40, alignItems: 'center' }}>
-                                                <Text style={[styles.rankNum, { color: '#fbbf24' }]}>#{userRank}</Text>
-                                            </View>
-                                            <Text style={[styles.rankName, { color: '#fbbf24' }]}>
-                                                {user?.name || 'You'} (你)
-                                            </Text>
-                                            <Text style={[styles.rankScore, { color: '#fbbf24' }]}>
-                                                {faithClicks.toLocaleString()}
-                                            </Text>
+                                            <Image
+                                                source={require('@/assets/images/bull_buddha.png')}
+                                                style={{ width: 340, height: 340 }}
+                                                resizeMode="contain"
+                                            />
                                         </View>
-                                    )}
-                                </View>
-                            )}
-                        </View>
-                    </SafeAreaView>
-                </View>
-            )}
+
+                                        <Text style={{ color: '#a1a1aa', fontSize: 15, marginBottom: 12, textAlign: 'center' }}>你已經為牛市回歸的念力增添了</Text>
+                                        <Text style={{ color: '#fbbf24', fontSize: 48, fontWeight: 'bold', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', marginBottom: 8 }}>
+                                            {faithClicks}
+                                        </Text>
+                                        <Text style={{ color: '#52525b', fontSize: 13, marginBottom: 32 }}>
+                                            佔全球貢獻 {(globalMerit > 0 ? (faithClicks / globalMerit * 100) : 0).toFixed(6)}%
+                                        </Text>
+                                    </View>
+                                ) : (
+                                    <View style={{ flex: 1 }}>
+                                        <ScrollView contentContainerStyle={{ paddingBottom: 80 }}>
+                                            <View style={{ alignItems: 'center', marginBottom: 32 }}>
+                                                <Text style={{ color: '#a1a1aa', fontSize: 13, textTransform: 'uppercase' }}>Global Total</Text>
+                                                <Text style={{ color: 'white', fontSize: 32, fontWeight: 'bold' }}>
+                                                    {globalMerit.toLocaleString()}
+                                                </Text>
+                                            </View>
+
+                                            <View style={{ backgroundColor: '#18181b', borderRadius: 12, overflow: 'hidden' }}>
+                                                {leaderboard.map((u, i) => (
+                                                    <View key={u.id} style={styles.rankRow}>
+                                                        <View style={{ width: 40, alignItems: 'center' }}>
+                                                            {i < 3 ? (
+                                                                <Text style={{ fontSize: 20 }}>{i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</Text>
+                                                            ) : (
+                                                                <Text style={styles.rankNum}>#{i + 1}</Text>
+                                                            )}
+                                                        </View>
+                                                        <Text style={styles.rankName}>
+                                                            {u.displayName}
+                                                            {u.id === user?.id && <Text style={{ color: '#fbbf24', fontSize: 12 }}> (你)</Text>}
+                                                        </Text>
+                                                        <Text style={styles.rankScore}>{u.merit.toLocaleString()}</Text>
+                                                    </View>
+                                                ))}
+                                            </View>
+                                        </ScrollView>
+
+                                        {/* Pinned User Rank (if > 50) */}
+                                        {userRank > 50 && (
+                                            <View style={{
+                                                position: 'absolute',
+                                                bottom: 0,
+                                                left: 0,
+                                                right: 0,
+                                                backgroundColor: '#27272a',
+                                                borderTopWidth: 1,
+                                                borderTopColor: '#3f3f46',
+                                                paddingVertical: 12,
+                                                paddingHorizontal: 0,
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                borderBottomLeftRadius: 12,
+                                                borderBottomRightRadius: 12
+                                            }}>
+                                                <View style={{ width: 40, alignItems: 'center' }}>
+                                                    <Text style={[styles.rankNum, { color: '#fbbf24' }]}>#{userRank}</Text>
+                                                </View>
+                                                <Text style={[styles.rankName, { color: '#fbbf24' }]}>
+                                                    {user?.name || 'You'} (你)
+                                                </Text>
+                                                <Text style={[styles.rankScore, { color: '#fbbf24' }]}>
+                                                    {faithClicks.toLocaleString()}
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                )}
+                            </View>
+                        </SafeAreaView>
+                    </View>
+                )
+            }
 
             {/* Settings */}
-            {showSettings && (
-                <>
-                    <TouchableOpacity style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 }} activeOpacity={1} onPress={() => setShowSettings(false)} />
-                    <View style={styles.settingsOverlay}>
+            {
+                showSettings && (
+                    <>
+                        <TouchableOpacity style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 }} activeOpacity={1} onPress={() => setShowSettings(false)} />
+                        <View style={styles.settingsOverlay}>
 
-                        {/* Account Section (Moved to Top) */}
-                        <Text style={styles.settingsSectionTitle}>帳號設定</Text>
+                            {/* Account Section (Moved to Top) */}
+                            <Text style={styles.settingsSectionTitle}>帳號設定</Text>
 
-                        <View style={[styles.settingsItem, { flexDirection: 'column', alignItems: 'stretch', paddingVertical: 16 }]}>
-                            <Text style={[styles.settingsItemLabel, { marginBottom: 8 }]}>顯示名稱</Text>
-                            {!editingName ? (
-                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#27272a', padding: 12, borderRadius: 8 }}>
-                                    <Text style={{ color: 'white', fontSize: 16 }}>{user?.name || 'Believer'}</Text>
-                                    <TouchableOpacity onPress={() => { setEditingName(true); setTempName(user?.name || ''); }}>
-                                        <Ionicons name="pencil" size={16} color="#fbbf24" />
-                                    </TouchableOpacity>
+                            <View style={[styles.settingsItem, { flexDirection: 'column', alignItems: 'stretch', paddingVertical: 16 }]}>
+                                <Text style={[styles.settingsItemLabel, { marginBottom: 8 }]}>顯示名稱</Text>
+                                {!editingName ? (
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#27272a', padding: 12, borderRadius: 8 }}>
+                                        <Text style={{ color: 'white', fontSize: 16 }}>{user?.name || 'Believer'}</Text>
+                                        <TouchableOpacity onPress={() => { setEditingName(true); setTempName(user?.name || ''); }}>
+                                            <Ionicons name="pencil" size={16} color="#fbbf24" />
+                                        </TouchableOpacity>
+                                    </View>
+                                ) : (
+                                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                                        <TextInput
+                                            style={{
+                                                flex: 1,
+                                                backgroundColor: '#18181b',
+                                                color: 'white',
+                                                paddingHorizontal: 12,
+                                                paddingVertical: 10,
+                                                borderRadius: 8,
+                                                borderWidth: 1,
+                                                borderColor: '#fbbf24',
+                                                fontSize: 16
+                                            }}
+                                            value={tempName}
+                                            onChangeText={setTempName}
+                                            placeholder="輸入暱稱"
+                                            placeholderTextColor="#52525b"
+                                            autoFocus
+                                        />
+                                        <TouchableOpacity
+                                            style={{
+                                                backgroundColor: '#fbbf24',
+                                                paddingHorizontal: 16,
+                                                justifyContent: 'center',
+                                                alignItems: 'center',
+                                                borderRadius: 8
+                                            }}
+                                            onPress={async () => {
+                                                await handleUpdateName();
+                                                setEditingName(false);
+                                            }}
+                                        >
+                                            <Text style={{ color: 'black', fontWeight: 'bold' }}>儲存</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                            </View>
+
+                            <View style={{ height: 1, backgroundColor: '#27272a', marginVertical: 16 }} />
+
+                            {/* Notifications Section */}
+                            <Text style={styles.settingsSectionTitle}>通知設定</Text>
+
+                            <View style={styles.settingsItem}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.settingsItemLabel}>波動警示</Text>
+                                    <Text style={styles.settingsItemDesc}>當預測市場波動超過 30% 時通知</Text>
                                 </View>
-                            ) : (
-                                <View style={{ flexDirection: 'row', gap: 10 }}>
-                                    <TextInput
-                                        style={{
-                                            flex: 1,
-                                            backgroundColor: '#18181b',
-                                            color: 'white',
-                                            paddingHorizontal: 12,
-                                            paddingVertical: 10,
-                                            borderRadius: 8,
-                                            borderWidth: 1,
-                                            borderColor: '#fbbf24',
-                                            fontSize: 16
-                                        }}
-                                        value={tempName}
-                                        onChangeText={setTempName}
-                                        placeholder="輸入暱稱"
-                                        placeholderTextColor="#52525b"
-                                        autoFocus
-                                    />
-                                    <TouchableOpacity
-                                        style={{
-                                            backgroundColor: '#fbbf24',
-                                            paddingHorizontal: 16,
-                                            justifyContent: 'center',
-                                            alignItems: 'center',
-                                            borderRadius: 8
-                                        }}
-                                        onPress={async () => {
-                                            await handleUpdateName();
-                                            setEditingName(false);
-                                        }}
-                                    >
-                                        <Text style={{ color: 'black', fontWeight: 'bold' }}>儲存</Text>
-                                    </TouchableOpacity>
+                                <Switch
+                                    value={notificationSettings.volatilityAlert}
+                                    onValueChange={(v) => setNotificationSetting('volatilityAlert', v)}
+                                    trackColor={{ false: '#3f3f46', true: '#2563eb' }}
+                                    thumbColor={'#fff'}
+                                />
+                            </View>
+
+                            <View style={styles.settingsItem}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.settingsItemLabel}>階段轉變</Text>
+                                    <Text style={styles.settingsItemDesc}>當反轉指數進入新階段時通知</Text>
                                 </View>
-                            )}
-                        </View>
-
-                        <View style={{ height: 1, backgroundColor: '#27272a', marginVertical: 16 }} />
-
-                        {/* Notifications Section */}
-                        <Text style={styles.settingsSectionTitle}>通知設定</Text>
-
-                        <View style={styles.settingsItem}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.settingsItemLabel}>波動警示</Text>
-                                <Text style={styles.settingsItemDesc}>當預測市場波動超過 30% 時通知</Text>
+                                <Switch
+                                    value={notificationSettings.phaseChange}
+                                    onValueChange={(v) => setNotificationSetting('phaseChange', v)}
+                                    trackColor={{ false: '#3f3f46', true: '#2563eb' }}
+                                    thumbColor={'#fff'}
+                                />
                             </View>
-                            <Switch
-                                value={notificationSettings.volatilityAlert}
-                                onValueChange={(v) => setNotificationSetting('volatilityAlert', v)}
-                                trackColor={{ false: '#3f3f46', true: '#2563eb' }}
-                                thumbColor={'#fff'}
-                            />
-                        </View>
 
-                        <View style={styles.settingsItem}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.settingsItemLabel}>階段轉變</Text>
-                                <Text style={styles.settingsItemDesc}>當反轉指數進入新階段時通知</Text>
+                            <View style={styles.settingsItem}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.settingsItemLabel}>每週週報</Text>
+                                    <Text style={styles.settingsItemDesc}>每週一發送市場動態總結</Text>
+                                </View>
+                                <Switch
+                                    value={notificationSettings.weeklyReport}
+                                    onValueChange={(v) => setNotificationSetting('weeklyReport', v)}
+                                    trackColor={{ false: '#3f3f46', true: '#2563eb' }}
+                                    thumbColor={'#fff'}
+                                />
                             </View>
-                            <Switch
-                                value={notificationSettings.phaseChange}
-                                onValueChange={(v) => setNotificationSetting('phaseChange', v)}
-                                trackColor={{ false: '#3f3f46', true: '#2563eb' }}
-                                thumbColor={'#fff'}
-                            />
-                        </View>
 
-                        <View style={styles.settingsItem}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.settingsItemLabel}>每週週報</Text>
-                                <Text style={styles.settingsItemDesc}>每週一發送市場動態總結</Text>
+                            <View style={{ marginTop: 'auto', gap: 12 }}>
+                                <TouchableOpacity style={styles.settingsItem} onPress={handleLogout}>
+                                    <Text style={[styles.settingsItemText, { color: '#ef4444' }]}>登出</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity style={[styles.settingsItem, { borderTopWidth: 1, borderTopColor: '#27272a', paddingTop: 12 }]} onPress={handleResetData}>
+                                    <Text style={[styles.settingsItemText, { color: '#ef4444', fontSize: 12 }]}>重置使用者數據 (Debug)</Text>
+                                </TouchableOpacity>
                             </View>
-                            <Switch
-                                value={notificationSettings.weeklyReport}
-                                onValueChange={(v) => setNotificationSetting('weeklyReport', v)}
-                                trackColor={{ false: '#3f3f46', true: '#2563eb' }}
-                                thumbColor={'#fff'}
-                            />
                         </View>
-
-                        <View style={{ marginTop: 'auto', gap: 12 }}>
-                            <TouchableOpacity style={styles.settingsItem} onPress={handleLogout}>
-                                <Text style={[styles.settingsItemText, { color: '#ef4444' }]}>登出</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity style={[styles.settingsItem, { borderTopWidth: 1, borderTopColor: '#27272a', paddingTop: 12 }]} onPress={handleResetData}>
-                                <Text style={[styles.settingsItemText, { color: '#ef4444', fontSize: 12 }]}>重置使用者數據 (Debug)</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </>
-            )}
-        </SafeAreaView>
+                    </>
+                )
+            }
+        </SafeAreaView >
     );
 }
 

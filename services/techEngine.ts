@@ -18,6 +18,7 @@ import {
     KlineData,
     percentileRank,
 } from './priceService';
+import { useNotificationStore } from '@/stores/notificationStore';
 
 // ============ Types ============
 

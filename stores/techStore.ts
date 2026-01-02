@@ -42,7 +42,7 @@ interface TechState {
     setConditionEnabled: (id: string, enabled: boolean) => void;
     setPersonalParam: <K extends keyof PersonalParams>(key: K, value: PersonalParams[K]) => void;
     evaluateAll: () => Promise<void>;
-    fetchAndEvaluate: () => Promise<void>;
+    fetchAndEvaluate: (force?: boolean) => Promise<void>;
     resetToDefaults: () => void;
     syncFromCloud: (uid: string) => Promise<void>;
 }
@@ -225,26 +225,54 @@ export const useTechStore = create<TechState>()(
                     const reversalState = calculateReversalState(inputs, activeBoosters);
 
                     // 4. Persistence & Diff Check (Edge Trigger Notification)
+                    // 4. Persistence & Diff Check (Edge Trigger Notification)
                     try {
                         const { useAuthStore } = require('./authStore');
                         const user = useAuthStore.getState().user;
 
-                        if (user?.uid) { // Ensure using 'uid' or 'id' consistent with your auth store
+                        // A. Phase Change & Veto Notifications
+                        if (user?.uid) {
                             const { syncStateAndCheckDiff } = require('@/services/statePersistence');
-
-                            // Running in background to not block UI? 
-                            // Or await if we want to show toast immediately?
-                            // Let's await to be safe.
                             syncStateAndCheckDiff({ id: user.uid, email: user.email }, reversalState).then((result: any) => {
                                 if (result.hasChanged && result.notifications.length > 0) {
-                                    console.log('[Notifier]', result.notifications);
-                                    // TODO: Trigger UI Toast/Alert here if needed
-                                    // e.g. useToast.getState().show(...) 
+                                    console.log('[Notifier] Phase/State Notifications:', result.notifications);
+
+                                    // Push to Notification Store
+                                    const notifStore = require('@/stores/notificationStore').useNotificationStore;
+                                    result.notifications.forEach((msg: string) => {
+                                        notifStore.getState().addNotification({
+                                            type: 'PHASE',
+                                            content: msg
+                                        });
+                                    });
                                 }
                             });
                         }
+
+                        // B. Volatility Check (Local)
+                        // Check if any belief has > 30% change
+                        const { useBeliefStore } = require('./beliefStore');
+                        const beliefs = useBeliefStore.getState().beliefs || [];
+                        const notifStore = require('@/stores/notificationStore').useNotificationStore;
+
+                        beliefs.forEach((b: any) => {
+                            const prev = b.previousProbability ?? b.currentProbability;
+                            const delta = Math.abs(b.currentProbability - prev);
+                            if (delta >= 0.3) { // 30% Threshold
+                                const signalName = b.signal?.shortTitle || b.signal?.title || 'Unknown Signal';
+                                const msg = `${signalName} 波動劇烈 (${(delta * 100).toFixed(0)}%)`;
+
+                                // Simple dedup check (optional, but good for UX)
+                                // For now, just fire. Store generates unique IDs.
+                                notifStore.getState().addNotification({
+                                    type: 'VOLATILITY',
+                                    content: msg
+                                });
+                            }
+                        });
+
                     } catch (e) {
-                        console.warn('[TechStore] Persistence check skipped:', e);
+                        console.warn('[TechStore] Notification logic error:', e);
                     }
 
                     set({
