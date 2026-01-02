@@ -27,7 +27,7 @@ export interface NarrativeSignal {
 export const BELIEVER_SIGNALS: NarrativeSignal[] = [
     {
         id: 'fed_decision',
-        title: 'Fed 利率決策 (Jan 2025)',
+        title: 'Fed 利率決策 (Jan)',
         shortTitle: 'Fed 利率',
         description: '多選項市場：(Cut < 4.25% vs Hold 4.25-4.5%)',
         scoring: 'fed_cut',
@@ -40,14 +40,14 @@ export const BELIEVER_SIGNALS: NarrativeSignal[] = [
     },
     {
         id: 'us_recession',
-        title: '美國衰退風險 (2025)',
+        title: '美國衰退風險 (2026)',
         shortTitle: '美國衰退',
         description: '風險事件：(1 - P(Yes)) 代表「無衰退」',
         scoring: 'binary_bad',
         category: 'Macro',
         source: {
             type: 'polymarket',
-            slug: 'us-recession-in-2025'
+            slug: 'us-recession-by-end-of-2026'
         }
     },
     {
@@ -76,14 +76,14 @@ export const BELIEVER_SIGNALS: NarrativeSignal[] = [
     },
     {
         id: 'btc_reserve',
-        title: '比特幣戰略儲備 (2025)',
+        title: '比特幣戰略儲備 (2027)',
         shortTitle: 'BTC儲備',
         description: '正向事件：P(Yes) 代表「主權採用」',
         scoring: 'binary_good',
         category: 'Structural',
         source: {
             type: 'polymarket',
-            slug: 'us-national-bitcoin-reserve-in-2025'
+            slug: 'us-national-bitcoin-reserve-before-2027'
         }
     }
 ];

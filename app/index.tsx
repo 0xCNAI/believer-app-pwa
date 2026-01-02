@@ -352,10 +352,9 @@ export default function DashboardScreen() {
                                 const points = calculateNarrativeScore(signal, 5);
                                 const prob = Math.round(belief.currentProbability * 100);
 
-                                // V5.1 Status Text
-                                let statusText = '條件尚未成立 (Not Met)';
-                                if (points > 3.0) statusText = '條件成立 (Met)';
-                                else if (points > 1.5) statusText = '條件累積中 (Accumulating)';
+                                // V5.1 Status Text (Localized)
+                                let statusText = '負向機率偏高';
+                                if (points > 2.5) statusText = '正向機率偏高';
 
                                 return (
                                     <View key={belief.id} style={{ flexDirection: 'row', marginBottom: 6, alignItems: 'flex-start' }}>
@@ -438,16 +437,13 @@ export default function DashboardScreen() {
                             } catch (e) { }
                         }
 
-                        // V5.1 Semantic Status Text
-                        let statusText = '條件尚未成立 (Not Met)';
+                        // V5.1 Semantic Status Text (Localized)
+                        let statusText = '負向機率偏高';
                         let statusColor = '#ef4444'; // Red default
 
-                        if (contribution > 3.0) {
-                            statusText = '條件成立 (Met)';
+                        if (contribution > 2.5) {
+                            statusText = '正向機率偏高';
                             statusColor = '#10b981'; // Green
-                        } else if (contribution > 1.5) {
-                            statusText = '條件累積中 (Accumulating)';
-                            statusColor = '#eab308'; // Yellow
                         }
 
                         return (
@@ -459,12 +455,14 @@ export default function DashboardScreen() {
                             >
                                 {(() => {
                                     const renderBar = (label: string, val: number, color: string) => (
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                                            <Text style={{ width: 40, color: '#a1a1aa', fontSize: 12 }}>{label}</Text>
-                                            <View style={{ flex: 1, height: 8, backgroundColor: '#27272a', borderRadius: 4, marginRight: 8, overflow: 'hidden' }}>
+                                        <View style={{ marginBottom: 8 }}>
+                                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                                                <Text style={{ color: '#d4d4d8', fontSize: 13 }}>{label}</Text>
+                                                <Text style={{ color: '#a1a1aa', fontSize: 12 }}>{val}%</Text>
+                                            </View>
+                                            <View style={{ height: 8, backgroundColor: '#27272a', borderRadius: 4, overflow: 'hidden' }}>
                                                 <View style={{ width: `${val}%`, height: '100%', backgroundColor: color }} />
                                             </View>
-                                            <Text style={{ width: 35, color: '#e4e4e7', fontSize: 12, textAlign: 'right' }}>{val}%</Text>
                                         </View>
                                     );
 
@@ -508,14 +506,25 @@ export default function DashboardScreen() {
                                                         <Text style={{ color: '#71717a', fontSize: 11, marginBottom: 8, textTransform: 'uppercase' }}>結果分佈 (Outcomes)</Text>
                                                         {isFed && fedStats ? (
                                                             <View>
-                                                                {renderBar('Cut', fedStats.cut, '#22c55e')}
-                                                                {renderBar('Hold', fedStats.hold, '#f59e0b')}
-                                                                {renderBar('Hike', fedStats.hike, '#ef4444')}
+                                                                {renderBar('降息 (正向事件)', fedStats.cut, '#22c55e')}
+                                                                {renderBar('維持', fedStats.hold, '#f59e0b')}
+                                                                {renderBar('升息 (負向事件)', fedStats.hike, '#ef4444')}
                                                             </View>
                                                         ) : (
                                                             <View>
-                                                                {renderBar('Yes', prob, '#22c55e')}
-                                                                {renderBar('No', 100 - prob, '#71717a')}
+                                                                {(() => {
+                                                                    // Determine labels based on scoring type
+                                                                    const isBinaryBad = signal.scoring === 'binary_bad';
+                                                                    const yesLabel = isBinaryBad ? '是 (負向事件)' : '是 (正向事件)';
+                                                                    const noLabel = isBinaryBad ? '否 (正向事件)' : '否 (負向事件)';
+
+                                                                    return (
+                                                                        <>
+                                                                            {renderBar(yesLabel, prob, isBinaryBad ? '#ef4444' : '#22c55e')}
+                                                                            {renderBar(noLabel, 100 - prob, isBinaryBad ? '#22c55e' : '#71717a')}
+                                                                        </>
+                                                                    );
+                                                                })()}
                                                             </View>
                                                         )}
                                                     </View>
