@@ -429,16 +429,23 @@ export default function DashboardScreen() {
                         </TouchableOpacity>
                     </View>
 
-                    {/* AI Content */}
-                    {(loadingAi || aiSummary) && (
+                    {/* AI Loading or Error (Yellow Box) */}
+                    {(loadingAi || (aiSummary && aiSummary.startsWith('分析失敗'))) && (
                         <View style={{ marginBottom: 16, padding: 12, backgroundColor: 'rgba(251, 191, 36, 0.05)', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(251, 191, 36, 0.2)' }}>
                             {loadingAi ? (
                                 <Text style={{ color: '#fbbf24', fontSize: 13 }}>正在搜尋並分析最新新聞...</Text>
                             ) : (
-                                <Text style={{ color: '#fbbf24', fontSize: 13, lineHeight: 20 }}>
-                                    {aiSummary}
-                                </Text>
+                                <Text style={{ color: '#fbbf24', fontSize: 13 }}>{aiSummary}</Text>
                             )}
+                        </View>
+                    )}
+
+                    {/* AI Analysis Result (Success - Plain Text) */}
+                    {!loadingAi && aiSummary && !aiSummary.startsWith('分析失敗') && (
+                        <View style={{ marginBottom: 16, paddingHorizontal: 4 }}>
+                            <Text style={{ color: '#d4d4d8', fontSize: 13, lineHeight: 22 }}>
+                                {aiSummary}
+                            </Text>
                         </View>
                     )}
 
