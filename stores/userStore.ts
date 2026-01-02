@@ -39,9 +39,9 @@ interface UserState {
     setAlertStyle: (style: AlertStyle) => void;
 
     notificationSettings: {
-        phaseTransitions: boolean;
-        newIndicators: boolean;
-        extremeDynamics: boolean;
+        volatilityAlert: boolean;
+        phaseChange: boolean;
+        weeklyReport: boolean;
     };
 
     setNotificationSetting: (key: keyof UserState['notificationSettings'], value: boolean) => void;
@@ -61,9 +61,9 @@ export const useUserStore = create<UserState>()(
             focusAreas: [],
             alertStyle: null,
             notificationSettings: {
-                phaseTransitions: true,
-                newIndicators: true,
-                extremeDynamics: true,
+                volatilityAlert: true,
+                phaseChange: true,
+                weeklyReport: true,
             },
 
             setExperience: (level) => set({ experience: level }),
@@ -128,9 +128,9 @@ export const useUserStore = create<UserState>()(
                 focusAreas: [],
                 alertStyle: null,
                 notificationSettings: {
-                    phaseTransitions: true,
-                    newIndicators: true,
-                    extremeDynamics: true,
+                    volatilityAlert: true,
+                    phaseChange: true,
+                    weeklyReport: true,
                 }
             }),
 

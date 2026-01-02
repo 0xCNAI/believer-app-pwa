@@ -536,7 +536,50 @@ export default function DashboardScreen() {
                 <>
                     <TouchableOpacity style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 }} activeOpacity={1} onPress={() => setShowSettings(false)} />
                     <View style={styles.settingsOverlay}>
-                        <View style={[styles.settingsItem, { borderBottomWidth: 1, borderBottomColor: '#27272a', paddingBottom: 16, marginBottom: 8 }]}>
+                        <Text style={styles.settingsSectionTitle}>通知設定 (Notifications)</Text>
+
+                        <View style={styles.settingsItem}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.settingsItemLabel}>波動警示 (Volatility Alert)</Text>
+                                <Text style={styles.settingsItemDesc}>當預測市場波動超過 30% 時通知</Text>
+                            </View>
+                            <Switch
+                                value={notificationSettings.volatilityAlert}
+                                onValueChange={(v) => setNotificationSetting('volatilityAlert', v)}
+                                trackColor={{ false: '#3f3f46', true: '#2563eb' }}
+                                thumbColor={'#fff'}
+                            />
+                        </View>
+
+                        <View style={styles.settingsItem}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.settingsItemLabel}>階段轉變 (Phase Change)</Text>
+                                <Text style={styles.settingsItemDesc}>當反轉指數進入新階段時通知</Text>
+                            </View>
+                            <Switch
+                                value={notificationSettings.phaseChange}
+                                onValueChange={(v) => setNotificationSetting('phaseChange', v)}
+                                trackColor={{ false: '#3f3f46', true: '#2563eb' }}
+                                thumbColor={'#fff'}
+                            />
+                        </View>
+
+                        <View style={[styles.settingsItem, { borderBottomWidth: 1, borderBottomColor: '#27272a', paddingBottom: 16, marginBottom: 16 }]}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.settingsItemLabel}>每週週報 (Weekly Report)</Text>
+                                <Text style={styles.settingsItemDesc}>每週一發送市場動態總結</Text>
+                            </View>
+                            <Switch
+                                value={notificationSettings.weeklyReport}
+                                onValueChange={(v) => setNotificationSetting('weeklyReport', v)}
+                                trackColor={{ false: '#3f3f46', true: '#2563eb' }}
+                                thumbColor={'#fff'}
+                            />
+                        </View>
+
+                        <Text style={styles.settingsSectionTitle}>帳號設定 (Account)</Text>
+
+                        <View style={[styles.settingsItem, { marginBottom: 8 }]}>
                             <View style={{ flex: 1 }}>
                                 <Text style={{ color: '#71717a', fontSize: 10, marginBottom: 4 }}>顯示名稱</Text>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -544,9 +587,11 @@ export default function DashboardScreen() {
                                 </View>
                             </View>
                         </View>
+
                         <TouchableOpacity style={styles.settingsItem} onPress={handleLogout}>
                             <Text style={[styles.settingsItemText, { color: '#ef4444' }]}>登出</Text>
                         </TouchableOpacity>
+
                         <TouchableOpacity style={[styles.settingsItem, { borderTopWidth: 1, borderTopColor: '#27272a', paddingTop: 12 }]} onPress={handleResetData}>
                             <Text style={[styles.settingsItemText, { color: '#ef4444', fontSize: 12 }]}>重置使用者數據 (Debug)</Text>
                         </TouchableOpacity>
@@ -904,5 +949,23 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#e4e4e7',
         fontWeight: '500',
+    },
+    settingsSectionTitle: {
+        color: '#71717a',
+        fontSize: 12,
+        fontWeight: '600',
+        letterSpacing: 0.5,
+        marginBottom: 12,
+        textTransform: 'uppercase',
+    },
+    settingsItemLabel: {
+        color: '#f4f4f5',
+        fontSize: 14,
+        fontWeight: '500',
+        marginBottom: 2,
+    },
+    settingsItemDesc: {
+        color: '#71717a',
+        fontSize: 12,
     },
 });
