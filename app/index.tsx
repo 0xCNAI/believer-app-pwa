@@ -1249,7 +1249,7 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: 60,
         right: 24,
-        width: 200,
+        width: 300,
         backgroundColor: '#18181b',
         borderRadius: 12,
         borderWidth: 1,
