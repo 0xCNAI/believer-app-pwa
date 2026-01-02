@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useOnboardingStore } from '@/stores/onboardingStore';
 import { Ionicons, FontAwesome } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import * as Linking from 'expo-linking';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Image, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View, Switch, TextInput } from 'react-native';
@@ -492,7 +493,23 @@ export default function DashboardScreen() {
                 </View>
 
                 {/* Footer */}
-                <Text style={styles.footerVersion}>Believer System V5.4 (Traditional Chinese)</Text>
+                <View style={styles.footer}>
+                    <View style={styles.socialRow}>
+                        <TouchableOpacity onPress={() => Linking.openURL('https://twitter.com/betalphapick')} style={styles.socialBtn}>
+                            <Ionicons name="logo-twitter" size={20} color="#71717a" />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => Linking.openURL('https://betalphapick.com')} style={styles.socialBtn}>
+                            <Ionicons name="globe-outline" size={20} color="#71717a" />
+                        </TouchableOpacity>
+                    </View>
+
+                    <TouchableOpacity onPress={() => Linking.openURL('https://betalphapick.com/export')} style={styles.exportBtn}>
+                        <Text style={styles.exportText}>Export to BetAlphaPick</Text>
+                        <Ionicons name="arrow-forward" size={12} color="#52525b" />
+                    </TouchableOpacity>
+
+                    <Text style={styles.footerVersion}>Believer System V5.4 (Traditional Chinese)</Text>
+                </View>
             </ScrollView>
 
             {/* Notification Panel */}
@@ -744,6 +761,41 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#e4e4e7',
         fontWeight: '500',
+    },
+    footer: {
+        marginTop: 48,
+        alignItems: 'center',
+        gap: 16,
+    },
+    socialRow: {
+        flexDirection: 'row',
+        gap: 16,
+    },
+    socialBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#18181B',
+        borderWidth: 1,
+        borderColor: '#27272A',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    exportBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        backgroundColor: '#18181B',
+        borderWidth: 1,
+        borderColor: '#27272A',
+    },
+    exportText: {
+        color: '#71717A',
+        fontSize: 12,
+        fontWeight: '600',
     },
     footerVersion: {
         marginTop: 32,
