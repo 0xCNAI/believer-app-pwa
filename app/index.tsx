@@ -42,7 +42,11 @@ export default function DashboardScreen() {
 
     const [globalMerit, setGlobalMerit] = useState(0);
     const [leaderboard, setLeaderboard] = useState<any[]>([]);
-    const [meritAnimation] = useState(new Animated.Value(1));
+
+    // Floating Merit State
+    const [scaleAnim] = useState(new Animated.Value(1));
+    const [showMerit, setShowMerit] = useState(false);
+    const [showMeritModal, setShowMeritModal] = useState(false);
 
     useEffect(() => {
         if (user?.id) {
@@ -64,26 +68,23 @@ export default function DashboardScreen() {
         return () => clearInterval(interval);
     }, []);
 
-    const handleMeritClick = async () => {
+    const handleMeritClick = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         incrementFaith();
         setGlobalMerit(prev => prev + 1);
+        setShowMerit(true);
+        setTimeout(() => setShowMerit(false), 800);
 
-        // Animation
+        // Stick Animation
         Animated.sequence([
-            Animated.timing(meritAnimation, { toValue: 0.9, duration: 50, useNativeDriver: true }),
-            Animated.timing(meritAnimation, { toValue: 1, duration: 100, useNativeDriver: true })
+            Animated.timing(scaleAnim, { toValue: 0.8, duration: 50, useNativeDriver: true }),
+            Animated.timing(scaleAnim, { toValue: 1, duration: 100, useNativeDriver: true })
         ]).start();
 
-        // Sync with server (throttle ideally, but for now direct)
-        // In a real app we'd debounce this
+        // Sync logic
         if (user?.id) {
             const { syncUserMerit } = require('@/services/meritService');
-            // faithClicks is from store, assuming it tracks current session or total
-            // We need to pass the *total* merit. 
-            // Since we don't have total easily exposed from store without digging, 
-            // we'll assume faithClicks is the session delta or we rely on store's total.
-            // For safety, let's just trigger a sync if we have the merit value.
+            // Simplified sync for demo
         }
     };
 
@@ -533,50 +534,6 @@ export default function DashboardScreen() {
                     })}
                 </View>
 
-                {/* 5. Merit / Community Consensus (Restored) */}
-                <View style={{ marginBottom: 32 }}>
-                    <Text style={styles.sectionTitle}>社群共識</Text>
-                    <View style={styles.card}>
-                        <Text style={{ color: '#a1a1aa', textAlign: 'center', marginBottom: 8, fontSize: 13 }}>累積功德 (Global Merit)</Text>
-                        <Text style={{ color: 'white', fontSize: 36, fontWeight: 'bold', textAlign: 'center', marginBottom: 24, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}>
-                            {globalMerit.toLocaleString()}
-                        </Text>
-
-                        <TouchableWithoutFeedback onPress={handleMeritClick}>
-                            <Animated.View style={{
-                                alignSelf: 'center',
-                                backgroundColor: '#27272a',
-                                width: 140, height: 140,
-                                borderRadius: 70,
-                                justifyContent: 'center', alignItems: 'center',
-                                marginBottom: 32,
-                                borderWidth: 4, borderColor: '#3f3f46',
-                                shadowColor: '#fbbf24', shadowOpacity: 0.2, shadowRadius: 20,
-                                transform: [{ scale: meritAnimation }]
-                            }}>
-                                <Ionicons name="hardware-chip" size={56} color="#fbbf24" />
-                                <Text style={{ color: '#fbbf24', marginTop: 8, fontWeight: '600', fontSize: 16 }}>累積功德</Text>
-                            </Animated.View>
-                        </TouchableWithoutFeedback>
-
-                        <Text style={[styles.cardHeaderTitle, { marginBottom: 16, fontSize: 16 }]}>功德排行榜 (Top 5)</Text>
-                        {leaderboard.map((u, i) => (
-                            <View key={u.id} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#27272a', alignItems: 'center' }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                                    <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: i < 3 ? '#fbbf24' : '#3f3f46', justifyContent: 'center', alignItems: 'center' }}>
-                                        <Text style={{ color: i < 3 ? 'black' : 'white', fontWeight: 'bold', fontSize: 12 }}>{i + 1}</Text>
-                                    </View>
-                                    <Text style={{ color: 'white', fontSize: 14, fontWeight: i === 0 ? '700' : '400' }}>
-                                        {u.displayName}
-                                        {u.id === user?.id && <Text style={{ color: '#a1a1aa', fontSize: 12 }}> (You)</Text>}
-                                    </Text>
-                                </View>
-                                <Text style={{ color: '#fbbf24', fontWeight: 'bold' }}>{u.merit.toLocaleString()}</Text>
-                            </View>
-                        ))}
-                    </View>
-                </View>
-
                 {/* Footer */}
                 <View style={styles.footer}>
                     <Text style={styles.exportDescription}>在 BetalphaX 紀錄交易想法，建立你的專屬交易系統</Text>
@@ -613,6 +570,77 @@ export default function DashboardScreen() {
                             <Text style={styles.notifTime}>Just now</Text>
                         </View>
                     </View>
+                </View>
+            )}
+
+            {/* Floating Merit UI (Bottom Right) */}
+            <View style={{ position: 'absolute', bottom: 30, right: 20, alignItems: 'flex-end', zIndex: 50 }}>
+                {/* Stick Animation */}
+                <TouchableOpacity onPress={handleMeritClick} activeOpacity={1}>
+                    <Animated.View style={[styles.woodenStick, { transform: [{ translateY: scaleAnim.interpolate({ inputRange: [0.8, 1], outputRange: [10, 0] }) }] }]}>
+                        <View style={styles.stickHead} />
+                        <View style={styles.stickHandle} />
+                    </Animated.View>
+
+                    <Animated.View style={[styles.fishFab, { transform: [{ scale: scaleAnim }] }]}>
+                        <View style={styles.fishCounter}>
+                            <Text style={{ color: '#F59E0B', fontWeight: 'bold', fontSize: 16 }}>{faithClicks}</Text>
+                            <Text style={{ color: '#A1A1AA', fontSize: 10 }}>功德</Text>
+                        </View>
+                        <View style={styles.fishIconBg}>
+                            <Image
+                                source={require('@/assets/images/wooden-fish.png')} // Assuming asset exists
+                                style={{ width: 36, height: 36 }}
+                                resizeMode="contain"
+                            />
+                        </View>
+                        {/* Settings Trigger */}
+                        <TouchableOpacity
+                            style={styles.meritSettingsBtn}
+                            onPress={() => setShowMeritModal(true)}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                            <Ionicons name="settings-sharp" size={12} color="#71717a" />
+                        </TouchableOpacity>
+                    </Animated.View>
+                </TouchableOpacity>
+
+                {showMerit && (
+                    <View style={styles.meritPopup}>
+                        <Text style={{ color: '#F59E0B', fontWeight: 'bold', fontSize: 14 }}>功德 +1</Text>
+                    </View>
+                )}
+            </View>
+
+            {/* Merit Leaderboard Modal */}
+            {showMeritModal && (
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalHeader}>
+                        <Text style={styles.modalTitle}>功德排行榜</Text>
+                        <TouchableOpacity onPress={() => setShowMeritModal(false)} style={styles.closeBtn}>
+                            <Ionicons name="close" size={20} color="white" />
+                        </TouchableOpacity>
+                    </View>
+                    <ScrollView style={styles.modalBody}>
+                        <View style={{ alignItems: 'center', marginBottom: 24, paddingTop: 16 }}>
+                            <Text style={{ color: '#a1a1aa', fontSize: 13, textTransform: 'uppercase' }}>Global Total</Text>
+                            <Text style={{ color: 'white', fontSize: 40, fontWeight: 'bold', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}>
+                                {globalMerit.toLocaleString()}
+                            </Text>
+                        </View>
+
+                        <Text style={{ color: '#71717a', marginBottom: 16, fontSize: 14, fontWeight: '600' }}>TOP CONTRIBUTORS</Text>
+                        {leaderboard.map((u, i) => (
+                            <View key={u.id} style={styles.rankRow}>
+                                <Text style={[styles.rankNum, i < 3 && styles.rankTop]}>#{i + 1}</Text>
+                                <Text style={styles.rankName}>
+                                    {u.displayName}
+                                    {u.id === user?.id && <Text style={{ color: '#52525b' }}> (You)</Text>}
+                                </Text>
+                                <Text style={styles.rankScore}>{u.merit.toLocaleString()}</Text>
+                            </View>
+                        ))}
+                    </ScrollView>
                 </View>
             )}
 
