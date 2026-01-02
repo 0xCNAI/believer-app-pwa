@@ -13,7 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Image, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View, Switch, TextInput, TouchableWithoutFeedback } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { getGlobalMerit, getLeaderboard } from '@/services/meritService';
+import { getGlobalMerit, getLeaderboard, getUserRank } from '@/services/meritService';
 import { useTechStore } from '@/stores/techStore';
 
 export default function DashboardScreen() {
@@ -43,6 +43,7 @@ export default function DashboardScreen() {
 
     const [globalMerit, setGlobalMerit] = useState(0);
     const [leaderboard, setLeaderboard] = useState<any[]>([]);
+    const [userRank, setUserRank] = useState(0);
 
     // Floating Merit State
     const [scaleAnim] = useState(new Animated.Value(1));
@@ -62,14 +63,18 @@ export default function DashboardScreen() {
         const loadMeritData = async () => {
             const global = await getGlobalMerit();
             setGlobalMerit(global);
-            const board = await getLeaderboard(5);
+            const board = await getLeaderboard(50);
             setLeaderboard(board);
+            if (user?.id) {
+                const rank = await getUserRank(faithClicks);
+                setUserRank(rank);
+            }
         };
         loadMeritData();
         // Refresh every 30s
         const interval = setInterval(loadMeritData, 30000);
         return () => clearInterval(interval);
-    }, []);
+    }, [user?.id, faithClicks]); // Re-fetch rank when user merit changes
 
     const handleMeritClick = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -825,38 +830,71 @@ export default function DashboardScreen() {
 
                                     <Text style={{ color: '#a1a1aa', fontSize: 15, marginBottom: 12, textAlign: 'center' }}>你已經為牛市回歸的念力增添了</Text>
                                     <Text style={{ color: '#fbbf24', fontSize: 48, fontWeight: 'bold', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', marginBottom: 8 }}>
-                                        {user?.merit || 0}
+                                        {faithClicks}
                                     </Text>
-                                    <Text style={{ color: '#52525b', fontSize: 13, marginBottom: 32 }}>佔全球貢獻 {(share * 100).toFixed(4)}%</Text>
+                                    <Text style={{ color: '#52525b', fontSize: 13, marginBottom: 32 }}>
+                                        佔全球貢獻 {(globalMerit > 0 ? (faithClicks / globalMerit * 100) : 0).toFixed(6)}%
+                                    </Text>
                                 </View>
                             ) : (
-                                <ScrollView>
-                                    <View style={{ alignItems: 'center', marginBottom: 32 }}>
-                                        <Text style={{ color: '#a1a1aa', fontSize: 13, textTransform: 'uppercase' }}>Global Total</Text>
-                                        <Text style={{ color: 'white', fontSize: 32, fontWeight: 'bold' }}>
-                                            {globalMerit.toLocaleString()}
-                                        </Text>
-                                    </View>
+                                <View style={{ flex: 1 }}>
+                                    <ScrollView contentContainerStyle={{ paddingBottom: 80 }}>
+                                        <View style={{ alignItems: 'center', marginBottom: 32 }}>
+                                            <Text style={{ color: '#a1a1aa', fontSize: 13, textTransform: 'uppercase' }}>Global Total</Text>
+                                            <Text style={{ color: 'white', fontSize: 32, fontWeight: 'bold' }}>
+                                                {globalMerit.toLocaleString()}
+                                            </Text>
+                                        </View>
 
-                                    <View style={{ backgroundColor: '#18181b', borderRadius: 12, overflow: 'hidden' }}>
-                                        {leaderboard.map((u, i) => (
-                                            <View key={u.id} style={styles.rankRow}>
-                                                <View style={{ width: 40, alignItems: 'center' }}>
-                                                    {i < 3 ? (
-                                                        <Text style={{ fontSize: 20 }}>{i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</Text>
-                                                    ) : (
-                                                        <Text style={styles.rankNum}>#{i + 1}</Text>
-                                                    )}
+                                        <View style={{ backgroundColor: '#18181b', borderRadius: 12, overflow: 'hidden' }}>
+                                            {leaderboard.map((u, i) => (
+                                                <View key={u.id} style={styles.rankRow}>
+                                                    <View style={{ width: 40, alignItems: 'center' }}>
+                                                        {i < 3 ? (
+                                                            <Text style={{ fontSize: 20 }}>{i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</Text>
+                                                        ) : (
+                                                            <Text style={styles.rankNum}>#{i + 1}</Text>
+                                                        )}
+                                                    </View>
+                                                    <Text style={styles.rankName}>
+                                                        {u.displayName}
+                                                        {u.id === user?.id && <Text style={{ color: '#fbbf24', fontSize: 12 }}> (你)</Text>}
+                                                    </Text>
+                                                    <Text style={styles.rankScore}>{u.merit.toLocaleString()}</Text>
                                                 </View>
-                                                <Text style={styles.rankName}>
-                                                    {u.displayName}
-                                                    {u.id === user?.id && <Text style={{ color: '#fbbf24', fontSize: 12 }}> (你)</Text>}
-                                                </Text>
-                                                <Text style={styles.rankScore}>{u.merit.toLocaleString()}</Text>
+                                            ))}
+                                        </View>
+                                    </ScrollView>
+
+                                    {/* Pinned User Rank (if > 50) */}
+                                    {userRank > 50 && (
+                                        <View style={{
+                                            position: 'absolute',
+                                            bottom: 0,
+                                            left: 0,
+                                            right: 0,
+                                            backgroundColor: '#27272a',
+                                            borderTopWidth: 1,
+                                            borderTopColor: '#3f3f46',
+                                            paddingVertical: 12,
+                                            paddingHorizontal: 0,
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            borderBottomLeftRadius: 12,
+                                            borderBottomRightRadius: 12
+                                        }}>
+                                            <View style={{ width: 40, alignItems: 'center' }}>
+                                                <Text style={[styles.rankNum, { color: '#fbbf24' }]}>#{userRank}</Text>
                                             </View>
-                                        ))}
-                                    </View>
-                                </ScrollView>
+                                            <Text style={[styles.rankName, { color: '#fbbf24' }]}>
+                                                {user?.name || 'You'} (你)
+                                            </Text>
+                                            <Text style={[styles.rankScore, { color: '#fbbf24' }]}>
+                                                {faithClicks.toLocaleString()}
+                                            </Text>
+                                        </View>
+                                    )}
+                                </View>
                             )}
                         </View>
                     </SafeAreaView>

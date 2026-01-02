@@ -1,17 +1,19 @@
 
 import { db } from './firebase';
 import {
-    collection,
-    doc,
-    runTransaction,
-    getDoc,
-    setDoc,
+    updateDoc,
+    where,
+    getCountFromServer,
     query,
+    collection,
     orderBy,
     limit,
     getDocs,
     increment,
-    updateDoc
+    doc,
+    runTransaction,
+    setDoc,
+    getDoc
 } from 'firebase/firestore';
 
 export interface MeritUser {
@@ -117,5 +119,19 @@ export const getLeaderboard = async (limitCount = 100): Promise<MeritUser[]> => 
     } catch (e) {
         console.error("Leaderboard Fetch Error:", e);
         return [];
+    }
+};
+
+export const getUserRank = async (myMerit: number): Promise<number> => {
+    try {
+        const q = query(
+            collection(db, 'users'),
+            where('merit', '>', myMerit)
+        );
+        const snapshot = await getCountFromServer(q);
+        return snapshot.data().count + 1;
+    } catch (e) {
+        console.error("Rank Fetch Error:", e);
+        return 0;
     }
 };
