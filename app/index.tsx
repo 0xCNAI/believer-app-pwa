@@ -754,17 +754,11 @@ export default function DashboardScreen() {
                         <View style={styles.modalBody}>
                             {meritTab === 'mine' ? (
                                 <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1, paddingBottom: 60 }}>
-                                    <View style={{
-                                        width: 160, height: 160,
-                                        backgroundColor: '#18181b',
-                                        borderRadius: 80,
-                                        justifyContent: 'center', alignItems: 'center',
-                                        borderWidth: 4, borderColor: '#27272a',
-                                        marginBottom: 32,
-                                        shadowColor: '#fbbf24', shadowOpacity: 0.1, shadowRadius: 30
-                                    }}>
-                                        <Ionicons name="hardware-chip" size={64} color="#fbbf24" style={{ opacity: 0.8 }} />
-                                    </View>
+                                    <Image
+                                        source={require('@/assets/images/bull_buddha.png')}
+                                        style={{ width: 240, height: 240, marginBottom: 16 }}
+                                        resizeMode="contain"
+                                    />
 
                                     <Text style={{ color: '#a1a1aa', fontSize: 15, marginBottom: 12, textAlign: 'center' }}>你已經為牛市回歸的念力增添了</Text>
                                     <Text style={{ color: '#fbbf24', fontSize: 48, fontWeight: 'bold', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', marginBottom: 8 }}>
