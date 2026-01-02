@@ -494,9 +494,10 @@ export default function DashboardScreen() {
 
                 {/* Footer */}
                 <View style={styles.footer}>
+                    <Text style={styles.exportDescription}>在 BetalphaX 紀錄交易想法，建立你的專屬交易系統</Text>
                     <TouchableOpacity onPress={() => Linking.openURL('https://betalphapick.com/export')} style={styles.exportBtn}>
                         <Image source={require('@/assets/images/betalphax_logo.jpg')} style={styles.exportLogo} />
-                        <Text style={styles.exportText}>在 BetalphaX 紀錄交易想法，建立你的專屬交易系統</Text>
+                        <Text style={styles.exportButtonText}>BetalphaX</Text>
                     </TouchableOpacity>
 
                     <View style={styles.socialRow}>
@@ -781,28 +782,34 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+    exportDescription: {
+        color: '#71717A',
+        fontSize: 12,
+        fontWeight: '500',
+        marginBottom: 12,
+        textAlign: 'center',
+    },
     exportBtn: {
-        width: '100%',
+        width: 140, // Reduced width for just Logo + Name
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 12,
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        borderRadius: 12,
-        backgroundColor: '#000000',
+        gap: 8,
+        paddingVertical: 10,
+        borderRadius: 8,
+        backgroundColor: '#000000', // Logo background color
         borderWidth: 1,
         borderColor: '#27272A',
     },
     exportLogo: {
-        width: 24,
-        height: 24,
+        width: 20,
+        height: 20,
         borderRadius: 4,
     },
-    exportText: {
-        color: '#A1A1AA',
-        fontSize: 12,
-        fontWeight: '600',
+    exportButtonText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '700',
     },
     footerVersion: {
         marginTop: 32,
