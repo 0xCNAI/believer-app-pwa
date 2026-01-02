@@ -32,6 +32,7 @@ export interface ConditionResult {
     passed: boolean;     // Whether threshold is met
     confidence: number;  // 0-1 data quality
     detail?: string;     // Human-readable detail
+    nameCN: string;      // Localized name
 }
 
 export interface PersonalParams {
@@ -150,7 +151,9 @@ function evaluatePriceVsMA(data: KlineData[], period: number): ConditionResult {
             score: 0,
             passed: false,
             confidence: 0,
+            confidence: 0,
             detail: 'Insufficient data',
+            nameCN: '價格 vs 長期均線'
         };
     }
 
@@ -169,6 +172,7 @@ function evaluatePriceVsMA(data: KlineData[], period: number): ConditionResult {
         passed,
         confidence: data.length >= period ? 1 : data.length / period,
         detail: `Distance: ${(distance * 100).toFixed(1)}%`,
+        nameCN: '價格 vs 長期均線'
     };
 }
 
@@ -210,7 +214,9 @@ function evaluateMASlope(data: KlineData[], period: number): ConditionResult {
         score,
         passed,
         confidence: 1,
+        confidence: 1,
         detail: `Slope: ${(normalizedSlope * 10000).toFixed(2)}bps/day`,
+        nameCN: '均線斜率趨平'
     };
 }
 
@@ -230,7 +236,9 @@ function evaluateHigherLow(data: KlineData[], windowWeeks: number): ConditionRes
         score: hasHL ? 1 : 0,
         passed: hasHL,
         confidence: data.length >= windowWeeks * 7 * 2 ? 1 : 0.5,
+        confidence: data.length >= windowWeeks * 7 * 2 ? 1 : 0.5,
         detail: hasHL ? 'Structure improving' : 'No higher low detected',
+        nameCN: '結構性低點抬升'
     };
 }
 
@@ -252,7 +260,9 @@ function evaluateVolCompression(data: KlineData[], threshold: number): Condition
             score: 0,
             passed: false,
             confidence: 0,
+            confidence: 0,
             detail: 'Insufficient history',
+            nameCN: '波動率壓縮'
         };
     }
 
@@ -270,7 +280,9 @@ function evaluateVolCompression(data: KlineData[], threshold: number): Condition
         score,
         passed,
         confidence: 1,
+        confidence: 1,
         detail: `Percentile: ${pct.toFixed(0)}%`,
+        nameCN: '波動率壓縮'
     };
 }
 
@@ -319,7 +331,9 @@ function evaluateMomentumDivergence(data: KlineData[]): ConditionResult {
         score: passed ? 1 : 0,
         passed,
         confidence: 1,
+        confidence: 1,
         detail: passed ? 'Bullish divergence detected' : 'No divergence',
+        nameCN: '動能背離'
     };
 }
 
@@ -360,7 +374,9 @@ function evaluateVolumeConfirmation(data: KlineData[]): ConditionResult {
         score,
         passed,
         confidence: 1,
+        confidence: 1,
         detail: `${upCandlesWithVol} strong up days (14d)`,
+        nameCN: '成交量確認'
     };
 }
 
@@ -398,6 +414,7 @@ function evaluateRangeBreakout(data: KlineData[]): ConditionResult {
         detail: passed
             ? `Broke ${rangeHigh.toFixed(0)} by ${(distance * 100).toFixed(1)}%`
             : `${((rangeHigh - currentClose) / rangeHigh * 100).toFixed(1)}% below range high`,
+        nameCN: '區間突破'
     };
 }
 
@@ -445,6 +462,7 @@ function evaluateVolExpansion(data: KlineData[]): ConditionResult {
         confidence: 1,
         detail: `Vol ratio: ${ratio.toFixed(2)}x (${direction})`,
         // Store direction in detail for downstream use
+        nameCN: '波動率擴張'
     };
 }
 
@@ -474,7 +492,10 @@ export async function evaluateTechConditions(
                 score: 0,
                 passed: false,
                 confidence: 0,
+                passed: false,
+                confidence: 0,
                 detail: 'No data available',
+                nameCN: def.nameCN
             })),
             gatesPassedCount: 0,
             boostersPassedCount: 0,

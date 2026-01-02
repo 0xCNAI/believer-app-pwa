@@ -166,6 +166,26 @@ export default function DashboardScreen() {
 
 
 
+    // V5.1 Auto-Refresh Logic (Post 8 AM)
+    useEffect(() => {
+        const checkAndRefresh = async () => {
+            const { lastEvaluated, fetchAndEvaluate } = useTechStore.getState();
+            // Get today's 8:00 AM
+            const now = new Date();
+            const today8AM = new Date();
+            today8AM.setHours(8, 0, 0, 0);
+
+            // If it's currently past 8 AM
+            if (now.getTime() > today8AM.getTime()) {
+                // And we haven't evaluated since 8 AM (or ever)
+                if (!lastEvaluated || lastEvaluated < today8AM.getTime()) {
+                    console.log('[AutoRefresh] Triggering daily analysis...');
+                    await fetchAndEvaluate(true);
+                }
+            }
+        };
+        checkAndRefresh();
+    }, []);
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar style="light" />
@@ -260,11 +280,64 @@ export default function DashboardScreen() {
                                         {copy.oneLiner}
                                     </Text>
 
-                                    {/* Context */}
+                                    {/* Tech Analysis Status (V5.1) */}
                                     <View style={styles.progressContext}>
-                                        <Text style={styles.contextTitle}>目前的依據</Text>
-                                        {copy.reasonLines.map((line, i) => <Text key={i} style={styles.contextItem}>• {line}</Text>)}
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                                <Text style={styles.contextTitle}>技術分析狀態</Text>
+                                                {/* Timestamp */}
+                                                <Text style={{ color: '#52525b', fontSize: 12 }}>
+                                                    {useTechStore.getState().lastEvaluated
+                                                        ? new Date(useTechStore.getState().lastEvaluated).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
+                                                        : '--/-- --:--'}
+                                                </Text>
+                                            </View>
 
+                                            {/* Refresh Button */}
+                                            <TouchableOpacity
+                                                onPress={async () => {
+                                                    await useTechStore.getState().fetchAndEvaluate(true);
+                                                }}
+                                                style={{ padding: 4 }}
+                                            >
+                                                <Ionicons name="refresh" size={16} color="#71717a" />
+                                            </TouchableOpacity>
+                                        </View>
+
+                                        {(() => {
+                                            const { conditions } = useTechStore.getState();
+                                            // Sort: Passed Gates -> Passed Boosters -> Failed Gates
+                                            // Priority score: 
+                                            // Passed Gate = 3
+                                            // Passed Booster = 2
+                                            // Failed Gate = 1
+                                            // Failed Booster = 0
+                                            const sorted = [...conditions].sort((a, b) => {
+                                                const scoreA = (a.passed ? 2 : 0) + (a.group === 'Gate' ? 1 : 0);
+                                                const scoreB = (b.passed ? 2 : 0) + (b.group === 'Gate' ? 1 : 0);
+                                                return scoreB - scoreA;
+                                            });
+
+                                            const top3 = sorted.slice(0, 3);
+
+                                            if (top3.length === 0) {
+                                                return <Text style={{ color: '#71717a', fontSize: 13 }}>尚無分析數據</Text>;
+                                            }
+
+                                            return top3.map((c) => (
+                                                <View key={c.id} style={{ flexDirection: 'row', marginBottom: 6, alignItems: 'flex-start' }}>
+                                                    <Text style={{ color: c.passed ? '#10b981' : '#71717a', fontSize: 13, marginRight: 6, marginTop: 1 }}>
+                                                        {c.passed ? '✓' : '•'}
+                                                    </Text>
+                                                    <Text style={styles.contextItem}>
+                                                        <Text style={{ color: '#d4d4d8', fontWeight: '500' }}>{c.nameCN}</Text>
+                                                        <Text style={{ color: '#71717a' }}>：{c.passed ? (c.detail || '條件成立') : '條件未滿足'}</Text>
+                                                    </Text>
+                                                </View>
+                                            ));
+                                        })()}
+
+                                        {/* Next Steps (Keep or Remove? User didn't say remove, but space might be tight. I'll keep it) */}
                                         <Text style={[styles.contextTitle, { color: activeColor, marginTop: 12 }]}>下一步</Text>
                                         {copy.next.map((line, i) => <Text key={i} style={styles.contextItem}>👉 {line}</Text>)}
                                     </View>

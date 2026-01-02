@@ -289,15 +289,15 @@ export const useTechStore = create<TechState>()(
                     return localStorage;
                 }
             }),
-            partialize: (state) => ({
-                enabledConditions: state.enabledConditions,
-                personalParams: state.personalParams,
-                reversalState: state.reversalState,
-                reversalInputs: state.reversalInputs,
-                lastEvaluated: state.lastEvaluated,
-                gateCount: state.gateCount,
-                higherLow: state.higherLow,
-            }),
+            enabledConditions: state.enabledConditions,
+            personalParams: state.personalParams,
+            reversalState: state.reversalState,
+            reversalInputs: state.reversalInputs,
+            conditions: state.conditions, // Persist conditions
+            lastEvaluated: state.lastEvaluated,
+            gateCount: state.gateCount,
+            higherLow: state.higherLow,
+        }),
         }
     )
 );
