@@ -64,7 +64,7 @@ export const generateMarketSummary = async (targetSignals?: KeySignalContext[]):
 
     // 3. Call Gemini API via Fetch
     try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
 
         console.log('[AI Service] Requesting Gemini Flash...');
 
