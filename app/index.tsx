@@ -494,6 +494,11 @@ export default function DashboardScreen() {
 
                 {/* Footer */}
                 <View style={styles.footer}>
+                    <TouchableOpacity onPress={() => Linking.openURL('https://betalphapick.com/export')} style={styles.exportBtn}>
+                        <Image source={require('@/assets/images/betalphax_logo.jpg')} style={styles.exportLogo} />
+                        <Text style={styles.exportText}>在 BetalphaX 紀錄交易想法，建立你的專屬交易系統</Text>
+                    </TouchableOpacity>
+
                     <View style={styles.socialRow}>
                         <TouchableOpacity onPress={() => Linking.openURL('https://twitter.com/betalphapick')} style={styles.socialBtn}>
                             <Ionicons name="logo-twitter" size={20} color="#71717a" />
@@ -502,11 +507,6 @@ export default function DashboardScreen() {
                             <Ionicons name="globe-outline" size={20} color="#71717a" />
                         </TouchableOpacity>
                     </View>
-
-                    <TouchableOpacity onPress={() => Linking.openURL('https://betalphapick.com/export')} style={styles.exportBtn}>
-                        <Text style={styles.exportText}>Export to BetAlphaPick</Text>
-                        <Ionicons name="arrow-forward" size={12} color="#52525b" />
-                    </TouchableOpacity>
 
                     <Text style={styles.footerVersion}>Believer System V5.4 (Traditional Chinese)</Text>
                 </View>
@@ -782,18 +782,25 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     exportBtn: {
+        width: '100%',
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-        paddingVertical: 8,
+        justifyContent: 'center',
+        gap: 12,
+        paddingVertical: 12,
         paddingHorizontal: 16,
-        borderRadius: 8,
-        backgroundColor: '#18181B',
+        borderRadius: 12,
+        backgroundColor: '#000000',
         borderWidth: 1,
         borderColor: '#27272A',
     },
+    exportLogo: {
+        width: 24,
+        height: 24,
+        borderRadius: 4,
+    },
     exportText: {
-        color: '#71717A',
+        color: '#A1A1AA',
         fontSize: 12,
         fontWeight: '600',
     },
