@@ -45,9 +45,10 @@ export default function DashboardScreen() {
 
     // Floating Merit State
     const [scaleAnim] = useState(new Animated.Value(1));
+    const [plusOneAnim] = useState(new Animated.Value(0)); // 0 to 1 for opacity/translate
     const [showMerit, setShowMerit] = useState(false);
     const [showMeritModal, setShowMeritModal] = useState(false);
-    const [meritTab, setMeritTab] = useState<'mine' | 'leaderboard'>('mine'); // Tabs: 'mine' | 'leaderboard'
+    const [meritTab, setMeritTab] = useState<'mine' | 'leaderboard'>('mine');
 
     useEffect(() => {
         if (user?.id) {
@@ -74,7 +75,13 @@ export default function DashboardScreen() {
         incrementFaith();
         setGlobalMerit(prev => prev + 1);
         setShowMerit(true);
-        setTimeout(() => setShowMerit(false), 800);
+        // Reset and start +1 animation
+        plusOneAnim.setValue(0);
+        Animated.timing(plusOneAnim, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true
+        }).start(() => setShowMerit(false));
 
         // Stick Animation
         Animated.sequence([
@@ -586,18 +593,9 @@ export default function DashboardScreen() {
 
                 <TouchableOpacity
                     style={styles.fishFab}
-                    onPress={() => setShowMeritModal(true)}
-                    activeOpacity={0.8}
+                    onPress={handleMeritClick}
+                    activeOpacity={0.9}
                 >
-                    {/* Settings Trigger with HitSlop */}
-                    <TouchableOpacity
-                        style={styles.meritSettingsBtn}
-                        onPress={() => setShowMeritModal(true)}
-                        hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-                    >
-                        <Ionicons name="settings-sharp" size={14} color="#71717a" />
-                    </TouchableOpacity>
-                    {/* Fish is separate from text now in new style */}
                     <View style={styles.fishIconBg}>
                         <Image
                             source={require('@/assets/images/wooden-fish.png')}
@@ -605,12 +603,33 @@ export default function DashboardScreen() {
                             resizeMode="contain"
                         />
                     </View>
+                    <View style={{ marginLeft: 12, alignItems: 'flex-start' }}>
+                        <Text style={{ color: '#F59E0B', fontWeight: 'bold', fontSize: 16 }}>{faithClicks}</Text>
+                        <Text style={{ color: '#A1A1AA', fontSize: 10 }}>功德</Text>
+                    </View>
+                </TouchableOpacity>
+
+                {/* Settings Trigger - Bottom Right of Fab */}
+                <TouchableOpacity
+                    style={styles.meritSettingsBtn}
+                    onPress={() => setShowMeritModal(true)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                    <Ionicons name="settings-sharp" size={14} color="#52525b" />
                 </TouchableOpacity>
 
                 {showMerit && (
-                    <View style={styles.meritPopup}>
+                    <Animated.View style={[
+                        styles.meritPopup,
+                        {
+                            opacity: plusOneAnim.interpolate({ inputRange: [0, 0.2, 0.8, 1], outputRange: [0, 1, 1, 0] }),
+                            transform: [{
+                                translateY: plusOneAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -40] })
+                            }]
+                        }
+                    ]}>
                         <Text style={{ color: '#F59E0B', fontWeight: 'bold', fontSize: 14 }}>功德 +1</Text>
-                    </View>
+                    </Animated.View>
                 )}
             </View>
 
@@ -635,24 +654,25 @@ export default function DashboardScreen() {
                         <View style={styles.modalBody}>
                             {meritTab === 'mine' ? (
                                 <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1, paddingBottom: 60 }}>
-                                    <Text style={{ color: '#a1a1aa', fontSize: 16, marginBottom: 8 }}>累積功德</Text>
-                                    <Text style={{ color: '#fbbf24', fontSize: 64, fontWeight: 'bold', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', marginBottom: 40 }}>
+                                    <View style={{
+                                        width: 160, height: 160,
+                                        backgroundColor: '#18181b',
+                                        borderRadius: 80,
+                                        justifyContent: 'center', alignItems: 'center',
+                                        borderWidth: 4, borderColor: '#27272a',
+                                        marginBottom: 32,
+                                        shadowColor: '#fbbf24', shadowOpacity: 0.1, shadowRadius: 30
+                                    }}>
+                                        <Ionicons name="hardware-chip" size={64} color="#fbbf24" style={{ opacity: 0.8 }} />
+                                    </View>
+
+                                    <Text style={{ color: '#a1a1aa', fontSize: 15, marginBottom: 12, textAlign: 'center' }}>你已經為牛市回歸的念力增添了</Text>
+                                    <Text style={{ color: '#fbbf24', fontSize: 48, fontWeight: 'bold', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', marginBottom: 8 }}>
                                         {faithClicks.toLocaleString()}
                                     </Text>
-
-                                    <TouchableOpacity activeOpacity={0.8} onPress={handleMeritClick}>
-                                        <View style={{
-                                            width: 200, height: 200,
-                                            backgroundColor: '#18181b',
-                                            borderRadius: 100,
-                                            justifyContent: 'center', alignItems: 'center',
-                                            borderWidth: 4, borderColor: '#27272a',
-                                            shadowColor: '#fbbf24', shadowOpacity: 0.1, shadowRadius: 30
-                                        }}>
-                                            <Ionicons name="hardware-chip" size={80} color="#fbbf24" style={{ opacity: 0.8 }} />
-                                        </View>
-                                    </TouchableOpacity>
-                                    <Text style={{ color: '#52525b', marginTop: 24 }}>點擊累積</Text>
+                                    <Text style={{ color: '#52525b', fontSize: 13 }}>
+                                        佔全球貢獻 {globalMerit > 0 ? ((faithClicks / globalMerit) * 100).toFixed(4) : '0'}%
+                                    </Text>
                                 </View>
                             ) : (
                                 <ScrollView>
@@ -699,37 +719,50 @@ export default function DashboardScreen() {
 
                         <View style={[styles.settingsItem, { flexDirection: 'column', alignItems: 'stretch', paddingVertical: 16 }]}>
                             <Text style={[styles.settingsItemLabel, { marginBottom: 8 }]}>顯示名稱</Text>
-                            <View style={{ flexDirection: 'row', gap: 10 }}>
-                                <TextInput
-                                    style={{
-                                        flex: 1,
-                                        backgroundColor: '#18181b',
-                                        color: 'white',
-                                        paddingHorizontal: 12,
-                                        paddingVertical: 10,
-                                        borderRadius: 8,
-                                        borderWidth: 1,
-                                        borderColor: '#3f3f46',
-                                        fontSize: 16
-                                    }}
-                                    value={tempName}
-                                    onChangeText={setTempName}
-                                    placeholder="輸入暱稱"
-                                    placeholderTextColor="#52525b"
-                                />
-                                <TouchableOpacity
-                                    style={{
-                                        backgroundColor: '#2563eb',
-                                        paddingHorizontal: 16,
-                                        justifyContent: 'center',
-                                        alignItems: 'center',
-                                        borderRadius: 8
-                                    }}
-                                    onPress={handleUpdateName}
-                                >
-                                    <Text style={{ color: 'white', fontWeight: '600' }}>儲存</Text>
-                                </TouchableOpacity>
-                            </View>
+                            {!editingName ? (
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#27272a', padding: 12, borderRadius: 8 }}>
+                                    <Text style={{ color: 'white', fontSize: 16 }}>{user?.name || 'Believer'}</Text>
+                                    <TouchableOpacity onPress={() => { setEditingName(true); setTempName(user?.name || ''); }}>
+                                        <Ionicons name="pencil" size={16} color="#fbbf24" />
+                                    </TouchableOpacity>
+                                </View>
+                            ) : (
+                                <View style={{ flexDirection: 'row', gap: 10 }}>
+                                    <TextInput
+                                        style={{
+                                            flex: 1,
+                                            backgroundColor: '#18181b',
+                                            color: 'white',
+                                            paddingHorizontal: 12,
+                                            paddingVertical: 10,
+                                            borderRadius: 8,
+                                            borderWidth: 1,
+                                            borderColor: '#fbbf24',
+                                            fontSize: 16
+                                        }}
+                                        value={tempName}
+                                        onChangeText={setTempName}
+                                        placeholder="輸入暱稱"
+                                        placeholderTextColor="#52525b"
+                                        autoFocus
+                                    />
+                                    <TouchableOpacity
+                                        style={{
+                                            backgroundColor: '#fbbf24',
+                                            paddingHorizontal: 16,
+                                            justifyContent: 'center',
+                                            alignItems: 'center',
+                                            borderRadius: 8
+                                        }}
+                                        onPress={async () => {
+                                            await handleUpdateName();
+                                            setEditingName(false);
+                                        }}
+                                    >
+                                        <Text style={{ color: 'black', fontWeight: 'bold' }}>儲存</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
                         </View>
 
                         <View style={{ height: 1, backgroundColor: '#27272a', marginVertical: 16 }} />
@@ -1211,20 +1244,24 @@ const styles = StyleSheet.create({
         alignItems: 'flex-end',
     },
     meritSettingsBtn: {
-        padding: 4,
-        marginTop: 4,
-        opacity: 0.6,
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: '#27272a',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#3f3f46',
+        zIndex: 10,
     },
     meritPopup: {
         position: 'absolute',
-        top: -60,
-        right: 10,
-        backgroundColor: 'rgba(251, 191, 36, 0.1)',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: 'rgba(251, 191, 36, 0.5)',
+        top: -40,
+        right: 0,
+        // No background, just text floating
     },
     // Modal Styles
     modalOverlay: {
