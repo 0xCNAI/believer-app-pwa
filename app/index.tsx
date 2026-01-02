@@ -47,6 +47,7 @@ export default function DashboardScreen() {
     const [scaleAnim] = useState(new Animated.Value(1));
     const [showMerit, setShowMerit] = useState(false);
     const [showMeritModal, setShowMeritModal] = useState(false);
+    const [meritTab, setMeritTab] = useState<'mine' | 'leaderboard'>('mine'); // Tabs: 'mine' | 'leaderboard'
 
     useEffect(() => {
         if (user?.id) {
@@ -581,28 +582,29 @@ export default function DashboardScreen() {
                         <View style={styles.stickHead} />
                         <View style={styles.stickHandle} />
                     </Animated.View>
+                </TouchableOpacity>
 
-                    <Animated.View style={[styles.fishFab, { transform: [{ scale: scaleAnim }] }]}>
-                        <View style={styles.fishCounter}>
-                            <Text style={{ color: '#F59E0B', fontWeight: 'bold', fontSize: 16 }}>{faithClicks}</Text>
-                            <Text style={{ color: '#A1A1AA', fontSize: 10 }}>功德</Text>
-                        </View>
-                        <View style={styles.fishIconBg}>
-                            <Image
-                                source={require('@/assets/images/wooden-fish.png')} // Assuming asset exists
-                                style={{ width: 36, height: 36 }}
-                                resizeMode="contain"
-                            />
-                        </View>
-                        {/* Settings Trigger */}
-                        <TouchableOpacity
-                            style={styles.meritSettingsBtn}
-                            onPress={() => setShowMeritModal(true)}
-                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        >
-                            <Ionicons name="settings-sharp" size={12} color="#71717a" />
-                        </TouchableOpacity>
-                    </Animated.View>
+                <TouchableOpacity
+                    style={styles.fishFab}
+                    onPress={() => setShowMeritModal(true)}
+                    activeOpacity={0.8}
+                >
+                    {/* Settings Trigger with HitSlop */}
+                    <TouchableOpacity
+                        style={styles.meritSettingsBtn}
+                        onPress={() => setShowMeritModal(true)}
+                        hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                    >
+                        <Ionicons name="settings-sharp" size={14} color="#71717a" />
+                    </TouchableOpacity>
+                    {/* Fish is separate from text now in new style */}
+                    <View style={styles.fishIconBg}>
+                        <Image
+                            source={require('@/assets/images/wooden-fish.png')}
+                            style={{ width: 40, height: 40 }}
+                            resizeMode="contain"
+                        />
+                    </View>
                 </TouchableOpacity>
 
                 {showMerit && (
@@ -615,32 +617,74 @@ export default function DashboardScreen() {
             {/* Merit Leaderboard Modal */}
             {showMeritModal && (
                 <View style={styles.modalOverlay}>
-                    <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>功德排行榜</Text>
-                        <TouchableOpacity onPress={() => setShowMeritModal(false)} style={styles.closeBtn}>
-                            <Ionicons name="close" size={20} color="white" />
-                        </TouchableOpacity>
-                    </View>
-                    <ScrollView style={styles.modalBody}>
-                        <View style={{ alignItems: 'center', marginBottom: 24, paddingTop: 16 }}>
-                            <Text style={{ color: '#a1a1aa', fontSize: 13, textTransform: 'uppercase' }}>Global Total</Text>
-                            <Text style={{ color: 'white', fontSize: 40, fontWeight: 'bold', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}>
-                                {globalMerit.toLocaleString()}
-                            </Text>
+                    <SafeAreaView style={{ flex: 1 }}>
+                        <View style={styles.modalHeader}>
+                            <TouchableOpacity onPress={() => setShowMeritModal(false)} style={styles.closeBtn}>
+                                <Ionicons name="close" size={24} color="#a1a1aa" />
+                            </TouchableOpacity>
+                            <View style={{ flexDirection: 'row', gap: 24 }}>
+                                <TouchableOpacity onPress={() => setMeritTab('mine')} style={[styles.tabBtn, meritTab === 'mine' && styles.tabBtnActive]}>
+                                    <Text style={[styles.tabText, meritTab === 'mine' && styles.tabTextActive]}>您的貢獻</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => setMeritTab('leaderboard')} style={[styles.tabBtn, meritTab === 'leaderboard' && styles.tabBtnActive]}>
+                                    <Text style={[styles.tabText, meritTab === 'leaderboard' && styles.tabTextActive]}>排行榜</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
 
-                        <Text style={{ color: '#71717a', marginBottom: 16, fontSize: 14, fontWeight: '600' }}>TOP CONTRIBUTORS</Text>
-                        {leaderboard.map((u, i) => (
-                            <View key={u.id} style={styles.rankRow}>
-                                <Text style={[styles.rankNum, i < 3 && styles.rankTop]}>#{i + 1}</Text>
-                                <Text style={styles.rankName}>
-                                    {u.displayName}
-                                    {u.id === user?.id && <Text style={{ color: '#52525b' }}> (You)</Text>}
-                                </Text>
-                                <Text style={styles.rankScore}>{u.merit.toLocaleString()}</Text>
-                            </View>
-                        ))}
-                    </ScrollView>
+                        <View style={styles.modalBody}>
+                            {meritTab === 'mine' ? (
+                                <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1, paddingBottom: 60 }}>
+                                    <Text style={{ color: '#a1a1aa', fontSize: 16, marginBottom: 8 }}>累積功德</Text>
+                                    <Text style={{ color: '#fbbf24', fontSize: 64, fontWeight: 'bold', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', marginBottom: 40 }}>
+                                        {faithClicks.toLocaleString()}
+                                    </Text>
+
+                                    <TouchableOpacity activeOpacity={0.8} onPress={handleMeritClick}>
+                                        <View style={{
+                                            width: 200, height: 200,
+                                            backgroundColor: '#18181b',
+                                            borderRadius: 100,
+                                            justifyContent: 'center', alignItems: 'center',
+                                            borderWidth: 4, borderColor: '#27272a',
+                                            shadowColor: '#fbbf24', shadowOpacity: 0.1, shadowRadius: 30
+                                        }}>
+                                            <Ionicons name="hardware-chip" size={80} color="#fbbf24" style={{ opacity: 0.8 }} />
+                                        </View>
+                                    </TouchableOpacity>
+                                    <Text style={{ color: '#52525b', marginTop: 24 }}>點擊累積</Text>
+                                </View>
+                            ) : (
+                                <ScrollView>
+                                    <View style={{ alignItems: 'center', marginBottom: 32 }}>
+                                        <Text style={{ color: '#a1a1aa', fontSize: 13, textTransform: 'uppercase' }}>Global Total</Text>
+                                        <Text style={{ color: 'white', fontSize: 32, fontWeight: 'bold' }}>
+                                            {globalMerit.toLocaleString()}
+                                        </Text>
+                                    </View>
+
+                                    <View style={{ backgroundColor: '#18181b', borderRadius: 12, overflow: 'hidden' }}>
+                                        {leaderboard.map((u, i) => (
+                                            <View key={u.id} style={styles.rankRow}>
+                                                <View style={{ width: 40, alignItems: 'center' }}>
+                                                    {i < 3 ? (
+                                                        <Text style={{ fontSize: 20 }}>{i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</Text>
+                                                    ) : (
+                                                        <Text style={styles.rankNum}>#{i + 1}</Text>
+                                                    )}
+                                                </View>
+                                                <Text style={styles.rankName}>
+                                                    {u.displayName}
+                                                    {u.id === user?.id && <Text style={{ color: '#fbbf24', fontSize: 12 }}> (你)</Text>}
+                                                </Text>
+                                                <Text style={styles.rankScore}>{u.merit.toLocaleString()}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                </ScrollView>
+                            )}
+                        </View>
+                    </SafeAreaView>
                 </View>
             )}
 
@@ -1113,5 +1157,142 @@ const styles = StyleSheet.create({
     settingsItemDesc: {
         color: '#71717a',
         fontSize: 12,
+    },
+    // Floating Merit Styles
+    fishFab: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(24, 24, 27, 0.95)',
+        padding: 6,
+        paddingLeft: 20,
+        paddingRight: 6,
+        borderRadius: 32,
+        borderWidth: 1,
+        borderColor: '#3f3f46',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 8,
+    },
+    woodenStick: {
+        position: 'absolute',
+        top: -24,
+        right: -10,
+        zIndex: 50,
+        alignItems: 'center',
+    },
+    stickHead: {
+        width: 12,
+        height: 24,
+        backgroundColor: '#78350F',
+        borderRadius: 6,
+        marginBottom: -4,
+        zIndex: 2,
+    },
+    stickHandle: {
+        width: 6,
+        height: 48,
+        backgroundColor: '#92400E',
+        borderRadius: 3,
+    },
+    fishIconBg: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#27272A',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginLeft: 12,
+        borderWidth: 1,
+        borderColor: '#3f3f46',
+    },
+    fishCounter: {
+        alignItems: 'flex-end',
+    },
+    meritSettingsBtn: {
+        padding: 4,
+        marginTop: 4,
+        opacity: 0.6,
+    },
+    meritPopup: {
+        position: 'absolute',
+        top: -60,
+        right: 10,
+        backgroundColor: 'rgba(251, 191, 36, 0.1)',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: 'rgba(251, 191, 36, 0.5)',
+    },
+    // Modal Styles
+    modalOverlay: {
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: '#09090b',
+        zIndex: 200,
+    },
+    modalHeader: {
+        flexDirection: 'column', // Stack close btn and tabs
+        paddingHorizontal: 24,
+        paddingTop: 16,
+        paddingBottom: 0,
+        backgroundColor: '#09090b',
+    },
+    modalBody: {
+        flex: 1,
+        padding: 24,
+    },
+    closeBtn: {
+        alignSelf: 'flex-end',
+        padding: 8,
+        marginBottom: 8,
+        backgroundColor: '#18181b',
+        borderRadius: 20,
+    },
+    tabBtn: {
+        paddingVertical: 12,
+        borderBottomWidth: 2,
+        borderBottomColor: 'transparent',
+    },
+    tabBtnActive: {
+        borderBottomColor: '#fbbf24',
+    },
+    tabText: {
+        color: '#71717a',
+        fontSize: 18,
+        fontWeight: '600',
+    },
+    tabTextActive: {
+        color: '#fbbf24',
+    },
+    rankRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 16,
+        paddingHorizontal: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#27272a',
+    },
+    rankNum: {
+        color: '#71717a',
+        fontWeight: 'bold',
+        fontSize: 14,
+    },
+    rankTop: {
+        color: '#fbbf24',
+    },
+    rankName: {
+        flex: 1,
+        color: '#e4e4e7',
+        fontSize: 15,
+        fontWeight: '500',
+    },
+    rankScore: {
+        color: '#fbbf24',
+        fontWeight: '600',
+        fontSize: 15,
+        fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     },
 });
