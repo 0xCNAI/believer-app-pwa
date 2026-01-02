@@ -1,3 +1,4 @@
+```
 /**
  * Technical Analysis Engine
  * 
@@ -27,12 +28,13 @@ export interface ConditionResult {
     id: string;
     group: ConditionGroup;
     name: string;
+    nameCN: string;      // Localized name
     enabled: boolean;
     score: number;       // 0-1 normalized strength
     passed: boolean;     // Whether threshold is met
     confidence: number;  // 0-1 data quality
     detail?: string;     // Human-readable detail
-    nameCN: string;      // Localized name
+    descCN: string;      // Localized description of the indicator (static meaning)
 }
 
 export interface PersonalParams {
@@ -67,7 +69,7 @@ export const CONDITION_DEFS: ConditionDef[] = [
         group: 'Gate',
         name: 'Price vs 200D MA',
         nameCN: '價格 vs 長期均線',
-        explanation: '觀察價格與 200 日均線的距離。當價格接近或突破均線時，代表長期趨勢可能正在轉變。均線是市場成本的共識，往往是機構的心理防線。',
+        explanation: '觀察價格與 200 日均線的距離。雖未站上，但回測與均線的乖離率是判斷趨勢是否過熱或超跌的關鍵。',
         defaultEnabled: true
     },
     {
@@ -142,6 +144,8 @@ function evaluatePriceVsMA(data: KlineData[], period: number): ConditionResult {
     const lastMA = ma[ma.length - 1];
     const lastClose = data[data.length - 1]?.close || 0;
 
+    const def = CONDITION_DEFS.find(d => d.id === 'price_vs_200d')!;
+
     if (lastMA === 0) {
         return {
             id: 'price_vs_200d',
@@ -151,8 +155,9 @@ function evaluatePriceVsMA(data: KlineData[], period: number): ConditionResult {
             score: 0,
             passed: false,
             confidence: 0,
-            detail: 'Insufficient data',
-            nameCN: '價格 vs 長期均線'
+            detail: '數據不足 (Insufficient data)',
+            nameCN: def.nameCN,
+            descCN: def.explanation
         };
     }
 
@@ -160,7 +165,7 @@ function evaluatePriceVsMA(data: KlineData[], period: number): ConditionResult {
     const passed = distance > -0.05; // Within 5% below
     const score = Math.max(0, Math.min(1, (distance + 0.1) / 0.15)); // -10% -> 0, +5% -> 1
 
-    console.log(`[TechEngine] Gate 1 (Price vs MA): Close=${lastClose}, MA=${lastMA}, Dist=${distance.toFixed(3)}, Passed=${passed}`);
+    console.log(`[TechEngine] Gate 1(Price vs MA): Close = ${ lastClose }, MA = ${ lastMA }, Dist = ${ distance.toFixed(3) }, Passed = ${ passed } `);
 
     return {
         id: 'price_vs_200d',
@@ -170,8 +175,9 @@ function evaluatePriceVsMA(data: KlineData[], period: number): ConditionResult {
         score,
         passed,
         confidence: data.length >= period ? 1 : data.length / period,
-        detail: `Distance: ${(distance * 100).toFixed(1)}%`,
-        nameCN: '價格 vs 長期均線'
+        detail: `距離均線 ${ (distance * 100).toFixed(1) }% `,
+        nameCN: def.nameCN,
+        descCN: def.explanation
     };
 }
 
@@ -182,6 +188,7 @@ function evaluatePriceVsMA(data: KlineData[], period: number): ConditionResult {
 function evaluateMASlope(data: KlineData[], period: number): ConditionResult {
     const ma = calculateMA(data, period);
     const recentMA = ma.slice(-30).filter(v => v > 0);
+    const def = CONDITION_DEFS.find(d => d.id === 'ma_slope_flat')!;
 
     if (recentMA.length < 10) {
         return {
@@ -192,8 +199,9 @@ function evaluateMASlope(data: KlineData[], period: number): ConditionResult {
             score: 0,
             passed: false,
             confidence: 0,
-            detail: 'Insufficient data',
-            nameCN: '均線斜率趨平'
+            detail: '數據不足',
+            nameCN: def.nameCN,
+            descCN: def.explanation
         };
     }
 
@@ -204,7 +212,7 @@ function evaluateMASlope(data: KlineData[], period: number): ConditionResult {
     const passed = normalizedSlope > -0.0005;
     const score = Math.max(0, Math.min(1, (normalizedSlope + 0.002) / 0.003));
 
-    console.log(`[TechEngine] Gate 2 (MA Slope): Slope=${normalizedSlope.toFixed(6)}, Threshold=-0.0005, Passed=${passed}`);
+    console.log(`[TechEngine] Gate 2(MA Slope): Slope = ${ normalizedSlope.toFixed(6) }, Threshold = -0.0005, Passed = ${ passed } `);
 
     return {
         id: 'ma_slope_flat',
@@ -214,8 +222,9 @@ function evaluateMASlope(data: KlineData[], period: number): ConditionResult {
         score,
         passed,
         confidence: 1,
-        detail: `Slope: ${(normalizedSlope * 10000).toFixed(2)}bps/day`,
-        nameCN: '均線斜率趨平'
+        detail: `斜率: ${ (normalizedSlope * 10000).toFixed(2) } bps / 天`,
+        nameCN: def.nameCN,
+        descCN: def.explanation
     };
 }
 
@@ -224,8 +233,9 @@ function evaluateMASlope(data: KlineData[], period: number): ConditionResult {
  */
 function evaluateHigherLow(data: KlineData[], windowWeeks: number): ConditionResult {
     const hasHL = checkHigherLow(data, windowWeeks);
+    const def = CONDITION_DEFS.find(d => d.id === 'higher_low')!;
 
-    console.log(`[TechEngine] Gate 3 (Higher Low): Detected=${hasHL}, Window=${windowWeeks}w, Passed=${hasHL}`);
+    console.log(`[TechEngine] Gate 3(Higher Low): Detected = ${ hasHL }, Window = ${ windowWeeks } w, Passed = ${ hasHL } `);
 
     return {
         id: 'higher_low',
@@ -235,8 +245,9 @@ function evaluateHigherLow(data: KlineData[], windowWeeks: number): ConditionRes
         score: hasHL ? 1 : 0,
         passed: hasHL,
         confidence: data.length >= windowWeeks * 7 * 2 ? 1 : 0.5,
-        detail: hasHL ? 'Structure improving' : 'No higher low detected',
-        nameCN: '結構性低點抬升'
+        detail: hasHL ? '結構改善 (Higher Low)' : '未檢測到結構性低點',
+        nameCN: def.nameCN,
+        descCN: def.explanation
     };
 }
 
@@ -248,6 +259,7 @@ function evaluateVolCompression(data: KlineData[], threshold: number): Condition
     const vol = calculateVolatility(data, 30);
     const currentVol = vol[vol.length - 1];
     const history = vol.slice(-365).filter(v => v > 0);
+    const def = CONDITION_DEFS.find(d => d.id === 'vol_compression')!;
 
     if (history.length < 30) {
         return {
@@ -258,8 +270,9 @@ function evaluateVolCompression(data: KlineData[], threshold: number): Condition
             score: 0,
             passed: false,
             confidence: 0,
-            detail: 'Insufficient history',
-            nameCN: '波動率壓縮'
+            detail: '歷史數據不足',
+            nameCN: def.nameCN,
+            descCN: def.explanation
         };
     }
 
@@ -267,7 +280,7 @@ function evaluateVolCompression(data: KlineData[], threshold: number): Condition
     const passed = pct < threshold;
     const score = Math.max(0, Math.min(1, (threshold - pct) / threshold));
 
-    console.log(`[TechEngine] Gate 4 (Vol Compression): CurrentVol=${currentVol.toFixed(4)}, Percentile=${pct.toFixed(1)}%, Threshold=${threshold}%, Passed=${passed}`);
+    console.log(`[TechEngine] Gate 4(Vol Compression): CurrentVol = ${ currentVol.toFixed(4) }, Percentile = ${ pct.toFixed(1) }%, Threshold = ${ threshold }%, Passed = ${ passed } `);
 
     return {
         id: 'vol_compression',
@@ -277,8 +290,9 @@ function evaluateVolCompression(data: KlineData[], threshold: number): Condition
         score,
         passed,
         confidence: 1,
-        detail: `Percentile: ${pct.toFixed(0)}%`,
-        nameCN: '波動率壓縮'
+        detail: `歷史百分位: ${ pct.toFixed(0) }% `,
+        nameCN: def.nameCN,
+        descCN: def.explanation
     };
 }
 
@@ -287,6 +301,7 @@ function evaluateVolCompression(data: KlineData[], threshold: number): Condition
  * Price makes lower low but RSI makes higher low
  */
 function evaluateMomentumDivergence(data: KlineData[]): ConditionResult {
+    const def = CONDITION_DEFS.find(d => d.id === 'momentum_divergence')!;
     if (data.length < 90) {
         return {
             id: 'momentum_divergence',
@@ -296,8 +311,9 @@ function evaluateMomentumDivergence(data: KlineData[]): ConditionResult {
             score: 0,
             passed: false,
             confidence: 0,
-            detail: 'Insufficient data',
-            nameCN: '動能背離'
+            detail: '數據不足',
+            nameCN: def.nameCN,
+            descCN: def.explanation
         };
     }
 
@@ -328,8 +344,9 @@ function evaluateMomentumDivergence(data: KlineData[]): ConditionResult {
         score: passed ? 1 : 0,
         passed,
         confidence: 1,
-        detail: passed ? 'Bullish divergence detected' : 'No divergence',
-        nameCN: '動能背離'
+        detail: passed ? '檢測到看漲背離 (Bullish)' : '無背離訊號',
+        nameCN: def.nameCN,
+        descCN: def.explanation
     };
 }
 
@@ -338,6 +355,7 @@ function evaluateMomentumDivergence(data: KlineData[]): ConditionResult {
  * Recent up candles have above-average volume
  */
 function evaluateVolumeConfirmation(data: KlineData[]): ConditionResult {
+    const def = CONDITION_DEFS.find(d => d.id === 'volume_confirmation')!;
     if (data.length < 30) {
         return {
             id: 'volume_confirmation',
@@ -347,8 +365,9 @@ function evaluateVolumeConfirmation(data: KlineData[]): ConditionResult {
             score: 0,
             passed: false,
             confidence: 0,
-            detail: 'Insufficient data',
-            nameCN: '成交量確認'
+            detail: '數據不足',
+            nameCN: def.nameCN,
+            descCN: def.explanation
         };
     }
 
@@ -371,8 +390,9 @@ function evaluateVolumeConfirmation(data: KlineData[]): ConditionResult {
         score,
         passed,
         confidence: 1,
-        detail: `${upCandlesWithVol} strong up days (14d)`,
-        nameCN: '成交量確認'
+        detail: `近 14 天有 ${ upCandlesWithVol } 個強勢上漲日`,
+        nameCN: def.nameCN,
+        descCN: def.explanation
     };
 }
 
@@ -381,6 +401,7 @@ function evaluateVolumeConfirmation(data: KlineData[]): ConditionResult {
  * Price breaks above 90-day range high
  */
 function evaluateRangeBreakout(data: KlineData[]): ConditionResult {
+    const def = CONDITION_DEFS.find(d => d.id === 'range_breakout')!;
     if (data.length < 90) {
         return {
             id: 'range_breakout',
@@ -390,8 +411,9 @@ function evaluateRangeBreakout(data: KlineData[]): ConditionResult {
             score: 0,
             passed: false,
             confidence: 0,
-            detail: 'Insufficient data',
-            nameCN: '區間突破'
+            detail: '數據不足',
+            nameCN: def.nameCN,
+            descCN: def.explanation
         };
     }
 
@@ -409,9 +431,10 @@ function evaluateRangeBreakout(data: KlineData[]): ConditionResult {
         passed,
         confidence: 1,
         detail: passed
-            ? `Broke ${rangeHigh.toFixed(0)} by ${(distance * 100).toFixed(1)}%`
-            : `${((rangeHigh - currentClose) / rangeHigh * 100).toFixed(1)}% below range high`,
-        nameCN: '區間突破'
+            ? `突破 ${ rangeHigh.toFixed(0) } (${ (distance * 100).toFixed(1) }%)`
+            : `距區間高點還有 ${ ((rangeHigh - currentClose) / rangeHigh * 100).toFixed(1) }% `,
+        nameCN: def.nameCN,
+        descCN: def.explanation
     };
 }
 
@@ -421,6 +444,7 @@ function evaluateRangeBreakout(data: KlineData[]): ConditionResult {
  * Also detects direction (up/down)
  */
 function evaluateVolExpansion(data: KlineData[]): ConditionResult {
+    const def = CONDITION_DEFS.find(d => d.id === 'vol_expansion')!;
     const vol30 = calculateVolatility(data, 30);
     const vol60 = calculateVolatility(data, 60);
 
@@ -436,8 +460,9 @@ function evaluateVolExpansion(data: KlineData[]): ConditionResult {
             score: 0,
             passed: false,
             confidence: 0,
-            detail: 'Insufficient data',
-            nameCN: '波動率擴張'
+            detail: '數據不足',
+            nameCN: def.nameCN,
+            descCN: def.explanation
         };
     }
 
@@ -458,9 +483,10 @@ function evaluateVolExpansion(data: KlineData[]): ConditionResult {
         score: passed ? Math.min(1, (ratio - 1) / 1) : 0,
         passed,
         confidence: 1,
-        detail: `Vol ratio: ${ratio.toFixed(2)}x (${direction})`,
+        detail: `擴張倍數: ${ ratio.toFixed(2) } x(${ direction === 'up' ? '上漲' : '下跌'})`,
         // Store direction in detail for downstream use
-        nameCN: '波動率擴張'
+        nameCN: def.nameCN,
+        descCN: def.explanation
     };
 }
 

@@ -26,6 +26,7 @@ export default function DashboardScreen() {
     const [showSettings, setShowSettings] = useState(false);
     const [btc24hChange, setBtc24hChange] = useState<number | null>(null);
     const [expandedTopic, setExpandedTopic] = useState<string | null>(null);
+    const [expandedTechItem, setExpandedTechItem] = useState<string | null>(null);
 
     // Settings & Notifications State
     const {
@@ -324,17 +325,45 @@ export default function DashboardScreen() {
                                                 return <Text style={{ color: '#71717a', fontSize: 13 }}>尚無分析數據</Text>;
                                             }
 
-                                            return top3.map((c) => (
-                                                <View key={c.id} style={{ flexDirection: 'row', marginBottom: 6, alignItems: 'flex-start' }}>
-                                                    <Text style={{ color: c.passed ? '#10b981' : '#71717a', fontSize: 13, marginRight: 6, marginTop: 1 }}>
-                                                        {c.passed ? '✓' : '•'}
-                                                    </Text>
-                                                    <Text style={styles.contextItem}>
-                                                        <Text style={{ color: '#d4d4d8', fontWeight: '500' }}>{c.nameCN}</Text>
-                                                        <Text style={{ color: '#71717a' }}>：{c.passed ? (c.detail || '條件成立') : '條件未滿足'}</Text>
-                                                    </Text>
-                                                </View>
-                                            ));
+                                            return top3.map((c) => {
+                                                const isExpanded = expandedTechItem === c.id;
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={c.id}
+                                                        onPress={() => setExpandedTechItem(isExpanded ? null : c.id)}
+                                                        activeOpacity={0.7}
+                                                        style={{ marginBottom: 8 }}
+                                                    >
+                                                        <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                                                            <Text style={{ color: c.passed ? '#10b981' : '#71717a', fontSize: 13, marginRight: 6, marginTop: 1 }}>
+                                                                {c.passed ? '✓' : '•'}
+                                                            </Text>
+                                                            <View style={{ flex: 1 }}>
+                                                                <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                                                                    <Text style={{ color: '#d4d4d8', fontWeight: '500', marginRight: 4 }}>
+                                                                        {c.nameCN}
+                                                                    </Text>
+                                                                    <Text style={{ color: '#71717a' }}>
+                                                                        {isExpanded ? '' : `：${c.passed ? (c.detail || '條件成立') : '條件未滿足'}`}
+                                                                    </Text>
+                                                                </View>
+
+                                                                {/* Expanded Content */}
+                                                                {isExpanded && (
+                                                                    <View style={{ marginTop: 4 }}>
+                                                                        <Text style={{ color: '#fbbf24', fontSize: 13, marginBottom: 2 }}>
+                                                                            狀態：{c.passed ? (c.detail || '條件成立') : '條件未滿足'}
+                                                                        </Text>
+                                                                        <Text style={{ color: '#71717a', fontSize: 12, lineHeight: 18 }}>
+                                                                            {c.descCN || ''}
+                                                                        </Text>
+                                                                    </View>
+                                                                )}
+                                                            </View>
+                                                        </View>
+                                                    </TouchableOpacity>
+                                                );
+                                            });
                                         })()}
 
                                         {/* Next Steps (Keep or Remove? User didn't say remove, but space might be tight. I'll keep it) */}
@@ -465,7 +494,7 @@ export default function DashboardScreen() {
                         let fedStats = null;
 
                         let marketTitle = signal.title;
-                        // Try to get original market title
+                        // Safe check first.
                         if (signal.markets?.[0]?.title) {
                             marketTitle = signal.markets[0].title;
                         }
