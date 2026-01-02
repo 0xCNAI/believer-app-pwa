@@ -413,7 +413,15 @@ export default function DashboardScreen() {
                         }}>
                             <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold', marginBottom: 16 }}>反轉指數 (Reversal Index)</Text>
                             <Text style={{ color: '#d4d4d8', fontSize: 14, lineHeight: 22, marginBottom: 24 }}>
-                                由 4 大核心條件 (Gates) 與 4 大輔助因子 (Boosters) 組成，綜合評估市場是否具備反轉條件。
+                                本指數由三大核心維度組成：
+                                {'\n'}
+                                1. <Text style={{ color: '#fff', fontWeight: 'bold' }}>技術結構 (Gates)</Text>: 4 大核心過濾條件
+                                {'\n'}
+                                2. <Text style={{ color: '#fff', fontWeight: 'bold' }}>市場動能 (Boosters)</Text>: 4 大輔助因子
+                                {'\n'}
+                                3. <Text style={{ color: '#fff', fontWeight: 'bold' }}>敘事權重 (Narrative)</Text>: AI 分析的市場情緒指標
+                                {'\n\n'}
+                                綜合評估市場是否具備真正的反轉條件。
                                 {'\n\n'}
                                 • <Text style={{ color: '#fbbf24', fontWeight: 'bold' }}>0-20</Text>: 下跌趨勢 (Declining)
                                 {'\n'}
