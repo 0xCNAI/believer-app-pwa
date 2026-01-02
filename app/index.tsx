@@ -495,17 +495,17 @@ export default function DashboardScreen() {
                 {/* Footer */}
                 <View style={styles.footer}>
                     <Text style={styles.exportDescription}>在 BetalphaX 紀錄交易想法，建立你的專屬交易系統</Text>
-                    <TouchableOpacity onPress={() => Linking.openURL('https://betalphapick.com/export')} style={styles.exportBtn}>
+                    <TouchableOpacity onPress={() => Linking.openURL('https://betalphax.vercel.app/')} style={styles.exportBtn}>
                         <Image source={require('@/assets/images/betalphax_logo.jpg')} style={styles.exportLogo} />
                         <Text style={styles.exportButtonText}>BetalphaX</Text>
                     </TouchableOpacity>
 
                     <View style={styles.socialRow}>
-                        <TouchableOpacity onPress={() => Linking.openURL('https://twitter.com/betalphapick')} style={styles.socialBtn}>
-                            <Ionicons name="logo-twitter" size={20} color="#71717a" />
+                        <TouchableOpacity onPress={() => Linking.openURL('https://www.instagram.com/betalpha_news/')} style={styles.socialBtn}>
+                            <Ionicons name="logo-instagram" size={20} color="#71717a" />
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={() => Linking.openURL('https://betalphapick.com')} style={styles.socialBtn}>
-                            <Ionicons name="globe-outline" size={20} color="#71717a" />
+                        <TouchableOpacity onPress={() => Linking.openURL('https://t.me/+BKg09wTOVGZhYzBl')} style={styles.socialBtn}>
+                            <Ionicons name="paper-plane-outline" size={20} color="#71717a" />
                         </TouchableOpacity>
                     </View>
 
