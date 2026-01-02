@@ -2,8 +2,8 @@ import { NarrativeSignal } from './marketData';
 import { useBeliefStore } from '@/stores/beliefStore';
 import { getPositiveProbability } from './marketData';
 
-// Model: Gemini 2.0 Flash Lite Preview 02-05
-const MODEL_NAME = 'gemini-2.0-flash-lite-preview-02-05';
+// Model: Gemini 2.5 Flash Lite
+const MODEL_NAME = 'gemini-2.5-flash-lite';
 
 // API Key from Environment
 const API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
