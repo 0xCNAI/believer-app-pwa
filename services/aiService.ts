@@ -51,15 +51,18 @@ export const generateMarketSummary = async (targetSignals?: KeySignalContext[]):
     Object: Explain "Why these specific changes matter to the macro market".
     
     Strict Output Format (Traditional Chinese):
-    • [Signal Name] ... (Explain the change & its impact, no generic definitions)
-    • [Signal Name] ...
-    • [Signal Name] ...
+    • [Signal Name]: [Status] ([Percentage]%)
+    [Concise explanation of causality and impact, < 40 words]
+
+    Example:
+    • BTC儲備: 負向機率偏高 (23%)
+    近期儲備量變動顯示機構可能正在調節部位，這將直接影響短期市場流動性與投資人信心。
 
     Rules:
     1. Exactly 3 bullet points.
-    2. Focus on CAUSALITY (Why it changed -> What it implies).
-    3. NO investment advice.
-    4. Keep it concise (< 40 words per point).
+    2. Format must be exactly as shown: Bullet line first, then explanation line.
+    3. Focus on CAUSALITY.
+    4. NO investment advice.
     `;
 
     // 3. Call Gemini API via Fetch
