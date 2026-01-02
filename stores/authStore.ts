@@ -1,5 +1,5 @@
 import { auth } from '@/services/firebase';
-import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
+import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, updateProfile } from 'firebase/auth';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
@@ -64,8 +64,8 @@ export const useAuthStore = create<AuthState>()(
                     if (!user) return;
 
                     try {
-                        // 1. Update Firebase Auth Profile (Optional, if we want sync)
-                        // await updateProfile(auth.currentUser!, { displayName: name });
+                        // 1. Update Firebase Auth Profile (Syncs with onAuthStateChanged)
+                        await updateProfile(auth.currentUser!, { displayName: name });
 
                         // 2. Update Firestore User Doc
                         const { db } = require('@/services/firebase');

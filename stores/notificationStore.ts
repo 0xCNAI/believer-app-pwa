@@ -72,7 +72,7 @@ export const useNotificationStore = create<NotificationState>()(
         }),
         {
             name: 'notification-storage',
-            storage: createJSONStorage(() => AsyncStorage),
+            storage: createJSONStorage(() => require('@/utils/storage').safeStorage),
         }
     )
 );

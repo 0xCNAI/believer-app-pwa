@@ -10,11 +10,12 @@ import { useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Image, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View, Switch, TextInput, TouchableWithoutFeedback } from 'react-native';
+import { Animated, Easing, Image, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View, Switch, TextInput, TouchableWithoutFeedback, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { getGlobalMerit, getLeaderboard, getUserRank } from '@/services/meritService';
 import { useTechStore } from '@/stores/techStore';
+import { useAIStore } from '@/stores/aiStore';
 
 export default function DashboardScreen() {
     const router = useRouter();
@@ -27,6 +28,10 @@ export default function DashboardScreen() {
     const [btc24hChange, setBtc24hChange] = useState<number | null>(null);
     const [expandedTopic, setExpandedTopic] = useState<string | null>(null);
     const [expandedTechItem, setExpandedTechItem] = useState<string | null>(null);
+    const [showScoreInfo, setShowScoreInfo] = useState(false);
+
+    // AI Store
+    const { analysis: aiSummary, isAnalyzing: loadingAi, setAnalysis: setAiSummary, setAnalyzing: setLoadingAi } = useAIStore();
 
     // Settings & Notifications State
     const {
@@ -111,10 +116,6 @@ export default function DashboardScreen() {
             alert('Failed to update name');
         }
     };
-
-    // AI State
-    const [loadingAi, setLoadingAi] = useState(false);
-    const [aiSummary, setAiSummary] = useState<string | null>(null);
 
     console.log('[Dashboard] Rendering. Index:', reversalIndex);
 
@@ -229,7 +230,12 @@ export default function DashboardScreen() {
                 <View style={styles.card}>
                     <View style={{ alignItems: 'center', marginBottom: 24 }}>
                         <Text style={styles.cardHeaderLabel}>REVERSAL INDEX</Text>
-                        <Text style={[styles.cardHeaderTitle, { fontSize: 24, marginBottom: 16 }]}>反轉指數</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+                            <Text style={[styles.cardHeaderTitle, { fontSize: 24, marginRight: 8 }]}>反轉指數</Text>
+                            <TouchableOpacity onPress={() => setShowScoreInfo(true)}>
+                                <Ionicons name="help-circle-outline" size={20} color="#71717a" />
+                            </TouchableOpacity>
+                        </View>
                         {/* Hero Number */}
                         <Text style={[styles.indexValue, {
                             color: reversalIndex >= 60 ? '#22c55e' : (reversalIndex >= 40 ? '#f97316' : '#ef4444'),
@@ -381,6 +387,52 @@ export default function DashboardScreen() {
                     })()}
                 </View>
 
+                {/* Reversal Score Info Modal */}
+                <Modal
+                    visible={showScoreInfo}
+                    transparent={true}
+                    animationType="fade"
+                    onRequestClose={() => setShowScoreInfo(false)}
+                >
+                    <TouchableOpacity
+                        style={styles.modalOverlay}
+                        activeOpacity={1}
+                        onPress={() => setShowScoreInfo(false)}
+                    >
+                        <View style={{
+                            backgroundColor: '#18181b',
+                            borderRadius: 16,
+                            padding: 24,
+                            marginHorizontal: 32,
+                            marginTop: 'auto',
+                            marginBottom: 'auto',
+                            borderWidth: 1,
+                            borderColor: '#3f3f46',
+                            maxWidth: 340,
+                            alignSelf: 'center'
+                        }}>
+                            <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold', marginBottom: 16 }}>反轉指數 (Reversal Index)</Text>
+                            <Text style={{ color: '#d4d4d8', fontSize: 14, lineHeight: 22, marginBottom: 24 }}>
+                                由 4 大核心條件 (Gates) 與 4 大輔助因子 (Boosters) 組成，綜合評估市場是否具備反轉條件。
+                                {'\n\n'}
+                                • <Text style={{ color: '#fbbf24', fontWeight: 'bold' }}>0-20</Text>: 下跌趨勢 (Declining)
+                                {'\n'}
+                                • <Text style={{ color: '#fbbf24', fontWeight: 'bold' }}>20-50</Text>: 觀察區 (Watch)
+                                {'\n'}
+                                • <Text style={{ color: '#fbbf24', fontWeight: 'bold' }}>50-80</Text>: 早期訊號 (Early Signal)
+                                {'\n'}
+                                • <Text style={{ color: '#fbbf24', fontWeight: 'bold' }}>80-100</Text>: 確認反轉 (Confirmed)
+                            </Text>
+                            <TouchableOpacity
+                                style={{ backgroundColor: '#27272a', paddingVertical: 12, borderRadius: 8, alignItems: 'center' }}
+                                onPress={() => setShowScoreInfo(false)}
+                            >
+                                <Text style={{ color: 'white', fontWeight: '600' }}>了解</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </TouchableOpacity>
+                </Modal>
+
                 {/* 3. CARD 2: Market Dynamics (AI) */}
                 <View style={[styles.card, { paddingVertical: 20 }]}>
                     <View style={[styles.cardHeader, { marginBottom: 16 }]}>
@@ -440,12 +492,45 @@ export default function DashboardScreen() {
                         </View>
                     )}
 
-                    {/* AI Analysis Result (Success - Plain Text) */}
+                    {/* AI Analysis Result (Success - Structured) */}
                     {!loadingAi && aiSummary && !aiSummary.startsWith('分析失敗') && (
                         <View style={{ marginBottom: 16, paddingHorizontal: 4 }}>
-                            <Text style={{ color: '#d4d4d8', fontSize: 13, lineHeight: 22 }}>
-                                {aiSummary}
-                            </Text>
+                            {/* Timestamp */}
+                            {useAIStore.getState().lastUpdated && (
+                                <Text style={{ color: '#71717a', fontSize: 11, marginBottom: 8, textAlign: 'right' }}>
+                                    更新於: {new Date(useAIStore.getState().lastUpdated!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </Text>
+                            )}
+
+                            {/* Parsed Content */}
+                            {aiSummary.split('•').filter(s => s.trim().length > 0).map((block, index) => {
+                                const lines = block.trim().split('\n');
+                                const header = lines[0] || '';
+                                const body = lines.slice(1).join('\n').trim();
+
+                                // Parse Header for Color: "Text: Status (Val)"
+                                const parts = header.split(':');
+                                const title = parts[0]?.trim();
+                                const rest = parts.slice(1).join(':').trim(); // "Status (Val)"
+
+                                let statusColor = '#d4d4d8';
+                                if (rest.includes('正向')) statusColor = '#10b981';
+                                if (rest.includes('負向')) statusColor = '#ef4444';
+                                if (rest.includes('中性') || rest.includes('穩定')) statusColor = '#f59e0b';
+
+                                return (
+                                    <View key={index} style={{ marginBottom: 12 }}>
+                                        <Text style={{ fontSize: 13, lineHeight: 20, marginBottom: 2 }}>
+                                            <Text style={{ color: '#71717a', marginRight: 6 }}>• </Text>
+                                            <Text style={{ color: '#e4e4e7', fontWeight: '700' }}>{title}: </Text>
+                                            <Text style={{ color: statusColor, fontWeight: '600' }}>{rest}</Text>
+                                        </Text>
+                                        <Text style={{ color: '#a1a1aa', fontSize: 13, lineHeight: 20, paddingLeft: 14 }}>
+                                            {body}
+                                        </Text>
+                                    </View>
+                                );
+                            })}
                         </View>
                     )}
 
@@ -837,18 +922,16 @@ export default function DashboardScreen() {
                             <View style={styles.modalBody}>
                                 {meritTab === 'mine' ? (
                                     <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1, paddingBottom: 60 }}>
+                                        {/* Merit Image */}
                                         <View style={{
-                                            shadowColor: '#fbbf24',
-                                            shadowOffset: { width: 0, height: 0 },
-                                            shadowOpacity: 0.5,
-                                            shadowRadius: 50,
-                                            elevation: 10,
-                                            marginBottom: 16
+                                            width: 200, height: 200, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: '#3f3f46',
+                                            shadowColor: '#fbbf24', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 20,
+                                            marginBottom: 24
                                         }}>
                                             <Image
                                                 source={require('@/assets/images/bull_buddha.png')}
-                                                style={{ width: 340, height: 340 }}
-                                                resizeMode="contain"
+                                                style={{ width: '100%', height: '100%' }}
+                                                resizeMode="cover"
                                             />
                                         </View>
 
