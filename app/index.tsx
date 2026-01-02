@@ -249,7 +249,7 @@ export default function DashboardScreen() {
                     {(() => {
                         try {
                             const { reversalState } = useTechStore.getState();
-                            const copy = resolveReversalCopy(reversalState || { trendScore: 0, cycleScore: 0 });
+                            const copy = resolveReversalCopy(reversalState);
 
                             // Stage Colors
                             const getStageColor = (stage: string) => {

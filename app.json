@@ -26,9 +26,16 @@
       "output": "static",
       "favicon": "./assets/images/favicon.png",
       "display": "standalone",
-      "backgroundColor": "#000000",
+      "backgroundColor": "#18181b",
       "startUrl": "/",
-      "themeColor": "#000000"
+      "themeColor": "#18181b",
+      "name": "Believer",
+      "shortName": "Believer",
+      "lang": "zh-TW",
+      "meta": {
+        "description": "Believer - Your Crypto Compass",
+        "og:description": "Believer - Your Crypto Compass"
+      }
     },
     "plugins": [
       "expo-router",
