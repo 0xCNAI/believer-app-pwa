@@ -30,6 +30,7 @@ const _normalizeMarketEvent = (raw: any): MarketEvent => {
         volume: typeof raw.volume === 'number' ? raw.volume : parseFloat(raw.volume || '0'),
         outcomes: raw.outcomes, // Often stringified JSON
         outcomePrices: raw.outcome_prices || raw.outcomePrices, // CRITICAL FIX
+        groupItemTitle: raw.groupItemTitle, // Map groupItemTitle for Fed Rate logic
         markets: raw.markets ? raw.markets.map(_normalizeMarketEvent) : []
     };
 };
