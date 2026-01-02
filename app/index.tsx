@@ -472,42 +472,67 @@ export default function DashboardScreen() {
 
                         if (isFed) {
                             try {
-                                const m = signal.markets?.[0];
-                                if (m && m.outcomePrices && m.outcomes) {
-                                    const prices = typeof m.outcomePrices === 'string' ? JSON.parse(m.outcomePrices) : m.outcomePrices;
-                                    const outcomes = typeof m.outcomes === 'string' ? JSON.parse(m.outcomes) : m.outcomes;
-                                    // Robust Heuristic for Rate Ranges (Current Target: 4.25-4.50)
-                                    // Cut: < 4.25 (e.g. 4.00-4.25, or anything with 3.x)
-                                    // Hold: 4.25-4.50
-                                    // Hike: > 4.50
-                                    let cut = 0, hold = 0, hike = 0;
+                                let cut = 0, hold = 0, hike = 0;
+                                const markets = signal.markets || [];
 
-                                    outcomes.forEach((o: string, idx: number) => {
-                                        const label = o.toLowerCase();
-                                        const p = parseFloat(prices[idx]) || 0;
+                                // Strategy A: Multi-Market Group (New Polymarket Structure)
+                                // Each market is a binary Yes/No on a specific outcome (e.g. "25bps decrease")
+                                if (markets.length > 1) {
+                                    markets.forEach((m: any) => {
+                                        const title = (m.groupItemTitle || m.title || m.question || '').toLowerCase();
 
-                                        // Explicit Keywords
-                                        if (label.includes('cut') || label.includes('decrease') || label.includes('lower')) { cut += p; return; }
-                                        if (label.includes('hold') || label.includes('maintain') || label.includes('unchanged')) { hold += p; return; }
-                                        if (label.includes('hike') || label.includes('increase') || label.includes('raise')) { hike += p; return; }
+                                        // Parse Price of "Yes" outcome
+                                        let price = 0;
+                                        try {
+                                            const prices = typeof m.outcomePrices === 'string' ? JSON.parse(m.outcomePrices) : m.outcomePrices;
+                                            price = parseFloat(prices[0] || '0');
+                                        } catch (e) { }
 
-                                        // Rate Range Logic
-                                        if (label.includes('3.') || label.includes('4.00') || (label.includes('4.25') && !label.includes('4.50'))) {
-                                            cut += p;
-                                        } else if (label.includes('4.25') && label.includes('4.50')) {
-                                            hold += p;
-                                        } else if (label.includes('4.75') || label.includes('5.') || (label.includes('4.50') && !label.includes('4.25'))) {
-                                            hike += p;
+                                        if (title.includes('cut') || title.includes('decrease') || title.includes('lower')) {
+                                            cut += price;
+                                        } else if (title.includes('hold') || title.includes('maintain') || title.includes('unchanged') || title.includes('no change')) {
+                                            hold += price;
+                                        } else if (title.includes('hike') || title.includes('increase') || title.includes('raise')) {
+                                            hike += price;
                                         }
                                     });
-
-                                    fedStats = {
-                                        cut: Math.round(Math.min(1, cut) * 100),
-                                        hold: Math.round(Math.min(1, hold) * 100),
-                                        hike: Math.round(Math.min(1, hike) * 100)
-                                    };
                                 }
-                            } catch (e) { }
+                                // Strategy B: Single Market (Legacy or Range-based)
+                                else if (markets.length === 1) {
+                                    const m = markets[0];
+                                    if (m && m.outcomePrices && m.outcomes) {
+                                        const prices = typeof m.outcomePrices === 'string' ? JSON.parse(m.outcomePrices) : m.outcomePrices;
+                                        const outcomes = typeof m.outcomes === 'string' ? JSON.parse(m.outcomes) : m.outcomes;
+
+                                        outcomes.forEach((o: string, idx: number) => {
+                                            const label = o.toLowerCase();
+                                            const p = parseFloat(prices[idx]) || 0;
+
+                                            // Explicit Keywords
+                                            if (label.includes('cut') || label.includes('decrease') || label.includes('lower')) { cut += p; return; }
+                                            if (label.includes('hold') || label.includes('maintain') || label.includes('unchanged')) { hold += p; return; }
+                                            if (label.includes('hike') || label.includes('increase') || label.includes('raise')) { hike += p; return; }
+
+                                            // Rate Range Logic
+                                            if (label.includes('3.') || label.includes('4.00') || (label.includes('4.25') && !label.includes('4.50'))) {
+                                                cut += p;
+                                            } else if (label.includes('4.25') && label.includes('4.50')) {
+                                                hold += p;
+                                            } else if (label.includes('4.75') || label.includes('5.') || (label.includes('4.50') && !label.includes('4.25'))) {
+                                                hike += p;
+                                            }
+                                        });
+                                    }
+                                }
+
+                                fedStats = {
+                                    cut: Math.round(Math.min(1, cut) * 100),
+                                    hold: Math.round(Math.min(1, hold) * 100),
+                                    hike: Math.round(Math.min(1, hike) * 100)
+                                };
+                            } catch (e) {
+                                console.warn('Fed rate parsing failed:', e);
+                            }
                         }
 
                         // V5.1 Semantic Status Text (Localized)

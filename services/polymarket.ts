@@ -20,6 +20,8 @@ export interface Market {
     outcomePrices: string | string[] | any; // JSON string or array
     volume: string;
     outcomes: string[] | any; // ["Yes", "No"]
+    groupItemTitle?: string; // For grouped markets (e.g. Fed Rates)
+    title?: string; // Sometimes markets have individual titles
 }
 
 const BASE_URL = 'https://gamma-api.polymarket.com';
