@@ -593,8 +593,26 @@ export default function DashboardScreen() {
             {/* Floating Merit UI (Bottom Right) */}
             <View style={{ position: 'absolute', bottom: 30, right: 20, alignItems: 'flex-end', zIndex: 50 }}>
                 {/* Stick Animation */}
-                <TouchableOpacity onPress={handleMeritClick} activeOpacity={1}>
-                    <Animated.View style={[styles.woodenStick, { transform: [{ translateY: scaleAnim.interpolate({ inputRange: [0.8, 1], outputRange: [10, 0] }) }] }]}>
+                <TouchableOpacity onPress={handleMeritClick} activeOpacity={1} style={{ zIndex: 60 }}>
+                    <Animated.View style={[
+                        styles.woodenStick,
+                        {
+                            transform: [
+                                {
+                                    rotate: scaleAnim.interpolate({
+                                        inputRange: [0.8, 1],
+                                        outputRange: ['-45deg', '0deg'] // Hit effect
+                                    })
+                                },
+                                {
+                                    translateY: scaleAnim.interpolate({
+                                        inputRange: [0.8, 1],
+                                        outputRange: [15, 0]
+                                    })
+                                }
+                            ]
+                        }
+                    ]}>
                         <View style={styles.stickHead} />
                         <View style={styles.stickHandle} />
                     </Animated.View>
@@ -605,16 +623,16 @@ export default function DashboardScreen() {
                     onPress={handleMeritClick}
                     activeOpacity={0.9}
                 >
+                    <View style={{ marginRight: 12, alignItems: 'flex-end' }}>
+                        <Text style={{ color: '#F59E0B', fontWeight: 'bold', fontSize: 16 }}>{faithClicks}</Text>
+                        <Text style={{ color: '#A1A1AA', fontSize: 10 }}>功德</Text>
+                    </View>
                     <View style={styles.fishIconBg}>
                         <Image
                             source={require('@/assets/images/wooden-fish.png')}
                             style={{ width: 40, height: 40 }}
                             resizeMode="contain"
                         />
-                    </View>
-                    <View style={{ marginLeft: 12, alignItems: 'flex-start' }}>
-                        <Text style={{ color: '#F59E0B', fontWeight: 'bold', fontSize: 16 }}>{faithClicks}</Text>
-                        <Text style={{ color: '#A1A1AA', fontSize: 10 }}>功德</Text>
                     </View>
                 </TouchableOpacity>
 
@@ -1206,7 +1224,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: 'rgba(24, 24, 27, 0.95)',
         padding: 6,
-        paddingLeft: 20,
+        paddingLeft: 12, // Adjusted padding
         paddingRight: 6,
         borderRadius: 32,
         borderWidth: 1,
@@ -1219,10 +1237,12 @@ const styles = StyleSheet.create({
     },
     woodenStick: {
         position: 'absolute',
-        top: -24,
-        right: -10,
+        top: -30, // Adjusted position for rotation
+        right: 0,
         zIndex: 50,
         alignItems: 'center',
+        // Pivot point simulation via transform origin is hard in RN without anchor point usage in recent reanimated, 
+        // but simple translation + rotation can fake it.
     },
     stickHead: {
         width: 12,
