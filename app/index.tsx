@@ -779,19 +779,26 @@ export default function DashboardScreen() {
                         <View style={styles.modalBody}>
                             {meritTab === 'mine' ? (
                                 <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1, paddingBottom: 60 }}>
-                                    <Image
-                                        source={require('@/assets/images/bull_buddha.png')}
-                                        style={{ width: 240, height: 240, marginBottom: 16 }}
-                                        resizeMode="contain"
-                                    />
+                                    <View style={{
+                                        shadowColor: '#fbbf24',
+                                        shadowOffset: { width: 0, height: 0 },
+                                        shadowOpacity: 0.5,
+                                        shadowRadius: 50,
+                                        elevation: 10,
+                                        marginBottom: 16
+                                    }}>
+                                        <Image
+                                            source={require('@/assets/images/bull_buddha.png')}
+                                            style={{ width: 340, height: 340 }}
+                                            resizeMode="contain"
+                                        />
+                                    </View>
 
                                     <Text style={{ color: '#a1a1aa', fontSize: 15, marginBottom: 12, textAlign: 'center' }}>你已經為牛市回歸的念力增添了</Text>
                                     <Text style={{ color: '#fbbf24', fontSize: 48, fontWeight: 'bold', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', marginBottom: 8 }}>
-                                        {faithClicks.toLocaleString()}
+                                        {user?.merit || 0}
                                     </Text>
-                                    <Text style={{ color: '#52525b', fontSize: 13 }}>
-                                        佔全球貢獻 {globalMerit > 0 ? ((faithClicks / globalMerit) * 100).toFixed(4) : '0'}%
-                                    </Text>
+                                    <Text style={{ color: '#52525b', fontSize: 13, marginBottom: 32 }}>佔全球貢獻 {(share * 100).toFixed(4)}%</Text>
                                 </View>
                             ) : (
                                 <ScrollView>
