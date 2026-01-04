@@ -231,9 +231,9 @@ export const useTechStore = create<TechState>()(
                         const user = useAuthStore.getState().user;
 
                         // A. Phase Change & Veto Notifications
-                        if (user?.uid) {
+                        if (user?.id) {
                             const { syncStateAndCheckDiff } = require('@/services/statePersistence');
-                            syncStateAndCheckDiff({ id: user.uid, email: user.email }, reversalState).then((result: any) => {
+                            syncStateAndCheckDiff({ id: user.id, email: user.email }, reversalState).then((result: any) => {
                                 if (result.hasChanged && result.notifications.length > 0) {
                                     console.log('[Notifier] Phase/State Notifications:', result.notifications);
 
