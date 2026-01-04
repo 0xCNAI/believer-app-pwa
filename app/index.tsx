@@ -16,6 +16,7 @@ import * as Haptics from 'expo-haptics';
 import { getGlobalMerit, getLeaderboard, getUserRank } from '@/services/meritService';
 import { useTechStore } from '@/stores/techStore';
 import { useAIStore } from '@/stores/aiStore';
+import { useMarketInsights, MarketInsight } from '@/hooks/useMarketInsights';
 
 export default function DashboardScreen() {
     const router = useRouter();
@@ -30,8 +31,12 @@ export default function DashboardScreen() {
     const [expandedTechItem, setExpandedTechItem] = useState<string | null>(null);
     const [showScoreInfo, setShowScoreInfo] = useState(false);
 
-    // AI Store
+    // AI Store (keeping for backwards compatibility)
     const { analysis: aiSummary, isAnalyzing: loadingAi, setAnalysis: setAiSummary, setAnalyzing: setLoadingAi } = useAIStore();
+
+    // Market Insights (Firebase)
+    const { loading: marketInsightsLoading, lastUpdated: marketInsightsLastUpdated, getAllInsights } = useMarketInsights();
+    const allMarketInsights: MarketInsight[] = getAllInsights();
 
     // Settings & Notifications State
     const {
@@ -441,139 +446,65 @@ export default function DashboardScreen() {
                     </TouchableOpacity>
                 </Modal>
 
-                {/* 3. CARD 2: Market Dynamics (AI) */}
+                {/* 3. CARD 2: Market Dynamics (Firebase Insights) */}
                 <View style={[styles.card, { paddingVertical: 20 }]}>
                     <View style={[styles.cardHeader, { marginBottom: 16 }]}>
                         <Text style={styles.cardHeaderTitle}>市場動態</Text>
-                        <TouchableOpacity
-                            style={{
-                                flexDirection: 'row', alignItems: 'center', gap: 4,
-                                backgroundColor: '#27272a', paddingHorizontal: 8, paddingVertical: 4,
-                                borderRadius: 12, borderWidth: 1, borderColor: '#3f3f46'
-                            }}
-                            onPress={async () => {
-                                if (loadingAi) return;
-                                setLoadingAi(true);
-                                setAiSummary(null);
-                                try {
-                                    const { generateMarketSummary } = require('@/services/aiService');
-                                    // V5.1 Logic: Pass Top 3 by Delta
-                                    // We need to calculate this from 'beliefs' which is in scope
-                                    const top3 = beliefs
-                                        .filter(b => BELIEVER_SIGNALS.some(s => s.id === b.id))
-                                        .sort((a, b) => {
-                                            const deltaA = Math.abs(a.currentProbability - (a.previousProbability ?? a.currentProbability));
-                                            const deltaB = Math.abs(b.currentProbability - (b.previousProbability ?? b.currentProbability));
-                                            return deltaB - deltaA;
-                                        })
-                                        .slice(0, 3)
-                                        .map(b => ({
-                                            title: b.signal.shortTitle || b.signal.title,
-                                            prob: Math.round(b.currentProbability * 100),
-                                            delta: Math.abs(b.currentProbability - (b.previousProbability ?? b.currentProbability)),
-                                            id: b.id
-                                        }));
-
-                                    const summary = await generateMarketSummary(top3);
-                                    setAiSummary(summary);
-                                } catch (e: any) {
-                                    console.error('AI Error:', e);
-                                    setAiSummary(typeof e === 'string' ? e : (e.message || '分析失敗'));
-                                } finally {
-                                    setLoadingAi(false);
-                                }
-                            }}
-                        >
-                            <Ionicons name="sparkles" size={12} color="#fbbf24" />
-                            <Text style={{ color: '#e4e4e7', fontSize: 11, fontWeight: '600' }}>AI 智能分析</Text>
-                        </TouchableOpacity>
+                        {/* Timestamp instead of button */}
+                        {marketInsightsLastUpdated && (
+                            <Text style={{ color: '#71717a', fontSize: 11 }}>
+                                更新於: {new Date(marketInsightsLastUpdated).toLocaleString('zh-TW', {
+                                    month: 'numeric', day: 'numeric',
+                                    hour: '2-digit', minute: '2-digit', hour12: false
+                                })}
+                            </Text>
+                        )}
                     </View>
 
-                    {/* AI Loading or Error (Yellow Box) */}
-                    {(loadingAi || (aiSummary && aiSummary.startsWith('分析失敗'))) && (
-                        <View style={{ marginBottom: 16, padding: 12, backgroundColor: 'rgba(251, 191, 36, 0.05)', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(251, 191, 36, 0.2)' }}>
-                            {loadingAi ? (
-                                <Text style={{ color: '#fbbf24', fontSize: 13 }}>正在搜尋並分析最新新聞...</Text>
-                            ) : (
-                                <Text style={{ color: '#fbbf24', fontSize: 13 }}>{aiSummary}</Text>
-                            )}
+                    {/* Loading State */}
+                    {marketInsightsLoading && (
+                        <View style={{ padding: 12, backgroundColor: 'rgba(251, 191, 36, 0.05)', borderRadius: 8, marginBottom: 16 }}>
+                            <Text style={{ color: '#fbbf24', fontSize: 13 }}>正在載入市場動態...</Text>
                         </View>
                     )}
 
-                    {/* AI Analysis Result (Success - Structured) */}
-                    {!loadingAi && aiSummary && !aiSummary.startsWith('分析失敗') && (
-                        <View style={{ marginBottom: 16, paddingHorizontal: 4 }}>
-                            {/* Timestamp */}
-                            {useAIStore.getState().lastUpdated && (
-                                <Text style={{ color: '#71717a', fontSize: 11, marginBottom: 8, textAlign: 'right' }}>
-                                    更新於: {new Date(useAIStore.getState().lastUpdated!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </Text>
-                            )}
-
-                            {/* Parsed Content */}
-                            {aiSummary.split('•').filter(s => s.trim().length > 0).map((block, index) => {
-                                const lines = block.trim().split('\n');
-                                const header = lines[0] || '';
-                                const body = lines.slice(1).join('\n').trim();
-
-                                // Parse Header for Color: "Text: Status (Val)"
-                                const parts = header.split(':');
-                                const title = parts[0]?.trim();
-                                const rest = parts.slice(1).join(':').trim(); // "Status (Val)"
-
-                                let statusColor = '#d4d4d8';
-                                if (rest.includes('正向')) statusColor = '#10b981';
-                                if (rest.includes('負向')) statusColor = '#ef4444';
-                                if (rest.includes('中性') || rest.includes('穩定')) statusColor = '#f59e0b';
-
-                                return (
-                                    <View key={index} style={{ marginBottom: 12 }}>
-                                        <Text style={{ fontSize: 13, lineHeight: 20, marginBottom: 2 }}>
-                                            <Text style={{ color: '#71717a', marginRight: 6 }}>• </Text>
-                                            <Text style={{ color: '#e4e4e7', fontWeight: '700' }}>{title}: </Text>
-                                            <Text style={{ color: statusColor, fontWeight: '600' }}>{rest}</Text>
-                                        </Text>
-                                        <Text style={{ color: '#a1a1aa', fontSize: 13, lineHeight: 20, paddingLeft: 14 }}>
-                                            {body}
-                                        </Text>
-                                    </View>
-                                );
-                            })}
-                        </View>
-                    )}
-
-                    {/* Signal Bullets (V5.1: Top 3 by Delta) */}
-                    <View>
-                        {beliefs
-                            .filter(b => !b.id.startsWith('custom'))
-                            .sort((a, b) => {
-                                const deltaA = Math.abs(a.currentProbability - (a.previousProbability ?? a.currentProbability));
-                                const deltaB = Math.abs(b.currentProbability - (b.previousProbability ?? b.currentProbability));
-                                return deltaB - deltaA;
-                            })
-                            .slice(0, 3)
-                            .map((belief) => {
-                                const signal = belief.signal;
-                                if (!signal) return null;
-
-                                const points = calculateNarrativeScore(signal, 5);
-                                const prob = Math.round(belief.currentProbability * 100);
-
-                                // V5.1 Status Text (Localized)
-                                let statusText = '負向機率偏高';
-                                if (points > 2.5) statusText = '正向機率偏高';
-
-                                return (
-                                    <View key={belief.id} style={{ flexDirection: 'row', marginBottom: 6, alignItems: 'flex-start' }}>
+                    {/* Insights Display */}
+                    {!marketInsightsLoading && allMarketInsights.length > 0 && (
+                        <View>
+                            {allMarketInsights.slice(0, 4).map((insight, index) => (
+                                <TouchableOpacity
+                                    key={index}
+                                    style={{ marginBottom: 16 }}
+                                    onPress={() => {
+                                        if (insight.url && typeof window !== 'undefined') {
+                                            window.open(insight.url, '_blank');
+                                        }
+                                    }}
+                                    activeOpacity={0.7}
+                                >
+                                    {/* Headline */}
+                                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 }}>
                                         <Text style={{ color: '#71717a', fontSize: 13, marginRight: 6 }}>•</Text>
-                                        <Text style={{ color: '#d4d4d8', fontSize: 13, flex: 1, lineHeight: 20 }}>
-                                            <Text style={{ fontWeight: '600', color: '#a1a1aa' }}>{signal?.shortTitle || signal?.title}:</Text>
-                                            {' '}{statusText} ({prob}%)
+                                        <Text style={{ color: '#e4e4e7', fontSize: 13, fontWeight: '600', flex: 1, lineHeight: 20 }}>
+                                            {insight.headline}
                                         </Text>
+                                        <Ionicons name="open-outline" size={12} color="#71717a" style={{ marginLeft: 4 }} />
                                     </View>
-                                );
-                            })}
-                    </View>
+                                    {/* Analysis */}
+                                    <Text style={{ color: '#a1a1aa', fontSize: 12, lineHeight: 18, paddingLeft: 14 }}>
+                                        {insight.analysis}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    )}
+
+                    {/* Empty State */}
+                    {!marketInsightsLoading && allMarketInsights.length === 0 && (
+                        <Text style={{ color: '#71717a', fontSize: 13, textAlign: 'center', paddingVertical: 20 }}>
+                            市場動態分析將每 3 小時自動更新
+                        </Text>
+                    )}
                 </View>
 
                 {/* 4. SECTION: Market Expectations */}
