@@ -3,6 +3,7 @@
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import * as functions from 'firebase-functions';
 import { NewsItem } from './newsService';
 
 export interface MarketInsight {
@@ -13,8 +14,9 @@ export interface MarketInsight {
     addedAt: number;
 }
 
-// Initialize Gemini
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+// Initialize Gemini using Firebase config
+const apiKey = functions.config().gemini?.apikey || process.env.GEMINI_API_KEY || '';
+const genAI = new GoogleGenerativeAI(apiKey);
 
 /**
  * Evaluate new news and merge with existing insights

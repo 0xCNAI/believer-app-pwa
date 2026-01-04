@@ -66,9 +66,10 @@ export const updateMarketInsights = functions
  * HTTP trigger for manual testing
  */
 export const triggerMarketInsightsUpdate = functions.https.onRequest(async (req, res) => {
-    // Simple auth check
+    // Simple auth check using Firebase config
     const authHeader = req.headers.authorization;
-    if (authHeader !== `Bearer ${process.env.ADMIN_SECRET}`) {
+    const adminSecret = functions.config().admin?.secret || '';
+    if (authHeader !== `Bearer ${adminSecret}`) {
         res.status(401).send('Unauthorized');
         return;
     }
