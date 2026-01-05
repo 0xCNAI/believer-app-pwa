@@ -122,19 +122,7 @@ export default function DashboardScreen() {
         }
     };
 
-    // AI State
-    const [loadingAi, setLoadingAi] = useState(false);
-    const [aiSummary, setAiSummary] = useState<string | null>(null);
 
-    // Leaderboard State (Restored)
-    const [globalMerit, setGlobalMerit] = useState(0);
-    const [leaderboard, setLeaderboard] = useState<any[]>([]);
-    const [leaderboardTab, setLeaderboardTab] = useState<'contribution' | 'leaderboard'>('contribution');
-
-    useEffect(() => {
-        getGlobalMerit().then(setGlobalMerit);
-        getLeaderboard().then(setLeaderboard);
-    }, [refreshing]);
     console.log('[Dashboard] Rendering. Index:', reversalIndex);
 
     useEffect(() => {
