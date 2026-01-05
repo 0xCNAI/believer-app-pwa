@@ -122,6 +122,19 @@ export default function DashboardScreen() {
         }
     };
 
+    // AI State
+    const [loadingAi, setLoadingAi] = useState(false);
+    const [aiSummary, setAiSummary] = useState<string | null>(null);
+
+    // Leaderboard State (Restored)
+    const [globalMerit, setGlobalMerit] = useState(0);
+    const [leaderboard, setLeaderboard] = useState<any[]>([]);
+    const [leaderboardTab, setLeaderboardTab] = useState<'contribution' | 'leaderboard'>('contribution');
+
+    useEffect(() => {
+        getGlobalMerit().then(setGlobalMerit);
+        getLeaderboard().then(setLeaderboard);
+    }, [refreshing]);
     console.log('[Dashboard] Rendering. Index:', reversalIndex);
 
     useEffect(() => {
@@ -446,7 +459,66 @@ export default function DashboardScreen() {
                     </TouchableOpacity>
                 </Modal>
 
-                {/* 3. CARD 2: Market Dynamics (Firebase Insights) */}
+                {/* 2.5. CARD: Contribution & Leaderboard (Restored) */}
+                <View style={styles.card}>
+                    {/* Tabs */}
+                    <View style={{ flexDirection: 'row', marginBottom: 20, borderBottomWidth: 1, borderBottomColor: '#27272a' }}>
+                        <TouchableOpacity
+                            onPress={() => setLeaderboardTab('contribution')}
+                            style={{ paddingBottom: 12, marginRight: 24, borderBottomWidth: 2, borderColor: leaderboardTab === 'contribution' ? '#fbbf24' : 'transparent' }}>
+                            <Text style={{ color: leaderboardTab === 'contribution' ? '#fbbf24' : '#71717a', fontWeight: '700', fontSize: 14 }}>您的貢獻</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => setLeaderboardTab('leaderboard')}
+                            style={{ paddingBottom: 12, borderBottomWidth: 2, borderColor: leaderboardTab === 'leaderboard' ? '#fbbf24' : 'transparent' }}>
+                            <Text style={{ color: leaderboardTab === 'leaderboard' ? '#fbbf24' : '#71717a', fontWeight: '700', fontSize: 14 }}>排行榜</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {leaderboardTab === 'contribution' ? (
+                        <View style={{ alignItems: 'center', paddingVertical: 10 }}>
+                            <Text style={{ color: '#71717a', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>GLOBAL TOTAL</Text>
+                            <Text style={{ color: '#ffffff', fontSize: 48, fontWeight: '800', marginBottom: 24 }}>
+                                {globalMerit.toLocaleString()}
+                            </Text>
+
+                            <View style={{ width: '100%', backgroundColor: '#27272a', borderRadius: 12, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <View>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                        <Text style={{ color: '#fbbf24', fontSize: 12, fontWeight: '700' }}>YOUR MERIT</Text>
+                                        <FontAwesome name="trophy" size={12} color="#fbbf24" />
+                                    </View>
+                                    <Text style={{ color: 'white', fontSize: 24, fontWeight: 'bold', marginTop: 4 }}>
+                                        {/* Use user merit from auth/belief store, fallback to 0 */}
+                                        {(require('@/stores/beliefStore').useBeliefStore.getState().userMerit || 0).toLocaleString()}
+                                    </Text>
+                                </View>
+                                <TouchableOpacity onPress={incrementFaith} style={{ backgroundColor: '#fbbf24', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 }}>
+                                    <Text style={{ color: 'black', fontWeight: 'bold', fontSize: 12 }}>Pray +1</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    ) : (
+                        <View>
+                            {leaderboard.map((u, i) => (
+                                <View key={u.id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: i < leaderboard.length - 1 ? 1 : 0, borderBottomColor: '#27272a' }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                                        <Text style={{ color: i < 3 ? '#fbbf24' : '#71717a', fontWeight: 'bold', width: 20 }}>#{i + 1}</Text>
+                                        <Text style={{ color: u.id === user?.id ? '#fbbf24' : 'white', fontWeight: u.id === user?.id ? 'bold' : 'normal' }}>
+                                            {u.displayName}
+                                        </Text>
+                                    </View>
+                                    <Text style={{ color: '#a1a1aa', fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }}>
+                                        {u.merit.toLocaleString()}
+                                    </Text>
+                                </View>
+                            ))}
+                            {leaderboard.length === 0 && <Text style={{ color: '#71717a', textAlign: 'center', padding: 20 }}>暫無數據</Text>}
+                        </View>
+                    )}
+                </View>
+
+                {/* 3. CARD 2: Market Dynamics (AI) */}
                 <View style={[styles.card, { paddingVertical: 20 }]}>
                     <View style={[styles.cardHeader, { marginBottom: 16 }]}>
                         <Text style={styles.cardHeaderTitle}>市場動態</Text>
