@@ -13,7 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Image, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View, Switch, TextInput, TouchableWithoutFeedback, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { getGlobalMerit, getLeaderboard, getUserRank } from '@/services/meritService';
+import { getGlobalMerit, getLeaderboard, getUserRank, syncUserMerit } from '@/services/meritService';
 import { useTechStore } from '@/stores/techStore';
 import { useAIStore } from '@/stores/aiStore';
 import { useMarketInsights, MarketInsight } from '@/hooks/useMarketInsights';
@@ -30,9 +30,6 @@ export default function DashboardScreen() {
     const [expandedTopic, setExpandedTopic] = useState<string | null>(null);
     const [expandedTechItem, setExpandedTechItem] = useState<string | null>(null);
     const [showScoreInfo, setShowScoreInfo] = useState(false);
-
-    // AI Store (keeping for backwards compatibility)
-    const { analysis: aiSummary, isAnalyzing: loadingAi, setAnalysis: setAiSummary, setAnalyzing: setLoadingAi } = useAIStore();
 
     // Market Insights (Firebase)
     const { loading: marketInsightsLoading, lastUpdated: marketInsightsLastUpdated, getAllInsights } = useMarketInsights();
@@ -62,6 +59,9 @@ export default function DashboardScreen() {
     const [showMeritModal, setShowMeritModal] = useState(false);
     const [meritTab, setMeritTab] = useState<'mine' | 'leaderboard'>('mine');
 
+    // Leaderboard State (Restored)
+    const [leaderboardTab, setLeaderboardTab] = useState<'contribution' | 'leaderboard'>('contribution');
+
     useEffect(() => {
         if (user?.id) {
             fetchUserMerit(user.id);
@@ -84,7 +84,7 @@ export default function DashboardScreen() {
         // Refresh every 30s
         const interval = setInterval(loadMeritData, 30000);
         return () => clearInterval(interval);
-    }, [user?.id, faithClicks]); // Re-fetch rank when user merit changes
+    }, [user?.id, faithClicks, refreshing]); // Added refreshing dependency locally
 
     const handleMeritClick = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -107,8 +107,8 @@ export default function DashboardScreen() {
 
         // Sync logic
         if (user?.id) {
-            const { syncUserMerit } = require('@/services/meritService');
-            // Simplified sync for demo
+            // Use imported service directly
+            // Simplified sync for demo - actual sync handled by store debounce
         }
     };
 
@@ -159,6 +159,11 @@ export default function DashboardScreen() {
         setRefreshing(true);
         console.log('[Dashboard] Manual Refresh Triggered');
         useTechStore.getState().fetchAndEvaluate();
+
+        // Refresh global merit data as well
+        getGlobalMerit().then(setGlobalMerit);
+        getLeaderboard().then(setLeaderboard);
+
         setTimeout(() => setRefreshing(false), 1500);
     };
 
@@ -166,14 +171,14 @@ export default function DashboardScreen() {
 
     const handleLogout = async () => {
         setShowSettings(false);
-        await require('@/stores/authStore').useAuthStore.getState().logout();
+        await logout(); // Use destructured logout from useAuthStore hook
         router.replace('/login');
     };
 
     const handleResetData = async () => {
         setShowSettings(false);
-        require('@/stores/userStore').useUserStore.getState().resetProfile();
-        require('@/stores/onboardingStore').useOnboardingStore.getState().resetOnboarding();
+        await resetProfile(); // Use destructured resetProfile from useUserStore hook
+        useOnboardingStore.getState().resetOnboarding(); // Use top-level import
         router.replace('/onboarding');
     };
 
@@ -477,8 +482,8 @@ export default function DashboardScreen() {
                                         <FontAwesome name="trophy" size={12} color="#fbbf24" />
                                     </View>
                                     <Text style={{ color: 'white', fontSize: 24, fontWeight: 'bold', marginTop: 4 }}>
-                                        {/* Use user merit from auth/belief store, fallback to 0 */}
-                                        {(require('@/stores/beliefStore').useBeliefStore.getState().userMerit || 0).toLocaleString()}
+                                        {/* Use reactive faithClicks from hook */}
+                                        {(faithClicks || 0).toLocaleString()}
                                     </Text>
                                 </View>
                                 <TouchableOpacity onPress={incrementFaith} style={{ backgroundColor: '#fbbf24', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 }}>
