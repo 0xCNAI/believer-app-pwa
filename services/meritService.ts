@@ -112,7 +112,7 @@ export const getLeaderboard = async (limitCount = 100): Promise<MeritUser[]> => 
             const data = d.data();
             return {
                 id: d.id, // Display ID as requested
-                displayName: data.displayName || `User ${d.id.slice(0, 4)}`, // Fallback
+                displayName: data.displayName ? `${data.displayName} (${d.id.slice(0, 4)})` : `User ${d.id.slice(0, 6)}`,
                 merit: data.merit || 0
             };
         });
