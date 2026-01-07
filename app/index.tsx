@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Image, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View, Switch, TextInput, TouchableWithoutFeedback, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
+import { getGlobalMerit, getLeaderboard, getUserRank, syncUserMerit } from '@/services/meritService';
 import { useTechStore } from '@/stores/techStore';
 import { useAIStore } from '@/stores/aiStore';
 import { useMarketInsights, MarketInsight } from '@/hooks/useMarketInsights';
@@ -47,6 +48,12 @@ export default function DashboardScreen() {
     const [editingName, setEditingName] = useState(false);
     const [tempName, setTempName] = useState('');
 
+    // Restored State for Merit Modal
+    const [globalMerit, setGlobalMerit] = useState(0);
+    const [leaderboard, setLeaderboard] = useState<any[]>([]);
+    const [userRank, setUserRank] = useState(0);
+    const [meritTab, setMeritTab] = useState<'mine' | 'leaderboard'>('mine');
+
     // Floating Merit State
     const [scaleAnim] = useState(new Animated.Value(1));
     const [plusOneAnim] = useState(new Animated.Value(0)); // 0 to 1 for opacity/translate
@@ -59,6 +66,23 @@ export default function DashboardScreen() {
             setTempName(user.name || '');
         }
     }, [user?.id, user?.name]);
+
+    useEffect(() => {
+        const loadMeritData = async () => {
+            const global = await getGlobalMerit();
+            setGlobalMerit(global);
+            const board = await getLeaderboard(50);
+            setLeaderboard(board);
+            if (user?.id) {
+                const rank = await getUserRank(faithClicks);
+                setUserRank(rank);
+            }
+        };
+        loadMeritData();
+        // Refresh every 30s
+        const interval = setInterval(loadMeritData, 30000);
+        return () => clearInterval(interval);
+    }, [user?.id, faithClicks, refreshing]);
 
     const handleMeritClick = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -427,30 +451,7 @@ export default function DashboardScreen() {
                 </Modal>
 
                 {/* 2.5. CARD: Contribution & Leaderboard (Restored) */}
-                {/* 2.5. CARD: Contribution (Simplified) */}
-                <View style={styles.card}>
-                    <View style={{ width: '100%', backgroundColor: '#27272a', borderRadius: 12, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <View>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                <Text style={{ color: '#fbbf24', fontSize: 12, fontWeight: '700' }}>YOUR MERIT</Text>
-                                <FontAwesome name="trophy" size={12} color="#fbbf24" />
-                            </View>
-                            <Text style={{ color: 'white', fontSize: 24, fontWeight: 'bold', marginTop: 4 }}>
-                                {/* Use reactive faithClicks from hook */}
-                                {(faithClicks || 0).toLocaleString()}
-                            </Text>
-                        </View>
-                        <TouchableOpacity
-                            onPress={() => {
-                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                                incrementFaith();
-                            }}
-                            style={{ backgroundColor: '#fbbf24', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 }}
-                        >
-                            <Text style={{ color: 'black', fontWeight: 'bold', fontSize: 12 }}>Pray +1</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
+
 
                 {/* 3. CARD 2: Market Dynamics (AI) */}
                 <View style={[styles.card, { paddingVertical: 20 }]}>
