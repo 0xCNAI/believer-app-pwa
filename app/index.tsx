@@ -13,7 +13,6 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Image, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View, Switch, TextInput, TouchableWithoutFeedback, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { getGlobalMerit, getLeaderboard, getUserRank, syncUserMerit } from '@/services/meritService';
 import { useTechStore } from '@/stores/techStore';
 import { useAIStore } from '@/stores/aiStore';
 import { useMarketInsights, MarketInsight } from '@/hooks/useMarketInsights';
@@ -48,19 +47,11 @@ export default function DashboardScreen() {
     const [editingName, setEditingName] = useState(false);
     const [tempName, setTempName] = useState('');
 
-    const [globalMerit, setGlobalMerit] = useState(0);
-    const [leaderboard, setLeaderboard] = useState<any[]>([]);
-    const [userRank, setUserRank] = useState(0);
-
     // Floating Merit State
     const [scaleAnim] = useState(new Animated.Value(1));
     const [plusOneAnim] = useState(new Animated.Value(0)); // 0 to 1 for opacity/translate
     const [showMerit, setShowMerit] = useState(false);
     const [showMeritModal, setShowMeritModal] = useState(false);
-    const [meritTab, setMeritTab] = useState<'mine' | 'leaderboard'>('mine');
-
-    // Leaderboard State (Restored)
-    const [leaderboardTab, setLeaderboardTab] = useState<'contribution' | 'leaderboard'>('contribution');
 
     useEffect(() => {
         if (user?.id) {
@@ -68,23 +59,6 @@ export default function DashboardScreen() {
             setTempName(user.name || '');
         }
     }, [user?.id, user?.name]);
-
-    useEffect(() => {
-        const loadMeritData = async () => {
-            const global = await getGlobalMerit();
-            setGlobalMerit(global);
-            const board = await getLeaderboard(50);
-            setLeaderboard(board);
-            if (user?.id) {
-                const rank = await getUserRank(faithClicks);
-                setUserRank(rank);
-            }
-        };
-        loadMeritData();
-        // Refresh every 30s
-        const interval = setInterval(loadMeritData, 30000);
-        return () => clearInterval(interval);
-    }, [user?.id, faithClicks, refreshing]); // Added refreshing dependency locally
 
     const handleMeritClick = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -453,62 +427,29 @@ export default function DashboardScreen() {
                 </Modal>
 
                 {/* 2.5. CARD: Contribution & Leaderboard (Restored) */}
+                {/* 2.5. CARD: Contribution (Simplified) */}
                 <View style={styles.card}>
-                    {/* Tabs */}
-                    <View style={{ flexDirection: 'row', marginBottom: 20, borderBottomWidth: 1, borderBottomColor: '#27272a' }}>
+                    <View style={{ width: '100%', backgroundColor: '#27272a', borderRadius: 12, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <View>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <Text style={{ color: '#fbbf24', fontSize: 12, fontWeight: '700' }}>YOUR MERIT</Text>
+                                <FontAwesome name="trophy" size={12} color="#fbbf24" />
+                            </View>
+                            <Text style={{ color: 'white', fontSize: 24, fontWeight: 'bold', marginTop: 4 }}>
+                                {/* Use reactive faithClicks from hook */}
+                                {(faithClicks || 0).toLocaleString()}
+                            </Text>
+                        </View>
                         <TouchableOpacity
-                            onPress={() => setLeaderboardTab('contribution')}
-                            style={{ paddingBottom: 12, marginRight: 24, borderBottomWidth: 2, borderColor: leaderboardTab === 'contribution' ? '#fbbf24' : 'transparent' }}>
-                            <Text style={{ color: leaderboardTab === 'contribution' ? '#fbbf24' : '#71717a', fontWeight: '700', fontSize: 14 }}>您的貢獻</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={() => setLeaderboardTab('leaderboard')}
-                            style={{ paddingBottom: 12, borderBottomWidth: 2, borderColor: leaderboardTab === 'leaderboard' ? '#fbbf24' : 'transparent' }}>
-                            <Text style={{ color: leaderboardTab === 'leaderboard' ? '#fbbf24' : '#71717a', fontWeight: '700', fontSize: 14 }}>排行榜</Text>
+                            onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                incrementFaith();
+                            }}
+                            style={{ backgroundColor: '#fbbf24', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 }}
+                        >
+                            <Text style={{ color: 'black', fontWeight: 'bold', fontSize: 12 }}>Pray +1</Text>
                         </TouchableOpacity>
                     </View>
-
-                    {leaderboardTab === 'contribution' ? (
-                        <View style={{ alignItems: 'center', paddingVertical: 10 }}>
-                            <Text style={{ color: '#71717a', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>GLOBAL TOTAL</Text>
-                            <Text style={{ color: '#ffffff', fontSize: 48, fontWeight: '800', marginBottom: 24 }}>
-                                {globalMerit.toLocaleString()}
-                            </Text>
-
-                            <View style={{ width: '100%', backgroundColor: '#27272a', borderRadius: 12, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <View>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                        <Text style={{ color: '#fbbf24', fontSize: 12, fontWeight: '700' }}>YOUR MERIT</Text>
-                                        <FontAwesome name="trophy" size={12} color="#fbbf24" />
-                                    </View>
-                                    <Text style={{ color: 'white', fontSize: 24, fontWeight: 'bold', marginTop: 4 }}>
-                                        {/* Use reactive faithClicks from hook */}
-                                        {(faithClicks || 0).toLocaleString()}
-                                    </Text>
-                                </View>
-                                <TouchableOpacity onPress={incrementFaith} style={{ backgroundColor: '#fbbf24', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 }}>
-                                    <Text style={{ color: 'black', fontWeight: 'bold', fontSize: 12 }}>Pray +1</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    ) : (
-                        <View>
-                            {leaderboard.map((u, i) => (
-                                <View key={u.id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: i < leaderboard.length - 1 ? 1 : 0, borderBottomColor: '#27272a' }}>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                                        <Text style={{ color: i < 3 ? '#fbbf24' : '#71717a', fontWeight: 'bold', width: 20 }}>#{i + 1}</Text>
-                                        <Text style={{ color: u.id === user?.id ? '#fbbf24' : 'white', fontWeight: u.id === user?.id ? 'bold' : 'normal' }}>
-                                            {u.displayName}
-                                        </Text>
-                                    </View>
-                                    <Text style={{ color: '#a1a1aa', fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }}>
-                                        {u.merit.toLocaleString()}
-                                    </Text>
-                                </View>
-                            ))}
-                            {leaderboard.length === 0 && <Text style={{ color: '#71717a', textAlign: 'center', padding: 20 }}>暫無數據</Text>}
-                        </View>
-                    )}
                 </View>
 
                 {/* 3. CARD 2: Market Dynamics (AI) */}
