@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check auth
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Market Insights: Public Read, Write only by Admin/Backend
+    match /market_insights/{document=**} {
+      allow read: if true;
+      allow write: if false; // Only backend admin SDK can write
+    }
+
+    // Stats/Merit: Public Read for Global Counter
+    match /stats/merit {
+      allow read: if true;
+      allow write: if isAuthenticated(); // Allow users to increment (with logic validation ideally)
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow read: if true; // Public profiles (leaderboard)
+      allow write: if request.auth.uid == userId; // Owner only
+
+      // Subcollections
+      match /reversal_index/{docId} {
+        allow read, write: if request.auth.uid == userId;
+      }
+    }
+    
+    // Default: Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
