@@ -219,7 +219,7 @@ export default function DashboardScreen() {
                 </TouchableOpacity>
 
                 <TouchableOpacity onPress={() => setShowSettings(!showSettings)} style={[styles.notificationBtn, { marginLeft: 8, borderColor: '#3f3f46' }]}>
-                    <Ionicons name="settings-outline" size={18} color="#71717a" />
+                    <Ionicons name="settings-outline" size={18} color="#A8A29E" />
                 </TouchableOpacity>
             </View >
 
@@ -242,7 +242,7 @@ export default function DashboardScreen() {
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
                             <Text style={[styles.cardHeaderTitle, { fontSize: 24, marginRight: 8 }]}>反轉指數</Text>
                             <TouchableOpacity onPress={() => setShowScoreInfo(true)}>
-                                <Ionicons name="help-circle-outline" size={20} color="#71717a" />
+                                <Ionicons name="help-circle-outline" size={20} color="#A8A29E" />
                             </TouchableOpacity>
                         </View>
                         {/* Hero Number */}
@@ -267,7 +267,7 @@ export default function DashboardScreen() {
                                     case 'CONFIRMED': return '#22c55e';
                                     case 'PREPARE': return '#eab308';
                                     case 'WATCH': return '#f97316';
-                                    default: return '#71717a';
+                                    default: return '#A8A29E';
                                 }
                             };
                             const activeColor = getStageColor(copy.displayStage);
@@ -305,7 +305,7 @@ export default function DashboardScreen() {
                                         </View>
                                         {/* Simplified Cap Progress Label */}
                                         <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 8 }}>
-                                            <Text style={{ color: '#71717a', fontSize: 13 }}>
+                                            <Text style={{ color: '#A8A29E', fontSize: 13 }}>
                                                 結構進度: {Math.min(100, Math.round((reversalState.finalScore / reversalState.phaseCap) * 100))}% ({reversalState.phaseCap === 60 ? 'Accumulation' : (reversalState.phaseCap === 75 ? 'Transition' : 'Expansion')})
                                             </Text>
                                         </View>
@@ -331,7 +331,7 @@ export default function DashboardScreen() {
                                                 }}
                                                 style={{ padding: 4 }}
                                             >
-                                                <Ionicons name="refresh" size={16} color="#71717a" />
+                                                <Ionicons name="refresh" size={16} color="#A8A29E" />
                                             </TouchableOpacity>
                                         </View>
 
@@ -353,7 +353,7 @@ export default function DashboardScreen() {
                                             const top3 = sorted.slice(0, 3);
 
                                             if (top3.length === 0) {
-                                                return <Text style={{ color: '#71717a', fontSize: 13 }}>尚無分析數據</Text>;
+                                                return <Text style={{ color: '#A8A29E', fontSize: 13 }}>尚無分析數據</Text>;
                                             }
 
                                             return top3.map((c) => {
@@ -375,17 +375,17 @@ export default function DashboardScreen() {
                                                         style={{ marginBottom: 8 }}
                                                     >
                                                         <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-                                                            <Text style={{ color: c.passed ? '#10b981' : '#71717a', fontSize: 13, marginRight: 6, marginTop: 1 }}>
+                                                            <Text style={{ color: c.passed ? '#10b981' : '#A8A29E', fontSize: 13, marginRight: 6, marginTop: 1 }}>
                                                                 {c.passed ? '✓' : '•'}
                                                             </Text>
                                                             <View style={{ flex: 1 }}>
                                                                 <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-                                                                    <Text style={{ color: '#d4d4d8', fontWeight: '500', marginRight: 4 }}>
+                                                                    <Text style={{ color: '#E7E5E4', fontWeight: '500', marginRight: 4 }}>
                                                                         {c.nameCN}
                                                                     </Text>
 
                                                                     {/* Only show suffix if it exists (e.g. approaching) */}
-                                                                    <Text style={{ color: statusHighlight ? '#fbbf24' : '#71717a' }}>
+                                                                    <Text style={{ color: statusHighlight ? '#F5F5DC' : '#A8A29E' }}>
                                                                         {isExpanded ? '' : statusSuffix}
                                                                     </Text>
                                                                 </View>
@@ -393,10 +393,10 @@ export default function DashboardScreen() {
                                                                 {/* Expanded Content */}
                                                                 {isExpanded && (
                                                                     <View style={{ marginTop: 4 }}>
-                                                                        <Text style={{ color: '#fbbf24', fontSize: 13, marginBottom: 2 }}>
+                                                                        <Text style={{ color: '#F5F5DC', fontSize: 13, marginBottom: 2 }}>
                                                                             狀態：{c.passed ? (c.detail || '條件成立') : '條件未滿足'} {statusSuffix}
                                                                         </Text>
-                                                                        <Text style={{ color: '#71717a', fontSize: 12, lineHeight: 18 }}>
+                                                                        <Text style={{ color: '#A8A29E', fontSize: 12, lineHeight: 18 }}>
                                                                             {c.descCN || ''}
                                                                         </Text>
                                                                     </View>
@@ -412,6 +412,7 @@ export default function DashboardScreen() {
                                         <Text style={[styles.contextTitle, { color: activeColor, marginTop: 12 }]}>下一步</Text>
                                         {copy.next.map((line, i) => <Text key={i} style={styles.contextItem}>👉 {line}</Text>)}
                                     </View>
+                                </View>
 
             {/* Reversal Score Info Modal */ }
                             <Modal
@@ -438,7 +439,7 @@ export default function DashboardScreen() {
                                         alignSelf: 'center'
                                     }}>
                                         <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold', marginBottom: 16 }}>反轉指數 (Reversal Index)</Text>
-                                        <Text style={{ color: '#d4d4d8', fontSize: 14, lineHeight: 22, marginBottom: 24 }}>
+                                        <Text style={{ color: '#E7E5E4', fontSize: 14, lineHeight: 22, marginBottom: 24 }}>
                                             本指數由三大核心維度組成：
                                             {'\n'}
                                             1. <Text style={{ color: '#fff', fontWeight: 'bold' }}>技術結構 (Gates)</Text>: 4 大核心過濾條件
@@ -449,13 +450,13 @@ export default function DashboardScreen() {
                                             {'\n\n'}
                                             綜合評估市場是否具備真正的反轉條件。
                                             {'\n\n'}
-                                            • <Text style={{ color: '#fbbf24', fontWeight: 'bold' }}>0-20</Text>: 下跌趨勢 (Declining)
+                                            • <Text style={{ color: '#F5F5DC', fontWeight: 'bold' }}>0-20</Text>: 下跌趨勢 (Declining)
                                             {'\n'}
-                                            • <Text style={{ color: '#fbbf24', fontWeight: 'bold' }}>20-50</Text>: 觀察區 (Watch)
+                                            • <Text style={{ color: '#F5F5DC', fontWeight: 'bold' }}>20-50</Text>: 觀察區 (Watch)
                                             {'\n'}
-                                            • <Text style={{ color: '#fbbf24', fontWeight: 'bold' }}>50-80</Text>: 早期訊號 (Early Signal)
+                                            • <Text style={{ color: '#F5F5DC', fontWeight: 'bold' }}>50-80</Text>: 早期訊號 (Early Signal)
                                             {'\n'}
-                                            • <Text style={{ color: '#fbbf24', fontWeight: 'bold' }}>80-100</Text>: 確認反轉 (Confirmed)
+                                            • <Text style={{ color: '#F5F5DC', fontWeight: 'bold' }}>80-100</Text>: 確認反轉 (Confirmed)
                                         </Text>
                                         <TouchableOpacity
                                             style={{ backgroundColor: '#27272a', paddingVertical: 12, borderRadius: 8, alignItems: 'center' }}
@@ -476,7 +477,7 @@ export default function DashboardScreen() {
                                     <Text style={styles.cardHeaderTitle}>市場動態</Text>
                                     {/* Timestamp instead of button */}
                                     {marketInsightsLastUpdated && (
-                                        <Text style={{ color: '#71717a', fontSize: 11 }}>
+                                        <Text style={{ color: '#A8A29E', fontSize: 11 }}>
                                             更新於: {new Date(marketInsightsLastUpdated).toLocaleString('zh-TW', {
                                                 month: 'numeric', day: 'numeric',
                                                 hour: '2-digit', minute: '2-digit', hour12: false
@@ -488,7 +489,7 @@ export default function DashboardScreen() {
                                 {/* Loading State */}
                                 {marketInsightsLoading && (
                                     <View style={{ padding: 12, backgroundColor: 'rgba(251, 191, 36, 0.05)', borderRadius: 8, marginBottom: 16 }}>
-                                        <Text style={{ color: '#fbbf24', fontSize: 13 }}>正在載入市場動態...</Text>
+                                        <Text style={{ color: '#F5F5DC', fontSize: 13 }}>正在載入市場動態...</Text>
                                     </View>
                                 )}
 
@@ -521,14 +522,14 @@ export default function DashboardScreen() {
                                                 >
                                                     {/* Line 1: Signal Title (The "What") */}
                                                     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                                                        <Text style={{ color: '#fbbf24', fontSize: 13, marginRight: 8 }}>•</Text>
+                                                        <Text style={{ color: '#F5F5DC', fontSize: 13, marginRight: 8 }}>•</Text>
 
                                                         {displayTitle ? (
                                                             <Text style={{ color: '#e4e4e7', fontSize: 14, fontWeight: '700' }}>
                                                                 {displayTitle}
                                                             </Text>
                                                         ) : (
-                                                            <Text style={{ color: '#71717a', fontSize: 12, fontWeight: '400' }}>
+                                                            <Text style={{ color: '#A8A29E', fontSize: 12, fontWeight: '400' }}>
                                                                 市場關注事件
                                                             </Text>
                                                         )}
@@ -536,7 +537,7 @@ export default function DashboardScreen() {
 
                                                     {/* Line 2: AI Analysis (The "Why") */}
                                                     <View style={{ paddingLeft: 16, marginBottom: 6 }}>
-                                                        <Text style={{ color: '#d4d4d8', fontSize: 14, lineHeight: 22, fontWeight: '400' }}>
+                                                        <Text style={{ color: '#E7E5E4', fontSize: 14, lineHeight: 22, fontWeight: '400' }}>
                                                             {insight.analysis}
                                                         </Text>
                                                     </View>
@@ -546,11 +547,11 @@ export default function DashboardScreen() {
                                                         <Text
                                                             numberOfLines={1}
                                                             ellipsizeMode="tail"
-                                                            style={{ color: '#71717a', fontSize: 12, flex: 1, marginRight: 8, textDecorationLine: 'underline' }}
+                                                            style={{ color: '#A8A29E', fontSize: 12, flex: 1, marginRight: 8, textDecorationLine: 'underline' }}
                                                         >
                                                             {insight.headline}
                                                         </Text>
-                                                        <Ionicons name="open-outline" size={12} color="#71717a" />
+                                                        <Ionicons name="open-outline" size={12} color="#A8A29E" />
                                                     </View>
                                                 </TouchableOpacity>
                                             )
@@ -560,7 +561,7 @@ export default function DashboardScreen() {
 
                                 {/* Empty State */}
                                 {!marketInsightsLoading && allMarketInsights.length === 0 && (
-                                    <Text style={{ color: '#71717a', fontSize: 13, textAlign: 'center', paddingVertical: 20 }}>
+                                    <Text style={{ color: '#A8A29E', fontSize: 13, textAlign: 'center', paddingVertical: 20 }}>
                                         市場動態分析將每 3 小時自動更新
                                     </Text>
                                 )}
@@ -679,7 +680,7 @@ export default function DashboardScreen() {
                                                 const renderBar = (label: string, val: number, color: string) => (
                                                     <View style={{ marginBottom: 8 }}>
                                                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                                                            <Text style={{ color: '#d4d4d8', fontSize: 13 }}>{label}</Text>
+                                                            <Text style={{ color: '#E7E5E4', fontSize: 13 }}>{label}</Text>
                                                             <Text style={{ color: '#a1a1aa', fontSize: 12 }}>{val}%</Text>
                                                         </View>
                                                         <View style={{ height: 8, backgroundColor: '#27272a', borderRadius: 4, overflow: 'hidden' }}>
@@ -725,7 +726,7 @@ export default function DashboardScreen() {
                                                                 </View>
 
                                                                 <View style={{ marginBottom: 16 }}>
-                                                                    <Text style={{ color: '#71717a', fontSize: 11, marginBottom: 8, textTransform: 'uppercase' }}>結果分佈 (Outcomes)</Text>
+                                                                    <Text style={{ color: '#A8A29E', fontSize: 11, marginBottom: 8, textTransform: 'uppercase' }}>結果分佈 (Outcomes)</Text>
                                                                     {isFed && fedStats ? (
                                                                         <View>
                                                                             {renderBar('降息 (正向事件)', fedStats.cut, '#22c55e')}
@@ -743,7 +744,7 @@ export default function DashboardScreen() {
                                                                                 return (
                                                                                     <>
                                                                                         {renderBar(yesLabel, prob, isBinaryBad ? '#ef4444' : '#22c55e')}
-                                                                                        {renderBar(noLabel, 100 - prob, isBinaryBad ? '#22c55e' : '#71717a')}
+                                                                                        {renderBar(noLabel, 100 - prob, isBinaryBad ? '#22c55e' : '#A8A29E')}
                                                                                     </>
                                                                                 );
                                                                             })()}
@@ -783,10 +784,10 @@ export default function DashboardScreen() {
 
                                 <View style={styles.socialRow}>
                                     <TouchableOpacity onPress={() => Linking.openURL('https://www.instagram.com/betalpha_news/')} style={styles.socialBtn}>
-                                        <Ionicons name="logo-instagram" size={20} color="#71717a" />
+                                        <Ionicons name="logo-instagram" size={20} color="#A8A29E" />
                                     </TouchableOpacity>
                                     <TouchableOpacity onPress={() => Linking.openURL('https://t.me/+BKg09wTOVGZhYzBl')} style={styles.socialBtn}>
-                                        <Ionicons name="paper-plane-outline" size={20} color="#71717a" />
+                                        <Ionicons name="paper-plane-outline" size={20} color="#A8A29E" />
                                     </TouchableOpacity>
                                 </View>
 
@@ -803,7 +804,7 @@ export default function DashboardScreen() {
                             <Text style={styles.drawerTitle}>通知中心</Text>
                             <ScrollView style={{ maxHeight: '80%' }}>
                                 {useNotificationStore.getState().notifications.length === 0 ? (
-                                    <Text style={{ color: '#71717a', fontSize: 13, textAlign: 'center', marginTop: 20 }}>
+                                    <Text style={{ color: '#A8A29E', fontSize: 13, textAlign: 'center', marginTop: 20 }}>
                                         暫無通知
                                     </Text>
                                 ) : (
@@ -923,7 +924,7 @@ export default function DashboardScreen() {
                                         {/* Merit Image */}
                                         <View style={{
                                             width: 200, height: 200, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: '#3f3f46',
-                                            shadowColor: '#fbbf24', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 20,
+                                            shadowColor: '#F5F5DC', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 20,
                                             marginBottom: 24
                                         }}>
                                             <Image
@@ -934,7 +935,7 @@ export default function DashboardScreen() {
                                         </View>
 
                                         <Text style={{ color: '#a1a1aa', fontSize: 15, marginBottom: 12, textAlign: 'center' }}>你已經為牛市回歸的念力增添了</Text>
-                                        <Text style={{ color: '#fbbf24', fontSize: 48, fontWeight: 'bold', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', marginBottom: 8 }}>
+                                        <Text style={{ color: '#F5F5DC', fontSize: 48, fontWeight: 'bold', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', marginBottom: 8 }}>
                                             {faithClicks}
                                         </Text>
                                         <Text style={{ color: '#52525b', fontSize: 13, marginBottom: 32 }}>
@@ -963,7 +964,7 @@ export default function DashboardScreen() {
                                                         </View>
                                                         <Text style={styles.rankName}>
                                                             {u.displayName}
-                                                            {u.id === user?.id && <Text style={{ color: '#fbbf24', fontSize: 12 }}> (你)</Text>}
+                                                            {u.id === user?.id && <Text style={{ color: '#F5F5DC', fontSize: 12 }}> (你)</Text>}
                                                         </Text>
                                                         <Text style={styles.rankScore}>{u.merit.toLocaleString()}</Text>
                                                     </View>
@@ -989,12 +990,12 @@ export default function DashboardScreen() {
                                                 borderBottomRightRadius: 12
                                             }}>
                                                 <View style={{ width: 40, alignItems: 'center' }}>
-                                                    <Text style={[styles.rankNum, { color: '#fbbf24' }]}>#{userRank}</Text>
+                                                    <Text style={[styles.rankNum, { color: '#F5F5DC' }]}>#{userRank}</Text>
                                                 </View>
-                                                <Text style={[styles.rankName, { color: '#fbbf24' }]}>
+                                                <Text style={[styles.rankName, { color: '#F5F5DC' }]}>
                                                     {user?.name || 'You'} (你)
                                                 </Text>
-                                                <Text style={[styles.rankScore, { color: '#fbbf24' }]}>
+                                                <Text style={[styles.rankScore, { color: '#F5F5DC' }]}>
                                                     {faithClicks.toLocaleString()}
                                                 </Text>
                                             </View>
@@ -1023,7 +1024,7 @@ export default function DashboardScreen() {
                                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#27272a', padding: 12, borderRadius: 8 }}>
                                         <Text style={{ color: 'white', fontSize: 16 }}>{user?.name || 'Believer'}</Text>
                                         <TouchableOpacity onPress={() => { setEditingName(true); setTempName(user?.name || ''); }}>
-                                            <Ionicons name="pencil" size={16} color="#fbbf24" />
+                                            <Ionicons name="pencil" size={16} color="#F5F5DC" />
                                         </TouchableOpacity>
                                     </View>
                                 ) : (
@@ -1037,7 +1038,7 @@ export default function DashboardScreen() {
                                                 paddingVertical: 10,
                                                 borderRadius: 8,
                                                 borderWidth: 1,
-                                                borderColor: '#fbbf24',
+                                                borderColor: '#F5F5DC',
                                                 fontSize: 16
                                             }}
                                             value={tempName}
@@ -1048,7 +1049,7 @@ export default function DashboardScreen() {
                                         />
                                         <TouchableOpacity
                                             style={{
-                                                backgroundColor: '#fbbf24',
+                                                backgroundColor: '#F5F5DC',
                                                 paddingHorizontal: 16,
                                                 justifyContent: 'center',
                                                 alignItems: 'center',
@@ -1316,7 +1317,7 @@ const styles = StyleSheet.create({
     topicProb: {
         fontSize: 18,
         fontWeight: '700',
-        color: '#fbbf24',
+        color: '#F5F5DC',
     },
     viewMarketBtn: {
         flexDirection: 'row',
@@ -1444,7 +1445,7 @@ const styles = StyleSheet.create({
     },
     notifTime: {
         fontSize: 12,
-        color: '#71717a',
+        color: '#A8A29E',
     },
     settingsOverlay: {
         position: 'absolute',
@@ -1475,7 +1476,7 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     settingsSectionTitle: {
-        color: '#71717a',
+        color: '#A8A29E',
         fontSize: 12,
         fontWeight: '600',
         letterSpacing: 0.5,
@@ -1489,7 +1490,7 @@ const styles = StyleSheet.create({
         marginBottom: 2,
     },
     settingsItemDesc: {
-        color: '#71717a',
+        color: '#A8A29E',
         fontSize: 12,
     },
     // Floating Merit Styles
@@ -1597,15 +1598,15 @@ const styles = StyleSheet.create({
         borderBottomColor: 'transparent',
     },
     tabBtnActive: {
-        borderBottomColor: '#fbbf24',
+        borderBottomColor: '#F5F5DC',
     },
     tabText: {
-        color: '#71717a',
+        color: '#A8A29E',
         fontSize: 18,
         fontWeight: '600',
     },
     tabTextActive: {
-        color: '#fbbf24',
+        color: '#F5F5DC',
     },
     rankRow: {
         flexDirection: 'row',
@@ -1616,21 +1617,21 @@ const styles = StyleSheet.create({
         borderBottomColor: '#27272a',
     },
     rankNum: {
-        color: '#71717a',
+        color: '#A8A29E',
         fontWeight: 'bold',
         fontSize: 14,
     },
     rankTop: {
-        color: '#fbbf24',
+        color: '#F5F5DC',
     },
     rankName: {
         flex: 1,
-        color: '#e4e4e7',
+        color: '#E7E5E4',
         fontSize: 15,
         fontWeight: '500',
     },
     rankScore: {
-        color: '#fbbf24',
+        color: '#F5F5DC',
         fontWeight: '600',
         fontSize: 15,
         fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
