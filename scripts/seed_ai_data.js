@@ -24,7 +24,7 @@ async function run() {
         const demoInsight = {
             headline: `Manual Trigger Update: ${category} Market Analysis`,
             url: 'https://polymarket.com',
-            analysis: `AI Agent manually triggered. Testing display format with signalId integration.`,
+            analysis: `川普重申支持戰略儲備，市場預期法案通過機率顯著提升。`,
             importance: 10,
             signalId: 'btc_reserve', // Test Signal ID linkage
             addedAt: timestamp

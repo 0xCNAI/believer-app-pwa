@@ -21,7 +21,7 @@ const CATEGORIES = ['Macro', 'Structural', 'Political', 'Narrative'] as const;
 export const updateMarketInsights = functions
     .runWith({ timeoutSeconds: 300, memory: '512MB' })
     .pubsub.schedule('every 3 hours')
-    .onRun(async (context) => {
+    .onRun(async (context: functions.EventContext) => {
         console.log('[Central AI] Starting market insights update...');
 
         for (const category of CATEGORIES) {
@@ -65,7 +65,7 @@ export const updateMarketInsights = functions
 /**
  * HTTP trigger for manual testing
  */
-export const triggerMarketInsightsUpdate = functions.https.onRequest(async (req, res) => {
+export const triggerMarketInsightsUpdate = functions.https.onRequest(async (req: functions.https.Request, res: functions.Response) => {
     // Simple auth check using Firebase config
     const authHeader = req.headers.authorization;
     const adminSecret = functions.config().admin?.secret || '';

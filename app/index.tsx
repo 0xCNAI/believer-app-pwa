@@ -288,20 +288,55 @@ export default function DashboardScreen() {
                                         </View>
                                     </View>
 
-                                    {/* Progress Bar (8 blocks) */}
-                                    <View style={styles.progressBar}>
-                                        {[...Array(8)].map((_, i) => {
-                                            const filled = reversalIndex > (i * 12.5);
-                                            return <View key={i} style={[styles.progressBlock, filled && { backgroundColor: activeColor, opacity: 0.9 }]} />;
-                                        })}
+                                    {/* One Liner - Centered with Change Hint */}
+                                    <View style={{ marginBottom: 12 }}>
+                                        <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700', lineHeight: 24, textAlign: 'center' }}>
+                                            {copy.oneLiner}
+                                        </Text>
+                                        {/* Change Hint (New) */}
+                                        <Text style={{ color: '#a1a1aa', fontSize: 13, textAlign: 'center', marginTop: 4 }}>
+                                            {reversalState.phaseCap < 100 ?
+                                                `結構未確認 · 內部條件改善中 ↑` :
+                                                `結構已確認 · 趨勢持續向上 ↑`}
+                                        </Text>
                                     </View>
 
-                                    {/* One Liner - Centered */}
-                                    <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700', lineHeight: 24, marginVertical: 12, textAlign: 'center' }}>
-                                        {copy.oneLiner}
-                                    </Text>
+                                    {/* Progress Bar with Cap Label */}
+                                    <View style={{ marginBottom: 24 }}>
+                                        <View style={styles.progressBar}>
+                                            {[...Array(8)].map((_, i) => {
+                                                const filled = reversalIndex > (i * 12.5);
+                                                return <View key={i} style={[styles.progressBlock, filled && { backgroundColor: activeColor, opacity: 0.9 }]} />;
+                                            })}
+                                        </View>
+                                        {/* New Cap Progress Label */}
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
+                                            <Text style={{ color: '#71717a', fontSize: 12 }}>
+                                                結構進度: {Math.min(100, Math.round((reversalState.finalScore / reversalState.phaseCap) * 100))}% of {reversalState.phaseCap === 60 ? 'Accumulation' : (reversalState.phaseCap === 75 ? 'Transition' : 'Expansion')}
+                                            </Text>
+                                            <Text style={{ color: '#22c55e', fontSize: 12, fontWeight: '600' }}>
+                                                ↑ (7d)
+                                            </Text>
+                                        </View>
+                                    </View>
 
-                                    {/* Tech Analysis Status (V5.1) */}
+                                    {/* Internal Change Summary (New Block) */}
+                                    <View style={{ backgroundColor: 'rgba(39, 39, 42, 0.4)', borderRadius: 8, padding: 12, marginBottom: 20 }}>
+                                        <Text style={{ color: '#a1a1aa', fontSize: 12, marginBottom: 8, fontWeight: '600' }}>內部變化（7 日）</Text>
+                                        <View style={{ gap: 4 }}>
+                                            <Text style={{ color: '#e4e4e7', fontSize: 13 }}>
+                                                • Cycle 強度 <Text style={{ color: '#22c55e' }}>+{reversalState.cycleScoreRaw}</Text>（鏈上估值改善）
+                                            </Text>
+                                            <Text style={{ color: '#e4e4e7', fontSize: 13 }}>
+                                                • Trend Gate: {Math.round(reversalState.trendScoreRaw / 25)} / 4（{reversalState.trendScoreRaw >= 75 ? '動能強勁' : '尚未新增 Gate'}）
+                                            </Text>
+                                            <Text style={{ color: '#e4e4e7', fontSize: 13 }}>
+                                                • 結構 Cap 未變（{reversalState.phaseCap === 60 ? 'Accumulation' : (reversalState.phaseCap === 75 ? 'Transition' : 'Expansion')}）
+                                            </Text>
+                                        </View>
+                                    </View>
+
+                                    {/* Tech Analysis Status (Enhanced) */}
                                     <View style={styles.progressContext}>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -347,6 +382,18 @@ export default function DashboardScreen() {
 
                                             return top3.map((c) => {
                                                 const isExpanded = expandedTechItem === c.id;
+
+                                                // Enhance Status Text based on condition type (Mock logic for now as requested by UI prototype)
+                                                let statusSuffix = '';
+                                                let statusColor = c.passed ? '#10b981' : '#71717a';
+
+                                                if (c.passed) {
+                                                    statusSuffix = '（新確認）↑';
+                                                    if (c.id === 'volatility_compression') statusSuffix = '（持續下降）↓';
+                                                } else {
+                                                    statusSuffix = '（接近中）';
+                                                }
+
                                                 return (
                                                     <TouchableOpacity
                                                         key={c.id}
@@ -364,7 +411,7 @@ export default function DashboardScreen() {
                                                                         {c.nameCN}
                                                                     </Text>
                                                                     <Text style={{ color: '#71717a' }}>
-                                                                        {isExpanded ? '' : `：${c.passed ? (c.detail || '條件成立') : '條件未滿足'} `}
+                                                                        {isExpanded ? '' : `：${c.passed ? (c.detail || '條件成立') : '條件未滿足'}${statusSuffix} `}
                                                                     </Text>
                                                                 </View>
 
@@ -372,7 +419,7 @@ export default function DashboardScreen() {
                                                                 {isExpanded && (
                                                                     <View style={{ marginTop: 4 }}>
                                                                         <Text style={{ color: '#fbbf24', fontSize: 13, marginBottom: 2 }}>
-                                                                            狀態：{c.passed ? (c.detail || '條件成立') : '條件未滿足'}
+                                                                            狀態：{c.passed ? (c.detail || '條件成立') : '條件未滿足'} {statusSuffix}
                                                                         </Text>
                                                                         <Text style={{ color: '#71717a', fontSize: 12, lineHeight: 18 }}>
                                                                             {c.descCN || ''}
@@ -502,24 +549,24 @@ export default function DashboardScreen() {
                                         }}
                                         activeOpacity={0.7}
                                     >
-                                        {/* Line 1: Signal Context (if any) or Analysis Summary */}
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                                            <Text style={{ color: '#fbbf24', fontSize: 13, marginRight: 6 }}>•</Text>
+                                        {/* Line 1: Signal Title (The "What") */}
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                                            <Text style={{ color: '#fbbf24', fontSize: 13, marginRight: 8 }}>•</Text>
 
                                             {displayTitle ? (
-                                                <Text style={{ color: '#a1a1aa', fontSize: 13, fontWeight: '600' }}>
-                                                    {displayTitle} <Text style={{ color: '#52525b', fontWeight: '400' }}>← 追蹤的重要交易對</Text>
+                                                <Text style={{ color: '#e4e4e7', fontSize: 14, fontWeight: '700' }}>
+                                                    {displayTitle}
                                                 </Text>
                                             ) : (
-                                                <Text style={{ color: '#a1a1aa', fontSize: 13, fontWeight: '600' }}>
+                                                <Text style={{ color: '#71717a', fontSize: 12, fontWeight: '400' }}>
                                                     市場關注事件
                                                 </Text>
                                             )}
                                         </View>
 
                                         {/* Line 2: AI Analysis (The "Why") */}
-                                        <View style={{ paddingLeft: 14, marginBottom: 4 }}>
-                                            <Text style={{ color: '#e4e4e7', fontSize: 14, lineHeight: 22, fontWeight: '500' }}>
+                                        <View style={{ paddingLeft: 16, marginBottom: 6 }}>
+                                            <Text style={{ color: '#d4d4d8', fontSize: 14, lineHeight: 22, fontWeight: '400' }}>
                                                 {insight.analysis}
                                             </Text>
                                         </View>
