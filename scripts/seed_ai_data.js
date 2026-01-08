@@ -24,8 +24,9 @@ async function run() {
         const demoInsight = {
             headline: `Manual Trigger Update: ${category} Market Analysis`,
             url: 'https://polymarket.com',
-            analysis: `AI Agent manually triggered at ${new Date(timestamp).toLocaleTimeString()}. Waiting for scheduled job.`,
+            analysis: `AI Agent manually triggered. Testing display format with signalId integration.`,
             importance: 10,
+            signalId: 'btc_reserve', // Test Signal ID linkage
             addedAt: timestamp
         };
 

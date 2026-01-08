@@ -11,8 +11,18 @@ export interface MarketInsight {
     url: string;
     analysis: string;
     importance: number;
+    signalId?: string | null; // Optional: Link to a specific tracker
     addedAt: number;
 }
+
+// Tracked Signals Metadata for AI Context
+const TRACKED_SIGNALS = [
+    { id: 'fed_decision', name: 'Fed 利率決策', keywords: ['Fed', 'Powell', 'Rate Cut', 'FOMC', '利率', '鮑威爾'] },
+    { id: 'us_recession', name: '美國衰退風險', keywords: ['Recession', 'GDP', 'Unemployment', '衰退', '失業率', '經濟數據'] },
+    { id: 'gov_shutdown', name: '政府停擺', keywords: ['Shutdown', 'Government Funding', 'Congress', 'Budget', '停擺', '預算'] },
+    { id: 'us_debt_default', name: '美債違約', keywords: ['Debt Ceiling', 'Default', 'Treasury', '美債', '違約'] },
+    { id: 'btc_reserve', name: 'BTC 戰略儲備', keywords: ['Strategic Reserve', 'Trump', 'Lummis', 'Bitcoin Reserve', '儲備', '法案'] }
+];
 
 // Initialize Gemini using Firebase config
 const apiKey = functions.config().gemini?.apikey || process.env.GEMINI_API_KEY || '';
@@ -69,20 +79,25 @@ async function evaluateSingleNews(
     category: string
 ): Promise<MarketInsight | null> {
     const prompt = `
-你是一位專業的加密貨幣市場分析師。請評估以下新聞對 ${category} 類別的重要性。
+你是一位專業的加密貨幣市場分析師。請評估以下新聞對 ${category} 類別的重要性，並判斷是否與我們追蹤的特定預測市場訊號相關。
+
+追蹤訊號列表:
+${TRACKED_SIGNALS.map(s => `- ID: ${s.id} | 名稱: ${s.name} | 關鍵字: ${s.keywords.join(', ')}`).join('\n')}
 
 新聞標題: ${news.headline}
 
 請回應以下 JSON 格式 (不要有其他文字):
 {
   "importance": <1-10 的整數，10 為最重要>,
-  "analysis": "<繁體中文，一句話說明這則新聞為什麼重要，最多 40 字>"
+  "analysis": "<繁體中文，一句話說明這則新聞為什麼重要 (例如: '川普支持儲備計畫，推升通過機率')，最多 40 字>",
+  "signalId": "<若新聞與上述列表高度相關，請填入對應 ID (例如 'btc_reserve')，否則填 null>"
 }
 
 評估標準:
 - 對加密市場的潛在影響程度
 - 事件的即時性和新穎性
 - 與 ${category} 類別的相關性
+- 若新聞明確提到相關關鍵字，請優先歸類至該訊號
 `;
 
     try {
@@ -104,6 +119,7 @@ async function evaluateSingleNews(
             url: news.url,
             analysis: parsed.analysis || '分析生成中...',
             importance: Math.min(10, Math.max(1, parseInt(parsed.importance) || 5)),
+            signalId: parsed.signalId || null, // Capture signalId
             addedAt: Date.now()
         };
 

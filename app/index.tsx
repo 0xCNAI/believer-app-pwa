@@ -478,33 +478,67 @@ export default function DashboardScreen() {
                     {/* Insights Display */}
                     {!marketInsightsLoading && allMarketInsights.length > 0 && (
                         <View>
-                            {allMarketInsights.slice(0, 4).map((insight, index) => (
-                                <TouchableOpacity
-                                    key={index}
-                                    style={{ marginBottom: 16 }}
-                                    onPress={() => {
-                                        if (insight.url && typeof window !== 'undefined') {
-                                            window.open(insight.url, '_blank');
-                                        }
-                                    }}
-                                    activeOpacity={0.7}
-                                >
-                                    {/* Headline */}
-                                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 }}>
-                                        <Text style={{ color: '#71717a', fontSize: 13, marginRight: 6 }}>•</Text>
-                                        <Text style={{ color: '#e4e4e7', fontSize: 13, fontWeight: '600', flex: 1, lineHeight: 20 }}>
-                                            {insight.headline}
-                                        </Text>
-                                        <Ionicons name="open-outline" size={12} color="#71717a" style={{ marginLeft: 4 }} />
-                                    </View>
-                                    {/* Analysis */}
-                                    <Text style={{ color: '#a1a1aa', fontSize: 12, lineHeight: 18, paddingLeft: 14 }}>
-                                        {insight.analysis}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
+                            {allMarketInsights.slice(0, 4).map((insight: any, index) => {
+                                // Lookup specific signal by ID if provided by AI
+                                const matchedBelief = insight.signalId
+                                    ? beliefs.find(b => b.id === insight.signalId)
+                                    : null;
+
+                                // Format Probability Title if matched
+                                let displayTitle = null;
+                                if (matchedBelief) {
+                                    const prob = Math.round(matchedBelief.currentProbability * 100);
+                                    displayTitle = `${matchedBelief.signal?.shortTitle || '相關訊號'}機率 (${prob}%)`;
+                                }
+
+                                return (
+                                    <TouchableOpacity
+                                        key={index}
+                                        style={{ marginBottom: 20 }}
+                                        onPress={() => {
+                                            if (insight.url && typeof window !== 'undefined') {
+                                                window.open(insight.url, '_blank');
+                                            }
+                                        }}
+                                        activeOpacity={0.7}
+                                    >
+                                        {/* Line 1: Signal Context (if any) or Analysis Summary */}
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                                            <Text style={{ color: '#fbbf24', fontSize: 13, marginRight: 6 }}>•</Text>
+
+                                            {displayTitle ? (
+                                                <Text style={{ color: '#a1a1aa', fontSize: 13, fontWeight: '600' }}>
+                                                    {displayTitle} <Text style={{ color: '#52525b', fontWeight: '400' }}>← 追蹤的重要交易對</Text>
+                                                </Text>
+                                            ) : (
+                                                <Text style={{ color: '#a1a1aa', fontSize: 13, fontWeight: '600' }}>
+                                                    市場關注事件
+                                                </Text>
+                                            )}
+                                        </View>
+
+                                        {/* Line 2: AI Analysis (The "Why") */}
+                                        <View style={{ paddingLeft: 14, marginBottom: 4 }}>
+                                            <Text style={{ color: '#e4e4e7', fontSize: 14, lineHeight: 22, fontWeight: '500' }}>
+                                                {insight.analysis}
+                                            </Text>
+                                        </View>
+
+                                        {/* Line 3: Source Headline + Link */}
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 14 }}>
+                                            <Text
+                                                numberOfLines={1}
+                                                ellipsizeMode="tail"
+                                                style={{ color: '#71717a', fontSize: 12, flex: 1, marginRight: 8, textDecorationLine: 'underline' }}
+                                            >
+                                                {insight.headline}
+                                            </Text>
+                                            <Ionicons name="open-outline" size={12} color="#71717a" />
+                                        </View>
+                                    </TouchableOpacity>
+                                )
+                            })}
                         </View>
-                    )}
 
                     {/* Empty State */}
                     {!marketInsightsLoading && allMarketInsights.length === 0 && (
