@@ -1159,7 +1159,7 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#09090b',
+        backgroundColor: '#1F2937',
     },
     header: {
         flexDirection: 'row',
@@ -1600,7 +1600,7 @@ const styles = StyleSheet.create({
     modalOverlay: {
         position: 'absolute',
         top: 0, left: 0, right: 0, bottom: 0,
-        backgroundColor: '#09090b',
+        backgroundColor: '#1F2937',
         zIndex: 200,
     },
     modalHeader: {
@@ -1608,7 +1608,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
         paddingTop: 16,
         paddingBottom: 0,
-        backgroundColor: '#09090b',
+        backgroundColor: '#1F2937',
     },
     modalBody: {
         flex: 1,
