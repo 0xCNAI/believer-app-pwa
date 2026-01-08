@@ -539,6 +539,7 @@ export default function DashboardScreen() {
                                 )
                             })}
                         </View>
+                    )}
 
                     {/* Empty State */}
                     {!marketInsightsLoading && allMarketInsights.length === 0 && (
