@@ -312,7 +312,7 @@ export default function DashboardScreen() {
                                         {/* New Cap Progress Label */}
                                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
                                             <Text style={{ color: '#A8A29E', fontSize: 12 }}>
-                                                結構進度: {Math.min(100, Math.round((reversalState.finalScore / reversalState.phaseCap) * 100))}% of {reversalState.phaseCap === 60 ? 'Accumulation' : (reversalState.phaseCap === 75 ? 'Transition' : 'Expansion')}
+                                                結構進度: {Math.min(100, Math.round((reversalState.finalScore / reversalState.phaseCap) * 100))}%（{reversalState.phaseCap === 60 ? '累積期' : (reversalState.phaseCap === 75 ? '轉換期' : '擴張期')}）
                                             </Text>
                                             <Text style={{ color: '#22c55e', fontSize: 12, fontWeight: '600' }}>
                                                 ↑ (7d)
@@ -325,13 +325,13 @@ export default function DashboardScreen() {
                                         <Text style={{ color: '#a1a1aa', fontSize: 12, marginBottom: 8, fontWeight: '600' }}>內部變化（7 日）</Text>
                                         <View style={{ gap: 4 }}>
                                             <Text style={{ color: '#e4e4e7', fontSize: 13 }}>
-                                                • Cycle 強度 <Text style={{ color: '#22c55e' }}>+{reversalState.cycleScoreRaw}</Text>（鏈上估值改善）
+                                                • 週期強度 <Text style={{ color: '#22c55e' }}>+{reversalState.cycleScoreRaw}</Text>（鏈上估值改善）
                                             </Text>
                                             <Text style={{ color: '#e4e4e7', fontSize: 13 }}>
-                                                • Trend Gate: {Math.round(reversalState.trendScoreRaw / 25)} / 4（{reversalState.trendScoreRaw >= 75 ? '動能強勁' : '尚未新增 Gate'}）
+                                                • 趨勢門檻: {Math.round(reversalState.trendScoreRaw / 25)} / 4（{reversalState.trendScoreRaw >= 75 ? '動能強勁' : '尚未新增門檻'}）
                                             </Text>
                                             <Text style={{ color: '#e4e4e7', fontSize: 13 }}>
-                                                • 結構 Cap 未變（{reversalState.phaseCap === 60 ? 'Accumulation' : (reversalState.phaseCap === 75 ? 'Transition' : 'Expansion')}）
+                                                • 結構上限未變（{reversalState.phaseCap === 60 ? '累積期' : (reversalState.phaseCap === 75 ? '轉換期' : '擴張期')}）
                                             </Text>
                                         </View>
                                     </View>
@@ -559,7 +559,7 @@ export default function DashboardScreen() {
                                                 </Text>
                                             ) : (
                                                 <Text style={{ color: '#A8A29E', fontSize: 12, fontWeight: '400' }}>
-                                                    市場關注事件
+                                                    {insight.topic || '市場關注事件'}
                                                 </Text>
                                             )}
                                         </View>
