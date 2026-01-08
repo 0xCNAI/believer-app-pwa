@@ -55,14 +55,14 @@ export default function RootLayout() {
 
     if (!isReady) {
         return (
-            <View style={{ flex: 1, backgroundColor: 'black', alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ flex: 1, backgroundColor: '#1F2937', alignItems: 'center', justifyContent: 'center' }}>
                 <ActivityIndicator color="white" />
             </View>
         );
     }
 
     return (
-        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'black' } }}>
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#1F2937' } }}>
             <Stack.Screen name="index" />
             <Stack.Screen name="login" options={{ animation: 'fade' }} />
             <Stack.Screen name="onboarding" options={{ animation: 'fade' }} />
