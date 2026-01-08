@@ -288,10 +288,16 @@ export default function DashboardScreen() {
                                         </View>
                                     </View>
 
-                                    {/* One Liner - Centered (No Change Hint) */}
+                                    {/* One Liner - Centered with Change Hint */}
                                     <View style={{ marginBottom: 12 }}>
                                         <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700', lineHeight: 24, textAlign: 'center' }}>
                                             {copy.oneLiner}
+                                        </Text>
+                                        {/* Change Hint (New) */}
+                                        <Text style={{ color: '#a1a1aa', fontSize: 13, textAlign: 'center', marginTop: 4 }}>
+                                            {reversalState.phaseCap < 100 ?
+                                                `結構未確認 · 內部條件改善中 ↑` :
+                                                `結構已確認 · 趨勢持續向上 ↑`}
                                         </Text>
                                     </View>
 
@@ -303,10 +309,29 @@ export default function DashboardScreen() {
                                                 return <View key={i} style={[styles.progressBlock, filled && { backgroundColor: activeColor, opacity: 0.9 }]} />;
                                             })}
                                         </View>
-                                        {/* Simplified Cap Progress Label */}
-                                        <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 8 }}>
-                                            <Text style={{ color: '#A8A29E', fontSize: 13 }}>
-                                                結構進度: {Math.min(100, Math.round((reversalState.finalScore / reversalState.phaseCap) * 100))}% ({reversalState.phaseCap === 60 ? 'Accumulation' : (reversalState.phaseCap === 75 ? 'Transition' : 'Expansion')})
+                                        {/* New Cap Progress Label */}
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
+                                            <Text style={{ color: '#A8A29E', fontSize: 12 }}>
+                                                結構進度: {Math.min(100, Math.round((reversalState.finalScore / reversalState.phaseCap) * 100))}% of {reversalState.phaseCap === 60 ? 'Accumulation' : (reversalState.phaseCap === 75 ? 'Transition' : 'Expansion')}
+                                            </Text>
+                                            <Text style={{ color: '#22c55e', fontSize: 12, fontWeight: '600' }}>
+                                                ↑ (7d)
+                                            </Text>
+                                        </View>
+                                    </View>
+
+                                    {/* Internal Change Summary (New Block) */}
+                                    <View style={{ backgroundColor: 'rgba(39, 39, 42, 0.4)', borderRadius: 8, padding: 12, marginBottom: 20 }}>
+                                        <Text style={{ color: '#a1a1aa', fontSize: 12, marginBottom: 8, fontWeight: '600' }}>內部變化（7 日）</Text>
+                                        <View style={{ gap: 4 }}>
+                                            <Text style={{ color: '#e4e4e7', fontSize: 13 }}>
+                                                • Cycle 強度 <Text style={{ color: '#22c55e' }}>+{reversalState.cycleScoreRaw}</Text>（鏈上估值改善）
+                                            </Text>
+                                            <Text style={{ color: '#e4e4e7', fontSize: 13 }}>
+                                                • Trend Gate: {Math.round(reversalState.trendScoreRaw / 25)} / 4（{reversalState.trendScoreRaw >= 75 ? '動能強勁' : '尚未新增 Gate'}）
+                                            </Text>
+                                            <Text style={{ color: '#e4e4e7', fontSize: 13 }}>
+                                                • 結構 Cap 未變（{reversalState.phaseCap === 60 ? 'Accumulation' : (reversalState.phaseCap === 75 ? 'Transition' : 'Expansion')}）
                                             </Text>
                                         </View>
                                     </View>
@@ -335,7 +360,6 @@ export default function DashboardScreen() {
                                             </TouchableOpacity>
                                         </View>
 
-
                                         {(() => {
                                             const { conditions } = useTechStore.getState();
                                             // Sort: Passed Gates -> Passed Boosters -> Failed Gates
@@ -359,12 +383,15 @@ export default function DashboardScreen() {
                                             return top3.map((c) => {
                                                 const isExpanded = expandedTechItem === c.id;
 
-                                                // Simplified Status Logic (No visual noise)
+                                                // Enhance Status Text based on condition type (Mock logic for now as requested by UI prototype)
                                                 let statusSuffix = '';
-                                                let statusHighlight = false;
+                                                let statusColor = c.passed ? '#10b981' : '#A8A29E';
 
-                                                if (!c.passed) {
-                                                    statusSuffix = '（接近中）'; // Placeholder for "Approaching"
+                                                if (c.passed) {
+                                                    statusSuffix = '（新確認）↑';
+                                                    if (c.id === 'volatility_compression') statusSuffix = '（持續下降）↓';
+                                                } else {
+                                                    statusSuffix = '（接近中）';
                                                 }
 
                                                 return (
@@ -383,10 +410,8 @@ export default function DashboardScreen() {
                                                                     <Text style={{ color: '#E7E5E4', fontWeight: '500', marginRight: 4 }}>
                                                                         {c.nameCN}
                                                                     </Text>
-
-                                                                    {/* Only show suffix if it exists (e.g. approaching) */}
-                                                                    <Text style={{ color: statusHighlight ? '#F5F5DC' : '#A8A29E' }}>
-                                                                        {isExpanded ? '' : statusSuffix}
+                                                                    <Text style={{ color: '#A8A29E' }}>
+                                                                        {isExpanded ? '' : `：${c.passed ? (c.detail || '條件成立') : '條件未滿足'}${statusSuffix} `}
                                                                     </Text>
                                                                 </View>
 
@@ -413,387 +438,391 @@ export default function DashboardScreen() {
                                         {copy.next.map((line, i) => <Text key={i} style={styles.contextItem}>👉 {line}</Text>)}
                                     </View>
                                 </View>
+                            );
+                        } catch (e) { return null; }
+                    })()}
+                </View>
 
-            {/* Reversal Score Info Modal */ }
-                            <Modal
-                                visible={showScoreInfo}
-                                transparent={true}
-                                animationType="fade"
-                                onRequestClose={() => setShowScoreInfo(false)}
+                {/* Reversal Score Info Modal */}
+                <Modal
+                    visible={showScoreInfo}
+                    transparent={true}
+                    animationType="fade"
+                    onRequestClose={() => setShowScoreInfo(false)}
+                >
+                    <TouchableOpacity
+                        style={styles.modalOverlay}
+                        activeOpacity={1}
+                        onPress={() => setShowScoreInfo(false)}
+                    >
+                        <View style={{
+                            backgroundColor: '#18181b',
+                            borderRadius: 16,
+                            padding: 24,
+                            marginHorizontal: 32,
+                            marginTop: 'auto',
+                            marginBottom: 'auto',
+                            borderWidth: 1,
+                            borderColor: '#3f3f46',
+                            maxWidth: 340,
+                            alignSelf: 'center'
+                        }}>
+                            <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold', marginBottom: 16 }}>反轉指數 (Reversal Index)</Text>
+                            <Text style={{ color: '#E7E5E4', fontSize: 14, lineHeight: 22, marginBottom: 24 }}>
+                                本指數由三大核心維度組成：
+                                {'\n'}
+                                1. <Text style={{ color: '#fff', fontWeight: 'bold' }}>技術結構 (Gates)</Text>: 4 大核心過濾條件
+                                {'\n'}
+                                2. <Text style={{ color: '#fff', fontWeight: 'bold' }}>市場動能 (Boosters)</Text>: 4 大輔助因子
+                                {'\n'}
+                                3. <Text style={{ color: '#fff', fontWeight: 'bold' }}>敘事權重 (Narrative)</Text>: AI 分析的市場情緒指標
+                                {'\n\n'}
+                                綜合評估市場是否具備真正的反轉條件。
+                                {'\n\n'}
+                                • <Text style={{ color: '#F5F5DC', fontWeight: 'bold' }}>0-20</Text>: 下跌趨勢 (Declining)
+                                {'\n'}
+                                • <Text style={{ color: '#F5F5DC', fontWeight: 'bold' }}>20-50</Text>: 觀察區 (Watch)
+                                {'\n'}
+                                • <Text style={{ color: '#F5F5DC', fontWeight: 'bold' }}>50-80</Text>: 早期訊號 (Early Signal)
+                                {'\n'}
+                                • <Text style={{ color: '#F5F5DC', fontWeight: 'bold' }}>80-100</Text>: 確認反轉 (Confirmed)
+                            </Text>
+                            <TouchableOpacity
+                                style={{ backgroundColor: '#27272a', paddingVertical: 12, borderRadius: 8, alignItems: 'center' }}
+                                onPress={() => setShowScoreInfo(false)}
                             >
-                                <TouchableOpacity
-                                    style={styles.modalOverlay}
-                                    activeOpacity={1}
-                                    onPress={() => setShowScoreInfo(false)}
-                                >
-                                    <View style={{
-                                        backgroundColor: '#18181b',
-                                        borderRadius: 16,
-                                        padding: 24,
-                                        marginHorizontal: 32,
-                                        marginTop: 'auto',
-                                        marginBottom: 'auto',
-                                        borderWidth: 1,
-                                        borderColor: '#3f3f46',
-                                        maxWidth: 340,
-                                        alignSelf: 'center'
-                                    }}>
-                                        <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold', marginBottom: 16 }}>反轉指數 (Reversal Index)</Text>
-                                        <Text style={{ color: '#E7E5E4', fontSize: 14, lineHeight: 22, marginBottom: 24 }}>
-                                            本指數由三大核心維度組成：
-                                            {'\n'}
-                                            1. <Text style={{ color: '#fff', fontWeight: 'bold' }}>技術結構 (Gates)</Text>: 4 大核心過濾條件
-                                            {'\n'}
-                                            2. <Text style={{ color: '#fff', fontWeight: 'bold' }}>市場動能 (Boosters)</Text>: 4 大輔助因子
-                                            {'\n'}
-                                            3. <Text style={{ color: '#fff', fontWeight: 'bold' }}>敘事權重 (Narrative)</Text>: AI 分析的市場情緒指標
-                                            {'\n\n'}
-                                            綜合評估市場是否具備真正的反轉條件。
-                                            {'\n\n'}
-                                            • <Text style={{ color: '#F5F5DC', fontWeight: 'bold' }}>0-20</Text>: 下跌趨勢 (Declining)
-                                            {'\n'}
-                                            • <Text style={{ color: '#F5F5DC', fontWeight: 'bold' }}>20-50</Text>: 觀察區 (Watch)
-                                            {'\n'}
-                                            • <Text style={{ color: '#F5F5DC', fontWeight: 'bold' }}>50-80</Text>: 早期訊號 (Early Signal)
-                                            {'\n'}
-                                            • <Text style={{ color: '#F5F5DC', fontWeight: 'bold' }}>80-100</Text>: 確認反轉 (Confirmed)
-                                        </Text>
-                                        <TouchableOpacity
-                                            style={{ backgroundColor: '#27272a', paddingVertical: 12, borderRadius: 8, alignItems: 'center' }}
-                                            onPress={() => setShowScoreInfo(false)}
-                                        >
-                                            <Text style={{ color: 'white', fontWeight: '600' }}>了解</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </TouchableOpacity>
-                            </Modal>
+                                <Text style={{ color: 'white', fontWeight: '600' }}>了解</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </TouchableOpacity>
+                </Modal>
 
-                            {/* 2.5. CARD: Contribution & Leaderboard (Restored) */ }
+                {/* 2.5. CARD: Contribution & Leaderboard (Restored) */}
 
 
-                            {/* 3. CARD 2: Market Dynamics (AI) */ }
-                            <View style={[styles.card, { paddingVertical: 20 }]}>
-                                <View style={[styles.cardHeader, { marginBottom: 16 }]}>
-                                    <Text style={styles.cardHeaderTitle}>市場動態</Text>
-                                    {/* Timestamp instead of button */}
-                                    {marketInsightsLastUpdated && (
-                                        <Text style={{ color: '#A8A29E', fontSize: 11 }}>
-                                            更新於: {new Date(marketInsightsLastUpdated).toLocaleString('zh-TW', {
-                                                month: 'numeric', day: 'numeric',
-                                                hour: '2-digit', minute: '2-digit', hour12: false
-                                            })}
-                                        </Text>
-                                    )}
-                                </View>
+                {/* 3. CARD 2: Market Dynamics (AI) */}
+                <View style={[styles.card, { paddingVertical: 20 }]}>
+                    <View style={[styles.cardHeader, { marginBottom: 16 }]}>
+                        <Text style={styles.cardHeaderTitle}>市場動態</Text>
+                        {/* Timestamp instead of button */}
+                        {marketInsightsLastUpdated && (
+                            <Text style={{ color: '#A8A29E', fontSize: 11 }}>
+                                更新於: {new Date(marketInsightsLastUpdated).toLocaleString('zh-TW', {
+                                    month: 'numeric', day: 'numeric',
+                                    hour: '2-digit', minute: '2-digit', hour12: false
+                                })}
+                            </Text>
+                        )}
+                    </View>
 
-                                {/* Loading State */}
-                                {marketInsightsLoading && (
-                                    <View style={{ padding: 12, backgroundColor: 'rgba(251, 191, 36, 0.05)', borderRadius: 8, marginBottom: 16 }}>
-                                        <Text style={{ color: '#F5F5DC', fontSize: 13 }}>正在載入市場動態...</Text>
-                                    </View>
-                                )}
+                    {/* Loading State */}
+                    {marketInsightsLoading && (
+                        <View style={{ padding: 12, backgroundColor: 'rgba(251, 191, 36, 0.05)', borderRadius: 8, marginBottom: 16 }}>
+                            <Text style={{ color: '#F5F5DC', fontSize: 13 }}>正在載入市場動態...</Text>
+                        </View>
+                    )}
 
-                                {/* Insights Display */}
-                                {!marketInsightsLoading && allMarketInsights.length > 0 && (
-                                    <View>
-                                        {allMarketInsights.slice(0, 4).map((insight: any, index) => {
-                                            // Lookup specific signal by ID if provided by AI
-                                            const matchedBelief = insight.signalId
-                                                ? beliefs.find(b => b.id === insight.signalId)
-                                                : null;
+                    {/* Insights Display */}
+                    {!marketInsightsLoading && allMarketInsights.length > 0 && (
+                        <View>
+                            {allMarketInsights.slice(0, 4).map((insight: any, index) => {
+                                // Lookup specific signal by ID if provided by AI
+                                const matchedBelief = insight.signalId
+                                    ? beliefs.find(b => b.id === insight.signalId)
+                                    : null;
 
-                                            // Format Probability Title if matched
-                                            let displayTitle = null;
-                                            if (matchedBelief) {
-                                                const prob = Math.round(matchedBelief.currentProbability * 100);
-                                                displayTitle = `${matchedBelief.signal?.shortTitle || '相關訊號'}機率 (${prob}%)`;
+                                // Format Probability Title if matched
+                                let displayTitle = null;
+                                if (matchedBelief) {
+                                    const prob = Math.round(matchedBelief.currentProbability * 100);
+                                    displayTitle = `${matchedBelief.signal?.shortTitle || '相關訊號'}機率 (${prob}%)`;
+                                }
+
+                                return (
+                                    <TouchableOpacity
+                                        key={index}
+                                        style={{ marginBottom: 20 }}
+                                        onPress={() => {
+                                            if (insight.url && typeof window !== 'undefined') {
+                                                window.open(insight.url, '_blank');
                                             }
+                                        }}
+                                        activeOpacity={0.7}
+                                    >
+                                        {/* Line 1: Signal Title (The "What") */}
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                                            <Text style={{ color: '#F5F5DC', fontSize: 13, marginRight: 8 }}>•</Text>
 
-                                            return (
-                                                <TouchableOpacity
-                                                    key={index}
-                                                    style={{ marginBottom: 20 }}
-                                                    onPress={() => {
-                                                        if (insight.url && typeof window !== 'undefined') {
-                                                            window.open(insight.url, '_blank');
-                                                        }
-                                                    }}
-                                                    activeOpacity={0.7}
-                                                >
-                                                    {/* Line 1: Signal Title (The "What") */}
-                                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                                                        <Text style={{ color: '#F5F5DC', fontSize: 13, marginRight: 8 }}>•</Text>
+                                            {displayTitle ? (
+                                                <Text style={{ color: '#e4e4e7', fontSize: 14, fontWeight: '700' }}>
+                                                    {displayTitle}
+                                                </Text>
+                                            ) : (
+                                                <Text style={{ color: '#A8A29E', fontSize: 12, fontWeight: '400' }}>
+                                                    市場關注事件
+                                                </Text>
+                                            )}
+                                        </View>
 
-                                                        {displayTitle ? (
-                                                            <Text style={{ color: '#e4e4e7', fontSize: 14, fontWeight: '700' }}>
-                                                                {displayTitle}
-                                                            </Text>
-                                                        ) : (
-                                                            <Text style={{ color: '#A8A29E', fontSize: 12, fontWeight: '400' }}>
-                                                                市場關注事件
-                                                            </Text>
-                                                        )}
-                                                    </View>
+                                        {/* Line 2: AI Analysis (The "Why") */}
+                                        <View style={{ paddingLeft: 16, marginBottom: 6 }}>
+                                            <Text style={{ color: '#E7E5E4', fontSize: 14, lineHeight: 22, fontWeight: '400' }}>
+                                                {insight.analysis}
+                                            </Text>
+                                        </View>
 
-                                                    {/* Line 2: AI Analysis (The "Why") */}
-                                                    <View style={{ paddingLeft: 16, marginBottom: 6 }}>
-                                                        <Text style={{ color: '#E7E5E4', fontSize: 14, lineHeight: 22, fontWeight: '400' }}>
-                                                            {insight.analysis}
-                                                        </Text>
-                                                    </View>
+                                        {/* Line 3: Source Headline + Link */}
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 14 }}>
+                                            <Text
+                                                numberOfLines={1}
+                                                ellipsizeMode="tail"
+                                                style={{ color: '#A8A29E', fontSize: 12, flex: 1, marginRight: 8, textDecorationLine: 'underline' }}
+                                            >
+                                                {insight.headline}
+                                            </Text>
+                                            <Ionicons name="open-outline" size={12} color="#A8A29E" />
+                                        </View>
+                                    </TouchableOpacity>
+                                )
+                            })}
+                        </View>
+                    )}
 
-                                                    {/* Line 3: Source Headline + Link */}
-                                                    <View style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 14 }}>
-                                                        <Text
-                                                            numberOfLines={1}
-                                                            ellipsizeMode="tail"
-                                                            style={{ color: '#A8A29E', fontSize: 12, flex: 1, marginRight: 8, textDecorationLine: 'underline' }}
-                                                        >
-                                                            {insight.headline}
-                                                        </Text>
-                                                        <Ionicons name="open-outline" size={12} color="#A8A29E" />
-                                                    </View>
-                                                </TouchableOpacity>
-                                            )
-                                        })}
-                                    </View>
-                                )}
+                    {/* Empty State */}
+                    {!marketInsightsLoading && allMarketInsights.length === 0 && (
+                        <Text style={{ color: '#A8A29E', fontSize: 13, textAlign: 'center', paddingVertical: 20 }}>
+                            市場動態分析將每 3 小時自動更新
+                        </Text>
+                    )}
+                </View>
 
-                                {/* Empty State */}
-                                {!marketInsightsLoading && allMarketInsights.length === 0 && (
-                                    <Text style={{ color: '#A8A29E', fontSize: 13, textAlign: 'center', paddingVertical: 20 }}>
-                                        市場動態分析將每 3 小時自動更新
-                                    </Text>
-                                )}
-                            </View>
+                {/* 4. SECTION: Market Expectations */}
+                <View>
+                    <Text style={styles.sectionTitle}>市場預期</Text>
 
-                            {/* 4. SECTION: Market Expectations */ }
-                            <View>
-                                <Text style={styles.sectionTitle}>市場預期</Text>
-
-                                {/* Narrative Progress Bar */}
+                    {/* Narrative Progress Bar */}
 
 
-                                {/* Signal Cards */}
-                                {/* Signal Cards (V5.1: Top 3 by Delta) */}
-                                {/* Signal Cards (Restored: Show All) */}
-                                {beliefs.filter(b => BELIEVER_SIGNALS.some(s => s.id === b.id)).map((belief) => {
-                                    const signal = belief.signal;
-                                    if (!signal) return null;
+                    {/* Signal Cards */}
+                    {/* Signal Cards (V5.1: Top 3 by Delta) */}
+                    {/* Signal Cards (Restored: Show All) */}
+                    {beliefs.filter(b => BELIEVER_SIGNALS.some(s => s.id === b.id)).map((belief) => {
+                        const signal = belief.signal;
+                        if (!signal) return null;
 
-                                    const probRaw = belief.currentProbability;
-                                    const prob = Math.round(probRaw * 100);
-                                    const isExpanded = expandedTopic === belief.id;
+                        const probRaw = belief.currentProbability;
+                        const prob = Math.round(probRaw * 100);
+                        const isExpanded = expandedTopic === belief.id;
 
-                                    const contribution = calculateNarrativeScore(signal, 5);
-                                    const isFed = signal.id === 'fed_decision';
-                                    let fedStats = null;
+                        const contribution = calculateNarrativeScore(signal, 5);
+                        const isFed = signal.id === 'fed_decision';
+                        let fedStats = null;
 
-                                    let marketTitle = signal.title;
-                                    // Safe check first.
-                                    if (signal.markets?.[0]?.title) {
-                                        marketTitle = signal.markets[0].title;
-                                    }
+                        let marketTitle = signal.title;
+                        // Safe check first.
+                        if (signal.markets?.[0]?.title) {
+                            marketTitle = signal.markets[0].title;
+                        }
 
-                                    if (isFed) {
+                        if (isFed) {
+                            try {
+                                let cut = 0, hold = 0, hike = 0;
+                                const markets = signal.markets || [];
+
+                                // Strategy A: Multi-Market Group (New Polymarket Structure)
+                                // Each market is a binary Yes/No on a specific outcome (e.g. "25bps decrease")
+                                if (markets.length > 1) {
+                                    markets.forEach((m: any) => {
+                                        const title = (m.groupItemTitle || m.title || m.question || '').toLowerCase();
+
+                                        // Parse Price of "Yes" outcome
+                                        let price = 0;
                                         try {
-                                            let cut = 0, hold = 0, hike = 0;
-                                            const markets = signal.markets || [];
+                                            const prices = typeof m.outcomePrices === 'string' ? JSON.parse(m.outcomePrices) : m.outcomePrices;
+                                            price = parseFloat(prices[0] || '0');
+                                        } catch (e) { }
 
-                                            // Strategy A: Multi-Market Group (New Polymarket Structure)
-                                            // Each market is a binary Yes/No on a specific outcome (e.g. "25bps decrease")
-                                            if (markets.length > 1) {
-                                                markets.forEach((m: any) => {
-                                                    const title = (m.groupItemTitle || m.title || m.question || '').toLowerCase();
-
-                                                    // Parse Price of "Yes" outcome
-                                                    let price = 0;
-                                                    try {
-                                                        const prices = typeof m.outcomePrices === 'string' ? JSON.parse(m.outcomePrices) : m.outcomePrices;
-                                                        price = parseFloat(prices[0] || '0');
-                                                    } catch (e) { }
-
-                                                    if (title.includes('cut') || title.includes('decrease') || title.includes('lower')) {
-                                                        cut += price;
-                                                    } else if (title.includes('hold') || title.includes('maintain') || title.includes('unchanged') || title.includes('no change')) {
-                                                        hold += price;
-                                                    } else if (title.includes('hike') || title.includes('increase') || title.includes('raise')) {
-                                                        hike += price;
-                                                    }
-                                                });
-                                            }
-                                            // Strategy B: Single Market (Legacy or Range-based)
-                                            else if (markets.length === 1) {
-                                                const m = markets[0];
-                                                if (m && m.outcomePrices && m.outcomes) {
-                                                    const prices = typeof m.outcomePrices === 'string' ? JSON.parse(m.outcomePrices) : m.outcomePrices;
-                                                    const outcomes = typeof m.outcomes === 'string' ? JSON.parse(m.outcomes) : m.outcomes;
-
-                                                    outcomes.forEach((o: string, idx: number) => {
-                                                        const label = o.toLowerCase();
-                                                        const p = parseFloat(prices[idx]) || 0;
-
-                                                        // Explicit Keywords
-                                                        if (label.includes('cut') || label.includes('decrease') || label.includes('lower')) { cut += p; return; }
-                                                        if (label.includes('hold') || label.includes('maintain') || label.includes('unchanged')) { hold += p; return; }
-                                                        if (label.includes('hike') || label.includes('increase') || label.includes('raise')) { hike += p; return; }
-
-                                                        // Rate Range Logic
-                                                        if (label.includes('3.') || label.includes('4.00') || (label.includes('4.25') && !label.includes('4.50'))) {
-                                                            cut += p;
-                                                        } else if (label.includes('4.25') && label.includes('4.50')) {
-                                                            hold += p;
-                                                        } else if (label.includes('4.75') || label.includes('5.') || (label.includes('4.50') && !label.includes('4.25'))) {
-                                                            hike += p;
-                                                        }
-                                                    });
-                                                }
-                                            }
-
-                                            fedStats = {
-                                                cut: Math.round(Math.min(1, cut) * 100),
-                                                hold: Math.round(Math.min(1, hold) * 100),
-                                                hike: Math.round(Math.min(1, hike) * 100)
-                                            };
-                                        } catch (e) {
-                                            console.warn('Fed rate parsing failed:', e);
+                                        if (title.includes('cut') || title.includes('decrease') || title.includes('lower')) {
+                                            cut += price;
+                                        } else if (title.includes('hold') || title.includes('maintain') || title.includes('unchanged') || title.includes('no change')) {
+                                            hold += price;
+                                        } else if (title.includes('hike') || title.includes('increase') || title.includes('raise')) {
+                                            hike += price;
                                         }
-                                    }
+                                    });
+                                }
+                                // Strategy B: Single Market (Legacy or Range-based)
+                                else if (markets.length === 1) {
+                                    const m = markets[0];
+                                    if (m && m.outcomePrices && m.outcomes) {
+                                        const prices = typeof m.outcomePrices === 'string' ? JSON.parse(m.outcomePrices) : m.outcomePrices;
+                                        const outcomes = typeof m.outcomes === 'string' ? JSON.parse(m.outcomes) : m.outcomes;
 
-                                    // V5.1 Semantic Status Text (Localized)
-                                    let statusText = '負向機率偏高';
-                                    let statusColor = '#ef4444'; // Red default
+                                        outcomes.forEach((o: string, idx: number) => {
+                                            const label = o.toLowerCase();
+                                            const p = parseFloat(prices[idx]) || 0;
 
-                                    if (contribution > 2.5) {
-                                        statusText = '正向機率偏高';
-                                        statusColor = '#10b981'; // Green
+                                            // Explicit Keywords
+                                            if (label.includes('cut') || label.includes('decrease') || label.includes('lower')) { cut += p; return; }
+                                            if (label.includes('hold') || label.includes('maintain') || label.includes('unchanged')) { hold += p; return; }
+                                            if (label.includes('hike') || label.includes('increase') || label.includes('raise')) { hike += p; return; }
+
+                                            // Rate Range Logic
+                                            if (label.includes('3.') || label.includes('4.00') || (label.includes('4.25') && !label.includes('4.50'))) {
+                                                cut += p;
+                                            } else if (label.includes('4.25') && label.includes('4.50')) {
+                                                hold += p;
+                                            } else if (label.includes('4.75') || label.includes('5.') || (label.includes('4.50') && !label.includes('4.25'))) {
+                                                hike += p;
+                                            }
+                                        });
                                     }
+                                }
+
+                                fedStats = {
+                                    cut: Math.round(Math.min(1, cut) * 100),
+                                    hold: Math.round(Math.min(1, hold) * 100),
+                                    hike: Math.round(Math.min(1, hike) * 100)
+                                };
+                            } catch (e) {
+                                console.warn('Fed rate parsing failed:', e);
+                            }
+                        }
+
+                        // V5.1 Semantic Status Text (Localized)
+                        let statusText = '負向機率偏高';
+                        let statusColor = '#ef4444'; // Red default
+
+                        if (contribution > 2.5) {
+                            statusText = '正向機率偏高';
+                            statusColor = '#10b981'; // Green
+                        }
+
+                        return (
+                            <TouchableOpacity
+                                key={belief.id}
+                                style={[styles.topicCard, isExpanded && styles.topicCardExpanded]}
+                                onPress={() => setExpandedTopic(isExpanded ? null : belief.id)}
+                                activeOpacity={0.7}
+                            >
+                                {(() => {
+                                    const renderBar = (label: string, val: number, color: string) => (
+                                        <View style={{ marginBottom: 8 }}>
+                                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                                                <Text style={{ color: '#E7E5E4', fontSize: 13 }}>{label}</Text>
+                                                <Text style={{ color: '#a1a1aa', fontSize: 12 }}>{val}%</Text>
+                                            </View>
+                                            <View style={{ height: 8, backgroundColor: '#27272a', borderRadius: 4, overflow: 'hidden' }}>
+                                                <View style={{ width: `${val}% `, height: '100%', backgroundColor: color }} />
+                                            </View>
+                                        </View>
+                                    );
 
                                     return (
-                                        <TouchableOpacity
-                                            key={belief.id}
-                                            style={[styles.topicCard, isExpanded && styles.topicCardExpanded]}
-                                            onPress={() => setExpandedTopic(isExpanded ? null : belief.id)}
-                                            activeOpacity={0.7}
-                                        >
-                                            {(() => {
-                                                const renderBar = (label: string, val: number, color: string) => (
-                                                    <View style={{ marginBottom: 8 }}>
-                                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                                                            <Text style={{ color: '#E7E5E4', fontSize: 13 }}>{label}</Text>
-                                                            <Text style={{ color: '#a1a1aa', fontSize: 12 }}>{val}%</Text>
-                                                        </View>
-                                                        <View style={{ height: 8, backgroundColor: '#27272a', borderRadius: 4, overflow: 'hidden' }}>
-                                                            <View style={{ width: `${val}% `, height: '100%', backgroundColor: color }} />
-                                                        </View>
-                                                    </View>
-                                                );
-
-                                                return (
-                                                    <>
-                                                        <View style={styles.topicHeader}>
-                                                            <View style={styles.topicLeft}>
-                                                                <View style={[styles.topicDot, { backgroundColor: '#52525b' }]} />
-                                                                <View style={styles.topicInfo}>
-                                                                    <Text style={styles.topicTitle}>{signal.shortTitle || signal.title}</Text>
-                                                                    {!isExpanded && (
-                                                                        <Text style={styles.topicDesc}>
-                                                                            <Text style={{ color: statusColor, fontWeight: '600' }}>{statusText}</Text>
-                                                                            <Text style={{ color: '#52525b' }}> ({isFed && fedStats ? `Cut ${fedStats.cut}% ` : `${prob}% `})</Text>
-                                                                        </Text>
-                                                                    )}
-                                                                </View>
-                                                            </View>
-                                                            <View style={styles.topicRight}>
-                                                                <Text style={[styles.topicProb, { color: '#e4e4e7' }]}>
-                                                                    {isFed && fedStats ? `${fedStats.cut}% ` : `${prob}% `}
-                                                                </Text>
-                                                            </View>
-                                                        </View>
-
-                                                        {isExpanded && (
-                                                            <View style={{ marginTop: 16 }}>
-                                                                {/* Full Topic Name */}
-                                                                <Text style={{ color: '#e4e4e7', fontSize: 13, fontWeight: '600', marginBottom: 16, lineHeight: 20, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#27272a' }}>
-                                                                    {marketTitle}
-                                                                </Text>
-
-                                                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16, backgroundColor: '#27272a', padding: 8, borderRadius: 6 }}>
-                                                                    <Text style={{ color: '#a1a1aa', fontSize: 12 }}>敘事貢獻 (Score)</Text>
-                                                                    <Text style={{ color: '#10b981', fontWeight: 'bold', fontSize: 12 }}>
-                                                                        +{contribution.toFixed(2)} / 5.00 pts
-                                                                    </Text>
-                                                                </View>
-
-                                                                <View style={{ marginBottom: 16 }}>
-                                                                    <Text style={{ color: '#A8A29E', fontSize: 11, marginBottom: 8, textTransform: 'uppercase' }}>結果分佈 (Outcomes)</Text>
-                                                                    {isFed && fedStats ? (
-                                                                        <View>
-                                                                            {renderBar('降息 (正向事件)', fedStats.cut, '#22c55e')}
-                                                                            {renderBar('維持', fedStats.hold, '#f59e0b')}
-                                                                            {renderBar('升息 (負向事件)', fedStats.hike, '#ef4444')}
-                                                                        </View>
-                                                                    ) : (
-                                                                        <View>
-                                                                            {(() => {
-                                                                                // Determine labels based on scoring type
-                                                                                const isBinaryBad = signal.scoring === 'binary_bad';
-                                                                                const yesLabel = isBinaryBad ? '是 (負向事件)' : '是 (正向事件)';
-                                                                                const noLabel = isBinaryBad ? '否 (正向事件)' : '否 (負向事件)';
-
-                                                                                return (
-                                                                                    <>
-                                                                                        {renderBar(yesLabel, prob, isBinaryBad ? '#ef4444' : '#22c55e')}
-                                                                                        {renderBar(noLabel, 100 - prob, isBinaryBad ? '#22c55e' : '#A8A29E')}
-                                                                                    </>
-                                                                                );
-                                                                            })()}
-                                                                        </View>
-                                                                    )}
-                                                                </View>
-
-                                                                <TouchableOpacity
-                                                                    style={styles.viewMarketBtn}
-                                                                    onPress={() => {
-                                                                        const slug = signal.source.slug;
-                                                                        if (typeof window !== 'undefined' && slug) {
-                                                                            window.open(`https://polymarket.com/event/${slug}`, '_blank');
-                                                                        }
-                                                                    }}
-                                                                >
-                                                                    <Text style={styles.viewMarketText}>前往 Polymarket 查看</Text>
-                                                                    <Ionicons name="open-outline" size={14} color="#a1a1aa" />
-                                                                </TouchableOpacity >
-                                                            </View >
+                                        <>
+                                            <View style={styles.topicHeader}>
+                                                <View style={styles.topicLeft}>
+                                                    <View style={[styles.topicDot, { backgroundColor: '#52525b' }]} />
+                                                    <View style={styles.topicInfo}>
+                                                        <Text style={styles.topicTitle}>{signal.shortTitle || signal.title}</Text>
+                                                        {!isExpanded && (
+                                                            <Text style={styles.topicDesc}>
+                                                                <Text style={{ color: statusColor, fontWeight: '600' }}>{statusText}</Text>
+                                                                <Text style={{ color: '#52525b' }}> ({isFed && fedStats ? `Cut ${fedStats.cut}% ` : `${prob}% `})</Text>
+                                                            </Text>
                                                         )}
-                                                    </>
-                                                );
-                                            })()}
-                                        </TouchableOpacity >
+                                                    </View>
+                                                </View>
+                                                <View style={styles.topicRight}>
+                                                    <Text style={[styles.topicProb, { color: '#e4e4e7' }]}>
+                                                        {isFed && fedStats ? `${fedStats.cut}% ` : `${prob}% `}
+                                                    </Text>
+                                                </View>
+                                            </View>
+
+                                            {isExpanded && (
+                                                <View style={{ marginTop: 16 }}>
+                                                    {/* Full Topic Name */}
+                                                    <Text style={{ color: '#e4e4e7', fontSize: 13, fontWeight: '600', marginBottom: 16, lineHeight: 20, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#27272a' }}>
+                                                        {marketTitle}
+                                                    </Text>
+
+                                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16, backgroundColor: '#27272a', padding: 8, borderRadius: 6 }}>
+                                                        <Text style={{ color: '#a1a1aa', fontSize: 12 }}>敘事貢獻 (Score)</Text>
+                                                        <Text style={{ color: '#10b981', fontWeight: 'bold', fontSize: 12 }}>
+                                                            +{contribution.toFixed(2)} / 5.00 pts
+                                                        </Text>
+                                                    </View>
+
+                                                    <View style={{ marginBottom: 16 }}>
+                                                        <Text style={{ color: '#A8A29E', fontSize: 11, marginBottom: 8, textTransform: 'uppercase' }}>結果分佈 (Outcomes)</Text>
+                                                        {isFed && fedStats ? (
+                                                            <View>
+                                                                {renderBar('降息 (正向事件)', fedStats.cut, '#22c55e')}
+                                                                {renderBar('維持', fedStats.hold, '#f59e0b')}
+                                                                {renderBar('升息 (負向事件)', fedStats.hike, '#ef4444')}
+                                                            </View>
+                                                        ) : (
+                                                            <View>
+                                                                {(() => {
+                                                                    // Determine labels based on scoring type
+                                                                    const isBinaryBad = signal.scoring === 'binary_bad';
+                                                                    const yesLabel = isBinaryBad ? '是 (負向事件)' : '是 (正向事件)';
+                                                                    const noLabel = isBinaryBad ? '否 (正向事件)' : '否 (負向事件)';
+
+                                                                    return (
+                                                                        <>
+                                                                            {renderBar(yesLabel, prob, isBinaryBad ? '#ef4444' : '#22c55e')}
+                                                                            {renderBar(noLabel, 100 - prob, isBinaryBad ? '#22c55e' : '#A8A29E')}
+                                                                        </>
+                                                                    );
+                                                                })()}
+                                                            </View>
+                                                        )}
+                                                    </View>
+
+                                                    <TouchableOpacity
+                                                        style={styles.viewMarketBtn}
+                                                        onPress={() => {
+                                                            const slug = signal.source.slug;
+                                                            if (typeof window !== 'undefined' && slug) {
+                                                                window.open(`https://polymarket.com/event/${slug}`, '_blank');
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Text style={styles.viewMarketText}>前往 Polymarket 查看</Text>
+                                                        <Ionicons name="open-outline" size={14} color="#a1a1aa" />
+                                                    </TouchableOpacity >
+                                                </View >
+                                            )}
+                                        </>
                                     );
-                                })}
-                            </View >
+                                })()}
+                            </TouchableOpacity >
+                        );
+                    })}
+                </View >
 
-                            {/* Footer */ }
-                            < View style={styles.footer} >
-                                <Text style={styles.exportDescription}>在 BetalphaX 紀錄交易想法，建立你的專屬交易系統</Text>
-                                <TouchableOpacity onPress={() => Linking.openURL('https://betalphax.vercel.app/')} style={styles.exportBtn}>
-                                    <Image source={require('@/assets/images/betalphax_logo.jpg')} style={styles.exportLogo} />
-                                    <Text style={styles.exportButtonText}>BetalphaX</Text>
-                                </TouchableOpacity>
+                {/* Footer */}
+                < View style={styles.footer} >
+                    <Text style={styles.exportDescription}>在 BetalphaX 紀錄交易想法，建立你的專屬交易系統</Text>
+                    <TouchableOpacity onPress={() => Linking.openURL('https://betalphax.vercel.app/')} style={styles.exportBtn}>
+                        <Image source={require('@/assets/images/betalphax_logo.jpg')} style={styles.exportLogo} />
+                        <Text style={styles.exportButtonText}>BetalphaX</Text>
+                    </TouchableOpacity>
 
-                                <View style={styles.socialRow}>
-                                    <TouchableOpacity onPress={() => Linking.openURL('https://www.instagram.com/betalpha_news/')} style={styles.socialBtn}>
-                                        <Ionicons name="logo-instagram" size={20} color="#A8A29E" />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity onPress={() => Linking.openURL('https://t.me/+BKg09wTOVGZhYzBl')} style={styles.socialBtn}>
-                                        <Ionicons name="paper-plane-outline" size={20} color="#A8A29E" />
-                                    </TouchableOpacity>
-                                </View>
+                    <View style={styles.socialRow}>
+                        <TouchableOpacity onPress={() => Linking.openURL('https://www.instagram.com/betalpha_news/')} style={styles.socialBtn}>
+                            <Ionicons name="logo-instagram" size={20} color="#A8A29E" />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => Linking.openURL('https://t.me/+BKg09wTOVGZhYzBl')} style={styles.socialBtn}>
+                            <Ionicons name="paper-plane-outline" size={20} color="#A8A29E" />
+                        </TouchableOpacity>
+                    </View>
 
-                                <Text style={styles.footerVersion}>Believer System V5.4 (Traditional Chinese)</Text>
-                            </View >
-        </ScrollView >
+                    <Text style={styles.footerVersion}>Believer System V5.4 (Traditional Chinese)</Text>
+                </View >
+            </ScrollView >
 
             {/* Notification Panel */}
             {
@@ -1626,7 +1655,7 @@ const styles = StyleSheet.create({
     },
     rankName: {
         flex: 1,
-        color: '#E7E5E4',
+        color: '#e4e4e7',
         fontSize: 15,
         fontWeight: '500',
     },
