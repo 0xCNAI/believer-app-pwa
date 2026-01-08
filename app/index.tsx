@@ -30,6 +30,7 @@ export default function DashboardScreen() {
     const [expandedTopic, setExpandedTopic] = useState<string | null>(null);
     const [expandedTechItem, setExpandedTechItem] = useState<string | null>(null);
     const [showScoreInfo, setShowScoreInfo] = useState(false);
+    const [expandedFaq, setExpandedFaq] = useState<string | null>(null);
 
     // Market Insights (Firebase)
     const { loading: marketInsightsLoading, lastUpdated: marketInsightsLastUpdated, getAllInsights } = useMarketInsights();
@@ -281,7 +282,7 @@ export default function DashboardScreen() {
                                         </Text>
                                         <View style={{ flexDirection: 'row', gap: 6 }}>
                                             {copy.tags?.map((tag, i) => (
-                                                <View key={i} style={{ backgroundColor: 'rgba(39, 39, 42, 0.5)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#27272A' }}>
+                                                <View key={i} style={{ backgroundColor: 'rgba(39, 39, 42, 0.5)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#374151' }}>
                                                     <Text style={{ color: '#A1A1AA', fontSize: 11 }}>{tag}</Text>
                                                 </View>
                                             ))}
@@ -447,54 +448,179 @@ export default function DashboardScreen() {
                 <Modal
                     visible={showScoreInfo}
                     transparent={true}
-                    animationType="fade"
-                    onRequestClose={() => setShowScoreInfo(false)}
+                    animationType="slide"
+                    onRequestClose={() => { setShowScoreInfo(false); setExpandedFaq(null); }}
                 >
-                    <TouchableOpacity
-                        style={styles.modalOverlay}
-                        activeOpacity={1}
-                        onPress={() => setShowScoreInfo(false)}
-                    >
-                        <View style={{
-                            backgroundColor: '#18181b',
-                            borderRadius: 16,
-                            padding: 24,
-                            marginHorizontal: 32,
-                            marginTop: 'auto',
-                            marginBottom: 'auto',
-                            borderWidth: 1,
-                            borderColor: '#3f3f46',
-                            maxWidth: 340,
-                            alignSelf: 'center'
-                        }}>
-                            <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold', marginBottom: 16 }}>反轉指數 (Reversal Index)</Text>
-                            <Text style={{ color: '#E7E5E4', fontSize: 14, lineHeight: 22, marginBottom: 24 }}>
-                                本指數由三大核心維度組成：
-                                {'\n'}
-                                1. <Text style={{ color: '#fff', fontWeight: 'bold' }}>技術結構 (Gates)</Text>: 4 大核心過濾條件
-                                {'\n'}
-                                2. <Text style={{ color: '#fff', fontWeight: 'bold' }}>市場動能 (Boosters)</Text>: 4 大輔助因子
-                                {'\n'}
-                                3. <Text style={{ color: '#fff', fontWeight: 'bold' }}>敘事權重 (Narrative)</Text>: AI 分析的市場情緒指標
-                                {'\n\n'}
-                                綜合評估市場是否具備真正的反轉條件。
-                                {'\n\n'}
-                                • <Text style={{ color: '#F5F5DC', fontWeight: 'bold' }}>0-20</Text>: 下跌趨勢 (Declining)
-                                {'\n'}
-                                • <Text style={{ color: '#F5F5DC', fontWeight: 'bold' }}>20-50</Text>: 觀察區 (Watch)
-                                {'\n'}
-                                • <Text style={{ color: '#F5F5DC', fontWeight: 'bold' }}>50-80</Text>: 早期訊號 (Early Signal)
-                                {'\n'}
-                                • <Text style={{ color: '#F5F5DC', fontWeight: 'bold' }}>80-100</Text>: 確認反轉 (Confirmed)
-                            </Text>
-                            <TouchableOpacity
-                                style={{ backgroundColor: '#27272a', paddingVertical: 12, borderRadius: 8, alignItems: 'center' }}
-                                onPress={() => setShowScoreInfo(false)}
-                            >
-                                <Text style={{ color: 'white', fontWeight: '600' }}>了解</Text>
+                    <View style={{ flex: 1, backgroundColor: '#1F2937' }}>
+                        {/* Header */}
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#374151' }}>
+                            <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold' }}>反轉指數說明</Text>
+                            <TouchableOpacity onPress={() => { setShowScoreInfo(false); setExpandedFaq(null); }}>
+                                <Ionicons name="close" size={24} color="#A8A29E" />
                             </TouchableOpacity>
                         </View>
-                    </TouchableOpacity>
+
+                        {/* Scrollable FAQ Content */}
+                        <ScrollView style={{ flex: 1, padding: 16 }}>
+                            {/* FAQ Item 1: Overview */}
+                            <TouchableOpacity
+                                style={{ backgroundColor: '#374151', borderRadius: 8, marginBottom: 8, overflow: 'hidden' }}
+                                onPress={() => setExpandedFaq(expandedFaq === 'overview' ? null : 'overview')}
+                            >
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16 }}>
+                                    <Text style={{ color: '#F5F5DC', fontSize: 15, fontWeight: '600' }}>📊 計算公式總覽</Text>
+                                    <Ionicons name={expandedFaq === 'overview' ? 'chevron-up' : 'chevron-down'} size={20} color="#A8A29E" />
+                                </View>
+                                {expandedFaq === 'overview' && (
+                                    <View style={{ padding: 16, paddingTop: 0, borderTopWidth: 1, borderTopColor: '#374151' }}>
+                                        <Text style={{ color: '#E7E5E4', fontSize: 13, lineHeight: 22 }}>
+                                            反轉指數 = min(階段上限, 技術結構分數 + 市場動能分數 + 敘事權重分數){'\n\n'}
+                                            • 技術結構 (Gates): 0-25 分{'\n'}
+                                            • 市場動能 (Boosters): 0-25 分{'\n'}
+                                            • 敘事權重 (Narrative): 0-50 分{'\n'}
+                                            • 階段上限 (Phase Cap): 60/75/100
+                                        </Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+
+                            {/* FAQ Item 2: Gates */}
+                            <TouchableOpacity
+                                style={{ backgroundColor: '#374151', borderRadius: 8, marginBottom: 8, overflow: 'hidden' }}
+                                onPress={() => setExpandedFaq(expandedFaq === 'gates' ? null : 'gates')}
+                            >
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16 }}>
+                                    <Text style={{ color: '#22c55e', fontSize: 15, fontWeight: '600' }}>🚪 技術結構 (Gates)</Text>
+                                    <Ionicons name={expandedFaq === 'gates' ? 'chevron-up' : 'chevron-down'} size={20} color="#A8A29E" />
+                                </View>
+                                {expandedFaq === 'gates' && (
+                                    <View style={{ padding: 16, paddingTop: 0, borderTopWidth: 1, borderTopColor: '#374151' }}>
+                                        <Text style={{ color: '#E7E5E4', fontSize: 13, lineHeight: 22 }}>
+                                            4 大核心過濾條件，每個通過得 6.25 分（最高 25 分）：{'\n\n'}
+                                            1. <Text style={{ color: '#fff', fontWeight: '600' }}>結構性低點抬升</Text>{'\n'}
+                                            週線形成 Higher Low（價格低點逐漸抬高）{'\n\n'}
+                                            2. <Text style={{ color: '#fff', fontWeight: '600' }}>波動率壓縮</Text>{'\n'}
+                                            歷史百分位低於 10%（市場處於低波動狀態）{'\n\n'}
+                                            3. <Text style={{ color: '#fff', fontWeight: '600' }}>價格 vs 長期均線</Text>{'\n'}
+                                            價格站上 200 日均線{'\n\n'}
+                                            4. <Text style={{ color: '#fff', fontWeight: '600' }}>交易量確認</Text>{'\n'}
+                                            成交量高於 20 日均量
+                                        </Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+
+                            {/* FAQ Item 3: Boosters */}
+                            <TouchableOpacity
+                                style={{ backgroundColor: '#374151', borderRadius: 8, marginBottom: 8, overflow: 'hidden' }}
+                                onPress={() => setExpandedFaq(expandedFaq === 'boosters' ? null : 'boosters')}
+                            >
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16 }}>
+                                    <Text style={{ color: '#3b82f6', fontSize: 15, fontWeight: '600' }}>🚀 市場動能 (Boosters)</Text>
+                                    <Ionicons name={expandedFaq === 'boosters' ? 'chevron-up' : 'chevron-down'} size={20} color="#A8A29E" />
+                                </View>
+                                {expandedFaq === 'boosters' && (
+                                    <View style={{ padding: 16, paddingTop: 0, borderTopWidth: 1, borderTopColor: '#374151' }}>
+                                        <Text style={{ color: '#E7E5E4', fontSize: 13, lineHeight: 22 }}>
+                                            4 大輔助因子，每個通過得 6.25 分（最高 25 分）：{'\n\n'}
+                                            1. <Text style={{ color: '#fff', fontWeight: '600' }}>MVRV Z-Score</Text>{'\n'}
+                                            低於 1 表示市場處於低估區間{'\n\n'}
+                                            2. <Text style={{ color: '#fff', fontWeight: '600' }}>恐懼貪婪指數</Text>{'\n'}
+                                            低於 25 表示極度恐懼（逆向指標）{'\n\n'}
+                                            3. <Text style={{ color: '#fff', fontWeight: '600' }}>資金費率</Text>{'\n'}
+                                            負值表示空頭過度擁擠{'\n\n'}
+                                            4. <Text style={{ color: '#fff', fontWeight: '600' }}>穩定幣流入</Text>{'\n'}
+                                            大額穩定幣流入表示買盤準備
+                                        </Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+
+                            {/* FAQ Item 4: Narrative */}
+                            <TouchableOpacity
+                                style={{ backgroundColor: '#374151', borderRadius: 8, marginBottom: 8, overflow: 'hidden' }}
+                                onPress={() => setExpandedFaq(expandedFaq === 'narrative' ? null : 'narrative')}
+                            >
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16 }}>
+                                    <Text style={{ color: '#f97316', fontSize: 15, fontWeight: '600' }}>📰 敘事權重 (Narrative)</Text>
+                                    <Ionicons name={expandedFaq === 'narrative' ? 'chevron-up' : 'chevron-down'} size={20} color="#A8A29E" />
+                                </View>
+                                {expandedFaq === 'narrative' && (
+                                    <View style={{ padding: 16, paddingTop: 0, borderTopWidth: 1, borderTopColor: '#374151' }}>
+                                        <Text style={{ color: '#E7E5E4', fontSize: 13, lineHeight: 22 }}>
+                                            AI 分析的市場情緒與宏觀事件影響（最高 50 分）：{'\n\n'}
+                                            <Text style={{ color: '#fff', fontWeight: '600' }}>計算方式</Text>：{'\n'}
+                                            根據追蹤的市場事件機率加權計算{'\n\n'}
+                                            <Text style={{ color: '#fff', fontWeight: '600' }}>包含因素</Text>：{'\n'}
+                                            • 比特幣儲備政策機率{'\n'}
+                                            • ETF 資金流入趨勢{'\n'}
+                                            • 監管政策發展{'\n'}
+                                            • 宏觀經濟事件
+                                        </Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+
+                            {/* FAQ Item 5: Phase Cap */}
+                            <TouchableOpacity
+                                style={{ backgroundColor: '#374151', borderRadius: 8, marginBottom: 8, overflow: 'hidden' }}
+                                onPress={() => setExpandedFaq(expandedFaq === 'phase' ? null : 'phase')}
+                            >
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16 }}>
+                                    <Text style={{ color: '#eab308', fontSize: 15, fontWeight: '600' }}>📈 階段上限 (Phase Cap)</Text>
+                                    <Ionicons name={expandedFaq === 'phase' ? 'chevron-up' : 'chevron-down'} size={20} color="#A8A29E" />
+                                </View>
+                                {expandedFaq === 'phase' && (
+                                    <View style={{ padding: 16, paddingTop: 0, borderTopWidth: 1, borderTopColor: '#374151' }}>
+                                        <Text style={{ color: '#E7E5E4', fontSize: 13, lineHeight: 22 }}>
+                                            根據 Gates 通過數量決定指數上限：{'\n\n'}
+                                            • <Text style={{ color: '#ef4444', fontWeight: '600' }}>累積期 (0-1 Gates)</Text>：上限 60{'\n'}
+                                            市場尚未形成明確結構{'\n\n'}
+                                            • <Text style={{ color: '#3b82f6', fontWeight: '600' }}>轉換期 (2-3 Gates)</Text>：上限 75{'\n'}
+                                            結構正在改善中{'\n\n'}
+                                            • <Text style={{ color: '#22c55e', fontWeight: '600' }}>擴張期 (4 Gates)</Text>：上限 100{'\n'}
+                                            所有核心條件已滿足
+                                        </Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+
+                            {/* FAQ Item 6: Score Range */}
+                            <TouchableOpacity
+                                style={{ backgroundColor: '#374151', borderRadius: 8, marginBottom: 24, overflow: 'hidden' }}
+                                onPress={() => setExpandedFaq(expandedFaq === 'range' ? null : 'range')}
+                            >
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16 }}>
+                                    <Text style={{ color: '#F5F5DC', fontSize: 15, fontWeight: '600' }}>🎯 分數區間說明</Text>
+                                    <Ionicons name={expandedFaq === 'range' ? 'chevron-up' : 'chevron-down'} size={20} color="#A8A29E" />
+                                </View>
+                                {expandedFaq === 'range' && (
+                                    <View style={{ padding: 16, paddingTop: 0, borderTopWidth: 1, borderTopColor: '#374151' }}>
+                                        <Text style={{ color: '#E7E5E4', fontSize: 13, lineHeight: 22 }}>
+                                            • <Text style={{ color: '#ef4444', fontWeight: '600' }}>0-20</Text>：下跌趨勢{'\n'}
+                                            市場處於明顯下行階段{'\n\n'}
+                                            • <Text style={{ color: '#f97316', fontWeight: '600' }}>20-50</Text>：觀察區{'\n'}
+                                            開始出現底部訊號，但未確認{'\n\n'}
+                                            • <Text style={{ color: '#eab308', fontWeight: '600' }}>50-80</Text>：早期訊號{'\n'}
+                                            結構改善，可考慮分批佈局{'\n\n'}
+                                            • <Text style={{ color: '#22c55e', fontWeight: '600' }}>80-100</Text>：確認反轉{'\n'}
+                                            多數條件滿足，趨勢轉多
+                                        </Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                        </ScrollView>
+
+                        {/* Close Button */}
+                        <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: '#374151' }}>
+                            <TouchableOpacity
+                                style={{ backgroundColor: '#F5F5DC', paddingVertical: 14, borderRadius: 8, alignItems: 'center' }}
+                                onPress={() => { setShowScoreInfo(false); setExpandedFaq(null); }}
+                            >
+                                <Text style={{ color: '#1F2937', fontWeight: '700', fontSize: 15 }}>了解</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
                 </Modal>
 
                 {/* 2.5. CARD: Contribution & Leaderboard (Restored) */}
@@ -712,7 +838,7 @@ export default function DashboardScreen() {
                                                 <Text style={{ color: '#E7E5E4', fontSize: 13 }}>{label}</Text>
                                                 <Text style={{ color: '#a1a1aa', fontSize: 12 }}>{val}%</Text>
                                             </View>
-                                            <View style={{ height: 8, backgroundColor: '#27272a', borderRadius: 4, overflow: 'hidden' }}>
+                                            <View style={{ height: 8, backgroundColor: '#374151', borderRadius: 4, overflow: 'hidden' }}>
                                                 <View style={{ width: `${val}% `, height: '100%', backgroundColor: color }} />
                                             </View>
                                         </View>
@@ -743,11 +869,11 @@ export default function DashboardScreen() {
                                             {isExpanded && (
                                                 <View style={{ marginTop: 16 }}>
                                                     {/* Full Topic Name */}
-                                                    <Text style={{ color: '#e4e4e7', fontSize: 13, fontWeight: '600', marginBottom: 16, lineHeight: 20, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#27272a' }}>
+                                                    <Text style={{ color: '#e4e4e7', fontSize: 13, fontWeight: '600', marginBottom: 16, lineHeight: 20, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#374151' }}>
                                                         {marketTitle}
                                                     </Text>
 
-                                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16, backgroundColor: '#27272a', padding: 8, borderRadius: 6 }}>
+                                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16, backgroundColor: '#374151', padding: 8, borderRadius: 6 }}>
                                                         <Text style={{ color: '#a1a1aa', fontSize: 12 }}>敘事貢獻 (Score)</Text>
                                                         <Text style={{ color: '#10b981', fontWeight: 'bold', fontSize: 12 }}>
                                                             +{contribution.toFixed(2)} / 5.00 pts
@@ -1008,7 +1134,7 @@ export default function DashboardScreen() {
                                                 bottom: 0,
                                                 left: 0,
                                                 right: 0,
-                                                backgroundColor: '#27272a',
+                                                backgroundColor: '#374151',
                                                 borderTopWidth: 1,
                                                 borderTopColor: '#3f3f46',
                                                 paddingVertical: 12,
@@ -1050,7 +1176,7 @@ export default function DashboardScreen() {
                             <View style={[styles.settingsItem, { flexDirection: 'column', alignItems: 'stretch', paddingVertical: 16 }]}>
                                 <Text style={[styles.settingsItemLabel, { marginBottom: 8 }]}>顯示名稱</Text>
                                 {!editingName ? (
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#27272a', padding: 12, borderRadius: 8 }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#374151', padding: 12, borderRadius: 8 }}>
                                         <Text style={{ color: 'white', fontSize: 16 }}>{user?.name || 'Believer'}</Text>
                                         <TouchableOpacity onPress={() => { setEditingName(true); setTempName(user?.name || ''); }}>
                                             <Ionicons name="pencil" size={16} color="#F5F5DC" />
@@ -1095,7 +1221,7 @@ export default function DashboardScreen() {
                                 )}
                             </View>
 
-                            <View style={{ height: 1, backgroundColor: '#27272a', marginVertical: 16 }} />
+                            <View style={{ height: 1, backgroundColor: '#374151', marginVertical: 16 }} />
 
                             {/* Notifications Section */}
                             <Text style={styles.settingsSectionTitle}>通知設定</Text>
@@ -1144,7 +1270,7 @@ export default function DashboardScreen() {
                                     <Text style={[styles.settingsItemText, { color: '#ef4444' }]}>登出</Text>
                                 </TouchableOpacity>
 
-                                <TouchableOpacity style={[styles.settingsItem, { borderTopWidth: 1, borderTopColor: '#27272a', paddingTop: 12 }]} onPress={handleResetData}>
+                                <TouchableOpacity style={[styles.settingsItem, { borderTopWidth: 1, borderTopColor: '#374151', paddingTop: 12 }]} onPress={handleResetData}>
                                     <Text style={[styles.settingsItemText, { color: '#ef4444', fontSize: 12 }]}>重置使用者數據 (Debug)</Text>
                                 </TouchableOpacity>
                             </View>
@@ -1167,7 +1293,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
         paddingVertical: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#27272a',
+        borderBottomColor: '#374151',
     },
     headerBrand: {
         fontSize: 16,
@@ -1183,7 +1309,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
-        borderColor: '#27272a',
+        borderColor: '#374151',
         marginLeft: 'auto',
     },
     notificationIconWrapper: {
@@ -1218,7 +1344,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#18181B',
         borderRadius: 16,
         borderWidth: 1,
-        borderColor: '#27272A',
+        borderColor: '#374151',
         padding: 24,
         marginBottom: 24,
         shadowColor: '#000',
@@ -1267,14 +1393,14 @@ const styles = StyleSheet.create({
     },
     progressBlock: {
         flex: 1,
-        backgroundColor: '#27272A',
+        backgroundColor: '#374151',
         borderRadius: 2,
     },
     progressContext: {
         marginTop: 16,
         paddingTop: 16,
         borderTopWidth: 1,
-        borderTopColor: '#27272A',
+        borderTopColor: '#374151',
     },
     contextTitle: {
         fontSize: 12,
@@ -1299,7 +1425,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#18181b',
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: '#27272a',
+        borderColor: '#374151',
         padding: 16,
         marginBottom: 12,
     },
@@ -1354,7 +1480,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         gap: 6,
         paddingVertical: 10,
-        backgroundColor: '#27272a',
+        backgroundColor: '#374151',
         borderRadius: 8,
     },
     viewMarketText: {
@@ -1377,7 +1503,7 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         backgroundColor: '#18181B',
         borderWidth: 1,
-        borderColor: '#27272A',
+        borderColor: '#374151',
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -1398,7 +1524,7 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         backgroundColor: '#000000', // Logo background color
         borderWidth: 1,
-        borderColor: '#27272A',
+        borderColor: '#374151',
     },
     exportLogo: {
         width: 20,
@@ -1566,7 +1692,7 @@ const styles = StyleSheet.create({
         width: 48,
         height: 48,
         borderRadius: 24,
-        backgroundColor: '#27272A',
+        backgroundColor: '#374151',
         alignItems: 'center',
         justifyContent: 'center',
         marginLeft: 12,
@@ -1583,7 +1709,7 @@ const styles = StyleSheet.create({
         width: 20,
         height: 20,
         borderRadius: 10,
-        backgroundColor: '#27272a',
+        backgroundColor: '#374151',
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
@@ -1643,7 +1769,7 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         paddingHorizontal: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#27272a',
+        borderBottomColor: '#374151',
     },
     rankNum: {
         color: '#A8A29E',
