@@ -846,7 +846,9 @@ export default function DashboardScreen() {
                                     >
                                         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
                                             <Text style={{ color: '#F5F5DC', fontSize: 13, marginRight: 8 }}>•</Text>
-                                            <Text style={{ color: '#A8A29E', fontSize: 12, fontWeight: '400' }}>市場關注事件</Text>
+                                            <Text style={{ color: '#A8A29E', fontSize: 12, fontWeight: '400' }}>
+                                                {insight.eventTitle || '市場關注事件'}
+                                            </Text>
                                         </View>
                                         <View style={{ paddingLeft: 16, marginBottom: 6 }}>
                                             <Text style={{ color: '#E7E5E4', fontSize: 14, lineHeight: 22, fontWeight: '400' }}>{insight.analysis}</Text>

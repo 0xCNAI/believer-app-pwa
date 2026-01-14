@@ -11,7 +11,8 @@ export interface MarketInsight {
     url: string;
     analysis: string;
     importance: number;
-    signalId?: string | null; // Optional: Link to a specific tracker
+    signalId?: string | null;
+    eventTitle?: string | null; // New field for specific prediction event title
     addedAt: number;
 }
 
@@ -89,8 +90,9 @@ ${TRACKED_SIGNALS.map(s => `- ID: ${s.id} | 名稱: ${s.name} | 關鍵字: ${s.k
 請回應以下 JSON 格式 (不要有其他文字):
 {
   "importance": <1-10 的整數，10 為最重要>,
-  "analysis": "<繁體中文，直接陳述觀察與結論，嚴禁使用「這則新聞」、「報導指出」等贅詞。例如：『川普重申支持，預期推升法案通過機率』。最多 40 字>",
-  "signalId": "<請務必優先歸類至上述追蹤訊號 ID (如 'btc_reserve')。僅在完全無關時填 null>"
+  "analysis": "<繁體中文，直接陳述觀察與結論，嚴禁使用「這則新聞」、「報導指出」、「根據消息」等贅詞。例如：『川普重申支持，預期推升法案通過機率』。最多 40 字>",
+  "signalId": "<請務必優先歸類至上述追蹤訊號 ID (如 'btc_reserve')。僅在完全無關時填 null>",
+  "eventTitle": "<若歸類為某個 signalId，請直接填入該訊號的「名稱」（如 'BTC 戰略儲備'）。若無歸類，請根據新聞內容產生一個 4-6 字的精簡短標題，例如 '幣安上幣新規'>"
 }
 
 評估標準:
@@ -118,7 +120,8 @@ ${TRACKED_SIGNALS.map(s => `- ID: ${s.id} | 名稱: ${s.name} | 關鍵字: ${s.k
             url: news.url,
             analysis: parsed.analysis || '分析生成中...',
             importance: Math.min(10, Math.max(1, parseInt(parsed.importance) || 5)),
-            signalId: parsed.signalId || null, // Capture signalId
+            signalId: parsed.signalId || null,
+            eventTitle: parsed.eventTitle || '市場關注事件', // Default fallback
             addedAt: Date.now()
         };
 
