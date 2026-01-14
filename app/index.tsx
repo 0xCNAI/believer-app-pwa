@@ -1236,14 +1236,13 @@ export default function DashboardScreen() {
                                     <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1, paddingBottom: 60 }}>
                                         {/* Merit Image */}
                                         <View style={{
-                                            width: 250, height: 250, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: '#3f3f46',
-                                            shadowColor: '#F5F5DC', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 20,
+                                            width: 380, height: 380,
                                             marginBottom: 24
                                         }}>
                                             <Image
                                                 source={require('@/assets/images/bull_rocket.jpg')}
                                                 style={{ width: '100%', height: '100%' }}
-                                                resizeMode="cover"
+                                                resizeMode="contain"
                                             />
                                         </View>
 
