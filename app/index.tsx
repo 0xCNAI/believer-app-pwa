@@ -16,7 +16,7 @@ import * as Haptics from 'expo-haptics';
 import { getGlobalMerit, getLeaderboard, getUserRank, syncUserMerit } from '@/services/meritService';
 import { useTechStore } from '@/stores/techStore';
 import { useAIStore } from '@/stores/aiStore';
-import { useMarketInsights, MarketInsight } from '@/hooks/useMarketInsights';
+
 
 
 export default function DashboardScreen() {
@@ -57,9 +57,7 @@ export default function DashboardScreen() {
     const [showScoreInfo, setShowScoreInfo] = useState(false);
     const [expandedFaq, setExpandedFaq] = useState<string | null>(null);
 
-    // Market Insights (Firebase)
-    const { loading: marketInsightsLoading, lastUpdated: marketInsightsLastUpdated, getAllInsights } = useMarketInsights();
-    const allMarketInsights: MarketInsight[] = getAllInsights();
+
 
     // Settings & Notifications State
     const {
@@ -708,100 +706,99 @@ export default function DashboardScreen() {
                 {/* 2.5. CARD: Contribution & Leaderboard (Restored) */}
 
 
-                {/* 3. CARD 2: Market Dynamics (AI) */}
+                {/* 3. CARD 2: Technical Analysis Status (Local Logic) */}
                 <View style={[styles.card, { paddingVertical: 20 }]}>
                     <View style={[styles.cardHeader, { marginBottom: 16 }]}>
-                        <Text style={styles.cardHeaderTitle}>市場動態</Text>
-                        {/* Timestamp instead of button */}
-                        {marketInsightsLastUpdated && (
-                            <Text style={{ color: '#A8A29E', fontSize: 11 }}>
-                                更新於: {new Date(marketInsightsLastUpdated).toLocaleString('zh-TW', {
-                                    month: 'numeric', day: 'numeric',
-                                    hour: '2-digit', minute: '2-digit', hour12: false
-                                })}
-                            </Text>
-                        )}
+                        <Text style={styles.cardHeaderTitle}>技術分析狀態</Text>
+                        {/* Timestamp */}
+                        <Text style={{ color: '#A8A29E', fontSize: 11 }}>
+                            {(() => {
+                                const ts = useTechStore.getState().lastEvaluated || Date.now();
+                                const d = new Date(ts);
+                                return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+                            })()}
+                        </Text>
                     </View>
 
-                    {/* Loading State */}
-                    {marketInsightsLoading && (
-                        <View style={{ padding: 12, backgroundColor: 'rgba(251, 191, 36, 0.05)', borderRadius: 8, marginBottom: 16 }}>
-                            <Text style={{ color: '#F5F5DC', fontSize: 13 }}>正在載入市場動態...</Text>
-                        </View>
-                    )}
+                    {/* Technical Conditions List */}
+                    <View style={{ marginBottom: 20 }}>
+                        {(() => {
+                            const { conditions, gateCount } = useTechStore.getState();
+                            const gates = conditions.filter((c: any) => c.group === 'Gate');
 
-                    {/* Insights Display */}
-                    {!marketInsightsLoading && allMarketInsights.length > 0 && (
-                        <View>
-                            {allMarketInsights.slice(0, 4).map((insight: any, index) => {
-                                // Lookup specific signal by ID if provided by AI
-                                const matchedBelief = insight.signalId
-                                    ? beliefs.find(b => b.id === insight.signalId)
-                                    : null;
-
-                                // Format Probability Title if matched
-                                let displayTitle = null;
-                                if (matchedBelief) {
-                                    const prob = Math.round(matchedBelief.currentProbability * 100);
-                                    displayTitle = `${matchedBelief.signal?.shortTitle || '相關訊號'}機率 (${prob}%)`;
-                                }
-
-                                return (
-                                    <TouchableOpacity
-                                        key={index}
-                                        style={{ marginBottom: 20 }}
-                                        onPress={() => {
-                                            if (insight.url && typeof window !== 'undefined') {
-                                                window.open(insight.url, '_blank');
-                                            }
-                                        }}
-                                        activeOpacity={0.7}
-                                    >
-                                        {/* Line 1: Signal Title (The "What") */}
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                                            <Text style={{ color: '#F5F5DC', fontSize: 13, marginRight: 8 }}>•</Text>
-
-                                            {displayTitle ? (
-                                                <Text style={{ color: '#e4e4e7', fontSize: 14, fontWeight: '700' }}>
-                                                    {displayTitle}
-                                                </Text>
-                                            ) : (
-                                                <Text style={{ color: '#A8A29E', fontSize: 12, fontWeight: '400' }}>
-                                                    {insight.topic || '市場關注事件'}
-                                                </Text>
-                                            )}
-                                        </View>
-
-                                        {/* Line 2: AI Analysis (The "Why") */}
-                                        <View style={{ paddingLeft: 16, marginBottom: 6 }}>
-                                            <Text style={{ color: '#E7E5E4', fontSize: 14, lineHeight: 22, fontWeight: '400' }}>
-                                                {insight.analysis}
+                            return gates.map((gate: any) => (
+                                <View key={gate.id} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 }}>
+                                    <Text style={{ fontSize: 14, marginRight: 8, marginTop: 2 }}>
+                                        {gate.passed ? '✅' : '・'}
+                                    </Text>
+                                    <View style={{ flex: 1 }}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                            <Text style={{ color: gate.passed ? '#F5F5DC' : '#A8A29E', fontSize: 14, fontWeight: '600' }}>
+                                                {gate.nameCN}
+                                            </Text>
+                                            <Text style={{ color: '#A8A29E', fontSize: 12 }}>
+                                                : {gate.detail?.split('(')[0].trim() || gate.detail}
                                             </Text>
                                         </View>
-
-                                        {/* Line 3: Source Headline + Link */}
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 14 }}>
-                                            <Text
-                                                numberOfLines={1}
-                                                ellipsizeMode="tail"
-                                                style={{ color: '#A8A29E', fontSize: 12, flex: 1, marginRight: 8, textDecorationLine: 'underline' }}
-                                            >
-                                                {insight.headline}
+                                        {gate.passed && (
+                                            <Text style={{ color: '#10b981', fontSize: 11, marginTop: 2 }}>
+                                                (新確認) ↑
                                             </Text>
-                                            <Ionicons name="open-outline" size={12} color="#A8A29E" />
-                                        </View>
-                                    </TouchableOpacity>
-                                )
-                            })}
-                        </View>
-                    )}
+                                        )}
+                                        {!gate.passed && (
+                                            <Text style={{ color: '#52525b', fontSize: 11, marginTop: 2 }}>
+                                                條件未滿足 (接近中)
+                                            </Text>
+                                        )}
+                                    </View>
+                                </View>
+                            ));
+                        })()}
+                    </View>
 
-                    {/* Empty State */}
-                    {!marketInsightsLoading && allMarketInsights.length === 0 && (
-                        <Text style={{ color: '#A8A29E', fontSize: 13, textAlign: 'center', paddingVertical: 20 }}>
-                            市場動態分析將每 3 小時自動更新
-                        </Text>
-                    )}
+                    {/* Next Step Suggestion */}
+                    <View>
+                        <Text style={{ color: '#f97316', fontSize: 13, fontWeight: '600', marginBottom: 8 }}>下一步</Text>
+                        {(() => {
+                            const { gateCount } = useTechStore.getState();
+
+                            // Rule-based suggestions
+                            return (
+                                <View style={{ gap: 8 }}>
+                                    {gateCount < 2 && (
+                                        <>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                <Text style={{ color: '#F5F5DC', fontSize: 14 }}>👉 市場觀望氣氛濃厚，建議耐心等待</Text>
+                                            </View>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                <Text style={{ color: '#F5F5DC', fontSize: 14 }}>👉 關注均線是否開始走平 (Gate 2)</Text>
+                                            </View>
+                                        </>
+                                    )}
+                                    {gateCount >= 2 && gateCount < 4 && (
+                                        <>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                <Text style={{ color: '#F5F5DC', fontSize: 14 }}>👉 可以先規劃小額分批策略</Text>
+                                            </View>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                <Text style={{ color: '#F5F5DC', fontSize: 14 }}>👉 重點看價格是否開始轉強 (Gate 3/4)</Text>
+                                            </View>
+                                        </>
+                                    )}
+                                    {gateCount === 4 && (
+                                        <>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                <Text style={{ color: '#F5F5DC', fontSize: 14 }}>👉 趨勢確立，與市場同步</Text>
+                                            </View>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                <Text style={{ color: '#F5F5DC', fontSize: 14 }}>👉 留意 120MA 支撐位</Text>
+                                            </View>
+                                        </>
+                                    )}
+                                </View>
+                            );
+                        })()}
+                    </View>
                 </View>
 
                 {/* 4. SECTION: Market Expectations */}
