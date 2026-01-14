@@ -91,6 +91,24 @@ export default function DashboardScreen() {
     const [showMerit, setShowMerit] = useState(false);
     const [showMeritModal, setShowMeritModal] = useState(false);
 
+    // Rocket Rumble Animation
+    const rumbleAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        if (showMeritModal) {
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(rumbleAnim, { toValue: -2, duration: 50, useNativeDriver: true }),
+                    Animated.timing(rumbleAnim, { toValue: 2, duration: 50, useNativeDriver: true }),
+                    Animated.timing(rumbleAnim, { toValue: -2, duration: 50, useNativeDriver: true }),
+                    Animated.timing(rumbleAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
+                ])
+            ).start();
+        } else {
+            rumbleAnim.setValue(0);
+        }
+    }, [showMeritModal]);
+
     useEffect(() => {
         if (user?.id) {
             fetchUserMerit(user.id);
@@ -1237,13 +1255,24 @@ export default function DashboardScreen() {
                                         {/* Merit Image */}
                                         <View style={{
                                             width: 380, height: 380,
-                                            marginBottom: 24
+                                            marginBottom: 24,
+                                            overflow: 'hidden', // Clip the scaled content
+                                            alignItems: 'center', justifyContent: 'center'
                                         }}>
-                                            <Image
-                                                source={require('@/assets/images/bull_rocket.jpg')}
-                                                style={{ width: '100%', height: '100%' }}
-                                                resizeMode="contain"
-                                            />
+                                            <Animated.View style={{
+                                                width: '100%', height: '100%',
+                                                transform: [
+                                                    { translateX: rumbleAnim },
+                                                    { translateY: Animated.multiply(rumbleAnim, -1) }, // Shake diagonally
+                                                    { scale: 1.1 } // Zoom 110% to push watermark out
+                                                ]
+                                            }}>
+                                                <Image
+                                                    source={require('@/assets/images/bull_rocket.jpg')}
+                                                    style={{ width: '100%', height: '100%' }}
+                                                    resizeMode="cover"
+                                                />
+                                            </Animated.View>
                                         </View>
 
                                         <Text style={{ color: '#a1a1aa', fontSize: 15, marginBottom: 12, textAlign: 'center' }}>你已經為牛市回歸的念力增添了</Text>
