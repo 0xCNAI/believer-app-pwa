@@ -1101,9 +1101,14 @@ export default function DashboardScreen() {
                         ]}>
                             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                                 <Text style={styles.drawerTitle}>通知中心</Text>
-                                <TouchableOpacity onPress={closeNotifications} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                                    <Ionicons name="close" size={24} color="#A8A29E" />
-                                </TouchableOpacity>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                                    <TouchableOpacity onPress={() => useNotificationStore.getState().clearAll()}>
+                                        <Text style={{ color: '#A8A29E', fontSize: 13 }}>清除全部</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity onPress={closeNotifications} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                                        <Ionicons name="close" size={24} color="#A8A29E" />
+                                    </TouchableOpacity>
+                                </View>
                             </View>
 
                             <ScrollView style={{ flex: 1 }}>
