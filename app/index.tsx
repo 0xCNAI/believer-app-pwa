@@ -21,6 +21,8 @@ import { useMarketInsights, MarketInsight } from '@/hooks/useMarketInsights';
 
 export default function DashboardScreen() {
     const router = useRouter();
+    const notifications = useNotificationStore((state) => state.notifications);
+    const clearAllNotifications = useNotificationStore((state) => state.clearAll);
     const { getReversalIndex, getInterpretation, btcPrice, setBtcPrice, beliefs, faithClicks, incrementFaith } = useBeliefStore();
     const reversalIndex = getReversalIndex();
     const interpretation = getInterpretation();
@@ -1102,7 +1104,7 @@ export default function DashboardScreen() {
                             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                                 <Text style={styles.drawerTitle}>通知中心</Text>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                                    <TouchableOpacity onPress={() => useNotificationStore.getState().clearAll()}>
+                                    <TouchableOpacity onPress={clearAllNotifications}>
                                         <Text style={{ color: '#A8A29E', fontSize: 13 }}>清除全部</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity onPress={closeNotifications} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
@@ -1112,12 +1114,12 @@ export default function DashboardScreen() {
                             </View>
 
                             <ScrollView style={{ flex: 1 }}>
-                                {useNotificationStore.getState().notifications.length === 0 ? (
+                                {notifications.length === 0 ? (
                                     <Text style={{ color: '#A8A29E', fontSize: 13, textAlign: 'center', marginTop: 20 }}>
                                         暫無通知
                                     </Text>
                                 ) : (
-                                    useNotificationStore.getState().notifications.map((n: NotificationItem) => (
+                                    notifications.map((n: NotificationItem) => (
                                         <View key={n.id} style={styles.notificationItem}>
                                             <View style={styles.notifHeader}>
                                                 <View style={[styles.dotSmall, {
