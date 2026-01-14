@@ -10,13 +10,14 @@ import { useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Image, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View, Switch, TextInput, TouchableWithoutFeedback, Modal } from 'react-native';
+import { Animated, Easing, Image, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View, Switch, TextInput, TouchableWithoutFeedback, Modal, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { getGlobalMerit, getLeaderboard, getUserRank, syncUserMerit } from '@/services/meritService';
 import { useTechStore } from '@/stores/techStore';
 import { useAIStore } from '@/stores/aiStore';
 import { useMarketInsights, MarketInsight } from '@/hooks/useMarketInsights';
+
 
 export default function DashboardScreen() {
     const router = useRouter();
@@ -26,6 +27,30 @@ export default function DashboardScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
+
+    // Animation for Notification Drawer
+    // Initial value is screen width (fully closed/off-screen to right)
+    const slideAnim = useRef(new Animated.Value(Dimensions.get('window').width)).current;
+
+    const openNotifications = () => {
+        setShowNotifications(true);
+        Animated.timing(slideAnim, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+            easing: Easing.out(Easing.ease),
+        }).start();
+    };
+
+    const closeNotifications = () => {
+        Animated.timing(slideAnim, {
+            toValue: Dimensions.get('window').width,
+            duration: 250,
+            useNativeDriver: true,
+            easing: Easing.in(Easing.ease),
+        }).start(() => setShowNotifications(false));
+    };
+
     const [btc24hChange, setBtc24hChange] = useState<number | null>(null);
     const [expandedTopic, setExpandedTopic] = useState<string | null>(null);
     const [expandedTechItem, setExpandedTechItem] = useState<string | null>(null);
@@ -212,7 +237,7 @@ export default function DashboardScreen() {
                 <View>
                     <Text style={styles.headerBrand}>Believer V5.4</Text>
                 </View>
-                <TouchableOpacity onPress={() => setShowNotifications(true)} style={styles.notificationBtn}>
+                <TouchableOpacity onPress={openNotifications} style={styles.notificationBtn}>
                     <View style={styles.notificationIconWrapper}>
                         <Ionicons name="notifications-outline" size={20} color="white" />
                         <View style={styles.notificationBadge} />
@@ -609,6 +634,63 @@ export default function DashboardScreen() {
                                     </View>
                                 )}
                             </TouchableOpacity>
+
+                            {/* DEBUG SECTION (Added for verification) */}
+                            <TouchableOpacity
+                                style={{ backgroundColor: '#374151', borderRadius: 8, marginBottom: 24, overflow: 'hidden', borderWidth: 1, borderColor: '#4b5563' }}
+                                onPress={() => setExpandedFaq(expandedFaq === 'debug' ? null : 'debug')}
+                            >
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16 }}>
+                                    <Text style={{ color: '#F5F5DC', fontSize: 15, fontWeight: '600' }}>🛠️ 系統診斷 (Debug)</Text>
+                                    <Ionicons name={expandedFaq === 'debug' ? 'chevron-up' : 'chevron-down'} size={20} color="#A8A29E" />
+                                </View>
+                                {expandedFaq === 'debug' && (
+                                    <View style={{ padding: 16, paddingTop: 0, borderTopWidth: 1, borderTopColor: '#374151' }}>
+                                        {(() => {
+                                            const { conditions, reversalState, gateCount } = useTechStore.getState();
+                                            return (
+                                                <>
+                                                    <View style={{ marginBottom: 16, padding: 12, backgroundColor: '#18181b', borderRadius: 8 }}>
+                                                        <Text style={{ color: '#E7E5E4', fontSize: 13, marginBottom: 4, fontWeight: 'bold' }}>
+                                                            核心分數結構
+                                                        </Text>
+                                                        <Text style={{ color: '#a1a1aa', fontSize: 12 }}>
+                                                            • 最終指數: <Text style={{ color: '#F5F5DC' }}>{reversalIndex}</Text>{'\n'}
+                                                            • Trend Score (技術): <Text style={{ color: '#3b82f6' }}>{reversalState?.trendScoreRaw ?? 0}</Text> (Gates: {gateCount}/4){'\n'}
+                                                            • Cycle Score (籌碼): <Text style={{ color: '#f59e0b' }}>{reversalState?.cycleScoreRaw ?? 0}</Text>{'\n'}
+                                                            <Text style={{ fontSize: 10, color: '#52525b' }}>   (Base: {reversalState?.cycleBase ?? 0} + User: {reversalState?.cycleUser?.toFixed(1) ?? 0})</Text>
+                                                        </Text>
+                                                    </View>
+
+                                                    <Text style={{ color: '#A8A29E', fontSize: 12, marginBottom: 8 }}>Gate 狀態 (趨勢核心):</Text>
+                                                    {conditions.filter((c: any) => c.group === 'Gate').map((c: any) => (
+                                                        <View key={c.id} style={{ marginBottom: 8, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: '#27272a' }}>
+                                                            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                                                                <Text style={{ color: c.passed ? '#22c55e' : '#ef4444', fontSize: 13, fontWeight: '500' }}>
+                                                                    {c.passed ? '✅' : '❌'} {c.nameCN}
+                                                                </Text>
+                                                                <Text style={{ color: '#78716c', fontSize: 11 }}>{Math.round(c.score * 100)}%</Text>
+                                                            </View>
+                                                            <Text style={{ color: '#a1a1aa', fontSize: 11, marginTop: 2 }}>{c.detail}</Text>
+                                                        </View>
+                                                    ))}
+
+                                                    <Text style={{ color: '#A8A29E', fontSize: 12, marginBottom: 8, marginTop: 12 }}>Booster 狀態 (輔助):</Text>
+                                                    {conditions.filter((c: any) => c.group === 'Booster').map((c: any) => (
+                                                        <View key={c.id} style={{ marginBottom: 6 }}>
+                                                            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                                                                <Text style={{ color: c.passed ? '#10b981' : '#52525b', fontSize: 12 }}>
+                                                                    {c.passed ? '⚡' : '⚪'} {c.nameCN}
+                                                                </Text>
+                                                            </View>
+                                                        </View>
+                                                    ))}
+                                                </>
+                                            );
+                                        })()}
+                                    </View>
+                                )}
+                            </TouchableOpacity>
                         </ScrollView>
 
                         {/* Close Button */}
@@ -954,10 +1036,21 @@ export default function DashboardScreen() {
             {
                 showNotifications && (
                     <View style={styles.notificationOverlay}>
-                        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={() => setShowNotifications(false)} />
-                        <View style={styles.drawerPanel}>
-                            <Text style={styles.drawerTitle}>通知中心</Text>
-                            <ScrollView style={{ maxHeight: '80%' }}>
+                        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={closeNotifications} />
+                        <Animated.View style={[
+                            styles.drawerPanel,
+                            {
+                                transform: [{ translateX: slideAnim }]
+                            }
+                        ]}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                                <Text style={styles.drawerTitle}>通知中心</Text>
+                                <TouchableOpacity onPress={closeNotifications} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                                    <Ionicons name="close" size={24} color="#A8A29E" />
+                                </TouchableOpacity>
+                            </View>
+
+                            <ScrollView style={{ flex: 1 }}>
                                 {useNotificationStore.getState().notifications.length === 0 ? (
                                     <Text style={{ color: '#A8A29E', fontSize: 13, textAlign: 'center', marginTop: 20 }}>
                                         暫無通知
@@ -979,7 +1072,7 @@ export default function DashboardScreen() {
                                     ))
                                 )}
                             </ScrollView>
-                        </View>
+                        </Animated.View>
                     </View>
                 )
             }
@@ -1549,7 +1642,7 @@ const styles = StyleSheet.create({
         right: 0,
         bottom: 0,
         zIndex: 100,
-        justifyContent: 'flex-end',
+        // Remove justifyContent: 'flex-end', we want full coverage
     },
     backdrop: {
         position: 'absolute',
@@ -1560,18 +1653,32 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.5)',
     },
     drawerPanel: {
+        position: 'absolute',
+        right: 0,
+        top: 0,
+        bottom: 0,
+        width: '80%', // Takes up 80% of width
+        maxWidth: 320,
         backgroundColor: '#18181b',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
+        // Removed top radius, add left border?
+        borderLeftWidth: 1,
+        borderLeftColor: '#374151',
         padding: 24,
-        paddingBottom: 40,
-        minHeight: 300,
+        paddingTop: Platform.OS === 'ios' ? 60 : 40, // More top padding for status bar/safe area
+        shadowColor: "#000",
+        shadowOffset: {
+            width: -2,
+            height: 0,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
     },
     drawerTitle: {
         fontSize: 20,
         fontWeight: 'bold',
         color: 'white',
-        marginBottom: 24,
+        // marginBottom moved to component for flex layout
     },
     notificationItem: {
         marginBottom: 24,
