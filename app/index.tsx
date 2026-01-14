@@ -16,7 +16,7 @@ import * as Haptics from 'expo-haptics';
 import { getGlobalMerit, getLeaderboard, getUserRank, syncUserMerit } from '@/services/meritService';
 import { useTechStore } from '@/stores/techStore';
 import { useAIStore } from '@/stores/aiStore';
-
+import { useMarketInsights, MarketInsight } from '@/hooks/useMarketInsights';
 
 
 export default function DashboardScreen() {
@@ -56,6 +56,11 @@ export default function DashboardScreen() {
     const [expandedTechItem, setExpandedTechItem] = useState<string | null>(null);
     const [showScoreInfo, setShowScoreInfo] = useState(false);
     const [expandedFaq, setExpandedFaq] = useState<string | null>(null);
+
+    // Market Insights (Firebase)
+    const { loading: marketInsightsLoading, lastUpdated: marketInsightsLastUpdated, getAllInsights } = useMarketInsights();
+    const allMarketInsights: MarketInsight[] = getAllInsights();
+
 
 
 
@@ -799,6 +804,60 @@ export default function DashboardScreen() {
                             );
                         })()}
                     </View>
+                </View>
+
+                {/* 3.1 CARD: Market News (Restored & Cleaned) */}
+                <View style={[styles.card, { paddingVertical: 20 }]}>
+                    <View style={[styles.cardHeader, { marginBottom: 16 }]}>
+                        <Text style={styles.cardHeaderTitle}>市場焦點新聞</Text>
+                    </View>
+
+                    {/* Loading State */}
+                    {marketInsightsLoading && (
+                        <View style={{ padding: 12, backgroundColor: 'rgba(251, 191, 36, 0.05)', borderRadius: 8, marginBottom: 16 }}>
+                            <Text style={{ color: '#F5F5DC', fontSize: 13 }}>正在載入新聞...</Text>
+                        </View>
+                    )}
+
+                    {/* News Display */}
+                    {!marketInsightsLoading && allMarketInsights.length > 0 && (
+                        <View>
+                            {allMarketInsights.slice(0, 3).map((insight: any, index) => {
+                                // Clean Headline regex
+                                const cleanHeadline = insight.headline
+                                    .replace(/\s*-\s*TradingView.*$/i, '')
+                                    .replace(/\s*-\s*Yahoo Finance.*$/i, '')
+                                    .replace(/\s*-\s*[^-]*$/, '');
+
+                                return (
+                                    <TouchableOpacity
+                                        key={index}
+                                        style={{ marginBottom: 20 }}
+                                        onPress={() => {
+                                            if (insight.url && typeof window !== 'undefined') {
+                                                window.open(insight.url, '_blank');
+                                            } else if (insight.url) {
+                                                Linking.openURL(insight.url);
+                                            }
+                                        }}
+                                        activeOpacity={0.7}
+                                    >
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                                            <Text style={{ color: '#F5F5DC', fontSize: 13, marginRight: 8 }}>•</Text>
+                                            <Text style={{ color: '#A8A29E', fontSize: 12, fontWeight: '400' }}>市場關注事件</Text>
+                                        </View>
+                                        <View style={{ paddingLeft: 16, marginBottom: 6 }}>
+                                            <Text style={{ color: '#E7E5E4', fontSize: 14, lineHeight: 22, fontWeight: '400' }}>{insight.analysis}</Text>
+                                        </View>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 14 }}>
+                                            <Text numberOfLines={1} ellipsizeMode="tail" style={{ color: '#A8A29E', fontSize: 12, flex: 1, marginRight: 8, textDecorationLine: 'underline' }}>{cleanHeadline}</Text>
+                                            <Ionicons name="open-outline" size={12} color="#A8A29E" />
+                                        </View>
+                                    </TouchableOpacity>
+                                )
+                            })}
+                        </View>
+                    )}
                 </View>
 
                 {/* 4. SECTION: Market Expectations */}

@@ -214,16 +214,23 @@ export const loadUserConfig = async (userId: string): Promise<UserConfig | null>
 };
 
 function getEventMessage(event: NotificationEvent, state: ReversalState): string {
+    const reasonMap: Record<string, string> = {
+        'SCORE_THRESHOLD': '技術分數達標',
+        'ZONE_GUARANTEE': '鏈上數據支撐'
+    };
+
+    const reason = reasonMap[state.watchReason || 'SCORE_THRESHOLD'] || '技術分數達標';
+
     switch (event) {
         case 'ENTER_WATCH':
-            return `Entered Watch Stage. Reason: ${state.watchReason || 'Score Threshold'}`;
+            return `進入觀察名單 (Watch) 🟢 原因：${reason}`;
         case 'ENTER_PREPARE':
-            return 'Signal Strength Increased: PREPARE';
+            return '訊號增強：進入準備階段 (Prepare) 🟡';
         case 'ENTER_CONFIRMED':
-            return 'Signal Strength Max: CONFIRMED ✅';
+            return '訊號確認：確認反轉 (Confirmed) 🟢✅';
         case 'VETO_ON':
-            return 'Warning: Derivatives Overheated (Veto Active). Upside Capped.';
+            return '風險警示：衍生品過熱 (Veto Active) 🔴 上漲空間受限';
         default:
-            return 'Market Status Update';
+            return '市場狀態更新';
     }
 }

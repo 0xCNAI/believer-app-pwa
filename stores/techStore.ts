@@ -259,7 +259,7 @@ export const useTechStore = create<TechState>()(
                             const prev = b.previousProbability ?? b.currentProbability;
                             const delta = Math.abs(b.currentProbability - prev);
                             if (delta >= 0.3) { // 30% Threshold
-                                const signalName = b.signal?.shortTitle || b.signal?.title || 'Unknown Signal';
+                                const signalName = b.signal?.shortTitle || b.signal?.title || '未知訊號';
                                 const msg = `${signalName} 波動劇烈 (${(delta * 100).toFixed(0)}%)`;
 
                                 // Simple dedup check (optional, but good for UX)
